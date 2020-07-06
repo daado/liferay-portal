@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,41 +14,40 @@
 
 package com.liferay.portlet.rolesadmin.util;
 
-import com.liferay.portal.kernel.security.pacl.DoPrivileged;
-import com.liferay.portal.kernel.util.StringPool;
-import com.liferay.portal.model.Role;
-import com.liferay.portal.model.RoleConstants;
+import com.liferay.petra.string.StringPool;
+import com.liferay.portal.kernel.model.Role;
+import com.liferay.portal.kernel.model.role.RoleConstants;
+import com.liferay.roles.admin.kernel.util.RolesAdmin;
 
 /**
  * @author Brian Wing Shun Chan
  */
-@DoPrivileged
 public class RolesAdminImpl implements RolesAdmin {
 
 	@Override
-	public String getCssClassName(Role role) {
-		String cssClassName = StringPool.BLANK;
+	public String getIconCssClass(Role role) {
+		String iconCssClass = StringPool.BLANK;
 
 		String roleName = role.getName();
 		int roleType = role.getType();
 
 		if (roleName.equals(RoleConstants.GUEST)) {
-			cssClassName = "lfr-role-guest";
+			iconCssClass = "user";
 		}
 		else if (roleType == RoleConstants.TYPE_ORGANIZATION) {
-			cssClassName = "lfr-role-organization";
+			iconCssClass = "globe";
 		}
 		else if (roleType == RoleConstants.TYPE_REGULAR) {
-			cssClassName = "lfr-role-regular";
+			iconCssClass = "user";
 		}
 		else if (roleType == RoleConstants.TYPE_SITE) {
-			cssClassName = "lfr-role-site";
+			iconCssClass = "globe";
 		}
 		else if (role.isTeam()) {
-			cssClassName = "lfr-role-team";
+			iconCssClass = "community";
 		}
 
-		return "lfr-role " + cssClassName;
+		return iconCssClass;
 	}
 
 }

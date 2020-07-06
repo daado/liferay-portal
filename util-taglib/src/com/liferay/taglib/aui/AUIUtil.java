@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,52 +14,69 @@
 
 package com.liferay.taglib.aui;
 
-import com.liferay.portal.kernel.util.StringBundler;
-import com.liferay.portal.kernel.util.StringPool;
+import com.liferay.petra.string.CharPool;
+import com.liferay.petra.string.StringBundler;
+import com.liferay.petra.string.StringPool;
+import com.liferay.portal.kernel.util.GetterUtil;
+import com.liferay.portal.kernel.util.HtmlUtil;
 import com.liferay.portal.kernel.util.Validator;
 
 import java.util.Map;
+
+import javax.portlet.PortletRequest;
+import javax.portlet.PortletResponse;
+
+import javax.servlet.http.HttpServletRequest;
 
 /**
  * @author Shuyang Zhou
  */
 public class AUIUtil {
 
-	/**
-	 * @deprecated As of 6.2.0
-	 */
-	public static final String BUTTON_INPUT_PREFIX = "btn-input";
-
 	public static final String BUTTON_PREFIX = "btn";
 
 	public static final String FIELD_PREFIX = "field";
 
-	/**
-	 * @deprecated As of 6.2.0
-	 */
-	public static final String INPUT_PREFIX = "field-input";
+	public static String buildControlGroupCss(
+		boolean inlineField, String inlineLabel, String wrapperCssClass,
+		String baseType) {
 
-	/**
-	 * @deprecated As of 6.2.0
-	 */
-	public static final String LABEL_CHOICE_PREFIX = "choice-label";
+		StringBundler sb = new StringBundler(8);
 
-	/**
-	 * @deprecated As of 6.2.0
-	 */
-	public static final String LABEL_FIELD_PREFIX = "field-label";
+		sb.append("form-group");
+
+		if (inlineField) {
+			sb.append(" form-group-inline");
+		}
+
+		if (Validator.isNotNull(inlineLabel)) {
+			sb.append(" form-inline");
+		}
+
+		if (Validator.isNotNull(wrapperCssClass)) {
+			sb.append(StringPool.SPACE);
+			sb.append(wrapperCssClass);
+		}
+
+		if (Validator.isNotNull(baseType)) {
+			sb.append(" input-");
+			sb.append(baseType);
+			sb.append("-wrapper");
+		}
+
+		return sb.toString();
+	}
 
 	public static String buildCss(
 		String prefix, boolean disabled, boolean first, boolean last,
 		String cssClass) {
 
-		StringBundler sb = new StringBundler();
+		StringBundler sb = new StringBundler(7);
 
 		sb.append(prefix);
 
 		if (disabled) {
-			sb.append(StringPool.SPACE);
-			sb.append("disabled");
+			sb.append(" disabled");
 		}
 
 		if (first) {
@@ -81,80 +98,144 @@ public class AUIUtil {
 		return sb.toString();
 	}
 
-	/**
-	 * @deprecated As of 6.2.0, replaced by {@link #buildCss(String, boolean,
-	 *             boolean, boolean, String)}
-	 */
-	public static String buildCss(
-			String prefix, String baseTypeCss, boolean disabled, boolean first,
-			boolean last, String cssClass) {
-
-		return buildCss(prefix, disabled, first, last, cssClass);
-	}
-
 	public static String buildData(Map<String, Object> data) {
-		if ((data == null) || data.isEmpty()) {
-			return StringPool.BLANK;
-		}
-
-		StringBundler sb = new StringBundler(data.size() * 5);
-
-		for (Map.Entry<String, Object> entry : data.entrySet()) {
-			String dataKey = entry.getKey();
-			String dataValue = String.valueOf(entry.getValue());
-
-			sb.append("data-");
-			sb.append(dataKey);
-			sb.append("=\"");
-			sb.append(dataValue);
-			sb.append("\" ");
-		}
-
-		return sb.toString();
+		return HtmlUtil.buildData(data);
 	}
 
 	public static String buildLabel(
 		String baseType, boolean inlineField, boolean showForLabel,
 		String forLabel) {
 
-		StringBundler sb = new StringBundler(7);
+		return buildLabel(baseType, inlineField, showForLabel, forLabel, false);
+	}
+
+	public static String buildLabel(
+		String baseType, boolean inlineField, boolean showForLabel,
+		String forLabel, boolean disabled) {
+
+		StringBundler sb = new StringBundler(6);
 
 		if (baseType.equals("boolean")) {
 			baseType = "checkbox";
 		}
 
 		if (baseType.equals("checkbox") || baseType.equals("radio")) {
-			sb.append("class=\"");
-			sb.append(baseType);
-
 			if (inlineField) {
-				sb.append(" inline");
+				sb.append("class=\"");
+				sb.append(baseType);
+				sb.append("-inline\"");
 			}
-
-			sb.append("\" ");
 		}
 		else {
-			sb.append("class=\"control-label\" ");
+			sb.append("class=\"control-label");
+
+			if (disabled) {
+				sb.append(" disabled");
+			}
+
+			sb.append("\"");
 		}
 
 		if (showForLabel) {
-			sb.append("for=\"");
-			sb.append(forLabel);
+			sb.append(" for=\"");
+			sb.append(HtmlUtil.escapeAttribute(forLabel));
 			sb.append("\"");
 		}
 
 		return sb.toString();
 	}
 
-	/**
-	 * @deprecated As of 6.2.0, replaced by {@link #buildLabel(String, boolean,
-	 *             boolean, String)}
-	 */
-	public static String buildLabel(
-		String inlineLabel, boolean showForLabel, String forLabel,
-		boolean choiceField) {
+	public static Object getAttribute(
+		HttpServletRequest httpServletRequest, String namespace, String key) {
 
-		return buildLabel(StringPool.BLANK, false, showForLabel, forLabel);
+		Map<String, Object> dynamicAttributes =
+			(Map<String, Object>)httpServletRequest.getAttribute(
+				namespace.concat("dynamicAttributes"));
+
+		if ((dynamicAttributes != null) && dynamicAttributes.containsKey(key)) {
+			return httpServletRequest.getAttribute(namespace.concat(key));
+		}
+
+		return null;
+	}
+
+	public static String getNamespace(HttpServletRequest httpServletRequest) {
+		return GetterUtil.getString(
+			httpServletRequest.getAttribute("aui:form:portletNamespace"));
+	}
+
+	public static String getNamespace(
+		PortletRequest portletRequest, PortletResponse portletResponse) {
+
+		String namespace = StringPool.BLANK;
+
+		if (portletRequest == null) {
+			return namespace;
+		}
+
+		boolean auiFormUseNamespace = GetterUtil.getBoolean(
+			(String)portletRequest.getAttribute("aui:form:useNamespace"), true);
+
+		if ((portletResponse != null) && auiFormUseNamespace) {
+			namespace = GetterUtil.getString(
+				portletRequest.getAttribute("aui:form:portletNamespace"),
+				portletResponse.getNamespace());
+		}
+
+		return namespace;
+	}
+
+	public static boolean isOpensNewWindow(String target) {
+		if ((target != null) &&
+			(target.equals("_blank") || target.equals("_new"))) {
+
+			return true;
+		}
+
+		return false;
+	}
+
+	public static String normalizeId(String name) {
+		char[] chars = null;
+
+		for (int i = 0; i < name.length(); i++) {
+			char c = name.charAt(i);
+
+			if ((_VALID_CHARS.length <= c) || !_VALID_CHARS[c]) {
+				if (chars == null) {
+					chars = new char[name.length()];
+
+					name.getChars(0, chars.length, chars, 0);
+				}
+
+				chars[i] = CharPool.DASH;
+			}
+		}
+
+		if (chars == null) {
+			return name;
+		}
+
+		return new String(chars);
+	}
+
+	private static final boolean[] _VALID_CHARS = new boolean[128];
+
+	static {
+		for (int i = 'a'; i <= 'z'; i++) {
+			_VALID_CHARS[i] = true;
+		}
+
+		for (int i = 'A'; i <= 'Z'; i++) {
+			_VALID_CHARS[i] = true;
+		}
+
+		for (int i = '0'; i <= '9'; i++) {
+			_VALID_CHARS[i] = true;
+		}
+
+		_VALID_CHARS['-'] = true;
+		_VALID_CHARS['_'] = true;
 	}
 
 }

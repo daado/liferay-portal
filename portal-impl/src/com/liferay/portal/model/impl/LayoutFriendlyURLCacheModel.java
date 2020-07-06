@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,10 +14,11 @@
 
 package com.liferay.portal.model.impl;
 
-import com.liferay.portal.kernel.util.StringBundler;
-import com.liferay.portal.kernel.util.StringPool;
-import com.liferay.portal.model.CacheModel;
-import com.liferay.portal.model.LayoutFriendlyURL;
+import com.liferay.petra.lang.HashUtil;
+import com.liferay.petra.string.StringBundler;
+import com.liferay.portal.kernel.model.CacheModel;
+import com.liferay.portal.kernel.model.LayoutFriendlyURL;
+import com.liferay.portal.kernel.model.MVCCModel;
 
 import java.io.Externalizable;
 import java.io.IOException;
@@ -30,16 +31,60 @@ import java.util.Date;
  * The cache model class for representing LayoutFriendlyURL in entity cache.
  *
  * @author Brian Wing Shun Chan
- * @see LayoutFriendlyURL
  * @generated
  */
-public class LayoutFriendlyURLCacheModel implements CacheModel<LayoutFriendlyURL>,
-	Externalizable {
+public class LayoutFriendlyURLCacheModel
+	implements CacheModel<LayoutFriendlyURL>, Externalizable, MVCCModel {
+
+	@Override
+	public boolean equals(Object object) {
+		if (this == object) {
+			return true;
+		}
+
+		if (!(object instanceof LayoutFriendlyURLCacheModel)) {
+			return false;
+		}
+
+		LayoutFriendlyURLCacheModel layoutFriendlyURLCacheModel =
+			(LayoutFriendlyURLCacheModel)object;
+
+		if ((layoutFriendlyURLId ==
+				layoutFriendlyURLCacheModel.layoutFriendlyURLId) &&
+			(mvccVersion == layoutFriendlyURLCacheModel.mvccVersion)) {
+
+			return true;
+		}
+
+		return false;
+	}
+
+	@Override
+	public int hashCode() {
+		int hashCode = HashUtil.hash(0, layoutFriendlyURLId);
+
+		return HashUtil.hash(hashCode, mvccVersion);
+	}
+
+	@Override
+	public long getMvccVersion() {
+		return mvccVersion;
+	}
+
+	@Override
+	public void setMvccVersion(long mvccVersion) {
+		this.mvccVersion = mvccVersion;
+	}
+
 	@Override
 	public String toString() {
-		StringBundler sb = new StringBundler(25);
+		StringBundler sb = new StringBundler(31);
 
-		sb.append("{uuid=");
+		sb.append("{mvccVersion=");
+		sb.append(mvccVersion);
+		sb.append(", ctCollectionId=");
+		sb.append(ctCollectionId);
+		sb.append(", uuid=");
 		sb.append(uuid);
 		sb.append(", layoutFriendlyURLId=");
 		sb.append(layoutFriendlyURLId);
@@ -63,6 +108,8 @@ public class LayoutFriendlyURLCacheModel implements CacheModel<LayoutFriendlyURL
 		sb.append(friendlyURL);
 		sb.append(", languageId=");
 		sb.append(languageId);
+		sb.append(", lastPublishDate=");
+		sb.append(lastPublishDate);
 		sb.append("}");
 
 		return sb.toString();
@@ -70,10 +117,14 @@ public class LayoutFriendlyURLCacheModel implements CacheModel<LayoutFriendlyURL
 
 	@Override
 	public LayoutFriendlyURL toEntityModel() {
-		LayoutFriendlyURLImpl layoutFriendlyURLImpl = new LayoutFriendlyURLImpl();
+		LayoutFriendlyURLImpl layoutFriendlyURLImpl =
+			new LayoutFriendlyURLImpl();
+
+		layoutFriendlyURLImpl.setMvccVersion(mvccVersion);
+		layoutFriendlyURLImpl.setCtCollectionId(ctCollectionId);
 
 		if (uuid == null) {
-			layoutFriendlyURLImpl.setUuid(StringPool.BLANK);
+			layoutFriendlyURLImpl.setUuid("");
 		}
 		else {
 			layoutFriendlyURLImpl.setUuid(uuid);
@@ -85,7 +136,7 @@ public class LayoutFriendlyURLCacheModel implements CacheModel<LayoutFriendlyURL
 		layoutFriendlyURLImpl.setUserId(userId);
 
 		if (userName == null) {
-			layoutFriendlyURLImpl.setUserName(StringPool.BLANK);
+			layoutFriendlyURLImpl.setUserName("");
 		}
 		else {
 			layoutFriendlyURLImpl.setUserName(userName);
@@ -109,17 +160,24 @@ public class LayoutFriendlyURLCacheModel implements CacheModel<LayoutFriendlyURL
 		layoutFriendlyURLImpl.setPrivateLayout(privateLayout);
 
 		if (friendlyURL == null) {
-			layoutFriendlyURLImpl.setFriendlyURL(StringPool.BLANK);
+			layoutFriendlyURLImpl.setFriendlyURL("");
 		}
 		else {
 			layoutFriendlyURLImpl.setFriendlyURL(friendlyURL);
 		}
 
 		if (languageId == null) {
-			layoutFriendlyURLImpl.setLanguageId(StringPool.BLANK);
+			layoutFriendlyURLImpl.setLanguageId("");
 		}
 		else {
 			layoutFriendlyURLImpl.setLanguageId(languageId);
+		}
+
+		if (lastPublishDate == Long.MIN_VALUE) {
+			layoutFriendlyURLImpl.setLastPublishDate(null);
+		}
+		else {
+			layoutFriendlyURLImpl.setLastPublishDate(new Date(lastPublishDate));
 		}
 
 		layoutFriendlyURLImpl.resetOriginalValues();
@@ -129,37 +187,53 @@ public class LayoutFriendlyURLCacheModel implements CacheModel<LayoutFriendlyURL
 
 	@Override
 	public void readExternal(ObjectInput objectInput) throws IOException {
+		mvccVersion = objectInput.readLong();
+
+		ctCollectionId = objectInput.readLong();
 		uuid = objectInput.readUTF();
+
 		layoutFriendlyURLId = objectInput.readLong();
+
 		groupId = objectInput.readLong();
+
 		companyId = objectInput.readLong();
+
 		userId = objectInput.readLong();
 		userName = objectInput.readUTF();
 		createDate = objectInput.readLong();
 		modifiedDate = objectInput.readLong();
+
 		plid = objectInput.readLong();
+
 		privateLayout = objectInput.readBoolean();
 		friendlyURL = objectInput.readUTF();
 		languageId = objectInput.readUTF();
+		lastPublishDate = objectInput.readLong();
 	}
 
 	@Override
-	public void writeExternal(ObjectOutput objectOutput)
-		throws IOException {
+	public void writeExternal(ObjectOutput objectOutput) throws IOException {
+		objectOutput.writeLong(mvccVersion);
+
+		objectOutput.writeLong(ctCollectionId);
+
 		if (uuid == null) {
-			objectOutput.writeUTF(StringPool.BLANK);
+			objectOutput.writeUTF("");
 		}
 		else {
 			objectOutput.writeUTF(uuid);
 		}
 
 		objectOutput.writeLong(layoutFriendlyURLId);
+
 		objectOutput.writeLong(groupId);
+
 		objectOutput.writeLong(companyId);
+
 		objectOutput.writeLong(userId);
 
 		if (userName == null) {
-			objectOutput.writeUTF(StringPool.BLANK);
+			objectOutput.writeUTF("");
 		}
 		else {
 			objectOutput.writeUTF(userName);
@@ -167,24 +241,30 @@ public class LayoutFriendlyURLCacheModel implements CacheModel<LayoutFriendlyURL
 
 		objectOutput.writeLong(createDate);
 		objectOutput.writeLong(modifiedDate);
+
 		objectOutput.writeLong(plid);
+
 		objectOutput.writeBoolean(privateLayout);
 
 		if (friendlyURL == null) {
-			objectOutput.writeUTF(StringPool.BLANK);
+			objectOutput.writeUTF("");
 		}
 		else {
 			objectOutput.writeUTF(friendlyURL);
 		}
 
 		if (languageId == null) {
-			objectOutput.writeUTF(StringPool.BLANK);
+			objectOutput.writeUTF("");
 		}
 		else {
 			objectOutput.writeUTF(languageId);
 		}
+
+		objectOutput.writeLong(lastPublishDate);
 	}
 
+	public long mvccVersion;
+	public long ctCollectionId;
 	public String uuid;
 	public long layoutFriendlyURLId;
 	public long groupId;
@@ -197,4 +277,6 @@ public class LayoutFriendlyURLCacheModel implements CacheModel<LayoutFriendlyURL
 	public boolean privateLayout;
 	public String friendlyURL;
 	public String languageId;
+	public long lastPublishDate;
+
 }

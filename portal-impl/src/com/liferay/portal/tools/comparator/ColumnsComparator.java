@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -23,7 +23,7 @@ import java.util.List;
 public class ColumnsComparator implements Comparator<Object> {
 
 	public ColumnsComparator(List<String> columnNames) {
-		this(columnNames.toArray(new String[columnNames.size()]));
+		this(columnNames.toArray(new String[0]));
 	}
 
 	public ColumnsComparator(String columnName) {
@@ -35,9 +35,9 @@ public class ColumnsComparator implements Comparator<Object> {
 	}
 
 	@Override
-	public int compare(Object obj1, Object obj2) {
-		Object[] column1 = (Object[])obj1;
-		Object[] column2 = (Object[])obj2;
+	public int compare(Object object1, Object object2) {
+		Object[] column1 = (Object[])object1;
+		Object[] column2 = (Object[])object2;
 
 		String columnName1 = (String)column1[0];
 		String columnName2 = (String)column2[0];
@@ -80,6 +80,6 @@ public class ColumnsComparator implements Comparator<Object> {
 		return 0;
 	}
 
-	private String[] _columnNames;
+	private final String[] _columnNames;
 
 }

@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,16 +14,15 @@
 
 package com.liferay.portal.util;
 
-import com.liferay.portal.kernel.log.Log;
-import com.liferay.portal.kernel.log.LogFactoryUtil;
+import com.liferay.petra.concurrent.ConcurrentReferenceKeyHashMap;
+import com.liferay.petra.memory.FinalizeManager;
 import com.liferay.portal.kernel.util.MethodParameter;
 import com.liferay.portal.kernel.util.MethodParametersResolver;
 
 import java.lang.reflect.AccessibleObject;
 import java.lang.reflect.Method;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.util.concurrent.ConcurrentMap;
 
 import jodd.paramo.Paramo;
 
@@ -40,25 +39,22 @@ public class MethodParametersResolverImpl implements MethodParametersResolver {
 			return methodParameters;
 		}
 
-		try {
-			Class<?>[] methodParameterTypes = method.getParameterTypes();
+		Class<?> clazz = method.getDeclaringClass();
 
-			jodd.paramo.MethodParameter[] joddMethodParameters =
-				Paramo.resolveParameters(method);
+		ClassLoader classLoader = clazz.getClassLoader();
 
-			methodParameters = new MethodParameter[joddMethodParameters.length];
+		Class<?>[] methodParameterTypes = method.getParameterTypes();
 
-			for (int i = 0; i < joddMethodParameters.length; i++) {
-				methodParameters[i] = new MethodParameter(
-					joddMethodParameters[i].getName(),
-					joddMethodParameters[i].getSignature(),
-					methodParameterTypes[i]);
-			}
-		}
-		catch (Exception e) {
-			_log.error(e, e);
+		jodd.paramo.MethodParameter[] joddMethodParameters =
+			Paramo.resolveParameters(method);
 
-			return null;
+		methodParameters = new MethodParameter[joddMethodParameters.length];
+
+		for (int i = 0; i < joddMethodParameters.length; i++) {
+			methodParameters[i] = new MethodParameter(
+				classLoader, joddMethodParameters[i].getName(),
+				joddMethodParameters[i].getSignature(),
+				methodParameterTypes[i]);
 		}
 
 		_methodParameters.put(method, methodParameters);
@@ -66,10 +62,8 @@ public class MethodParametersResolverImpl implements MethodParametersResolver {
 		return methodParameters;
 	}
 
-	private static Log _log = LogFactoryUtil.getLog(
-		MethodParametersResolverImpl.class);
-
-	private Map<AccessibleObject, MethodParameter[]> _methodParameters =
-		new HashMap<AccessibleObject, MethodParameter[]>();
+	private static final ConcurrentMap<AccessibleObject, MethodParameter[]>
+		_methodParameters = new ConcurrentReferenceKeyHashMap<>(
+			FinalizeManager.WEAK_REFERENCE_FACTORY);
 
 }

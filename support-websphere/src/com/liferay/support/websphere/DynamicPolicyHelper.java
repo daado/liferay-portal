@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -29,21 +29,12 @@ import java.util.Map;
  */
 public class DynamicPolicyHelper {
 
-	protected void _start() {
+	protected void start() {
 		_originalDynamicPolicy = DynamicPolicyFactory.getInstance();
 
 		final DynamicPolicy originalDynamicPolicy = _originalDynamicPolicy;
 
 		DynamicPolicy dynamicPolicy = new DynamicPolicy() {
-
-			@Override
-			public ProtectionDomain getProtectionDomain(CodeSource codeSource) {
-				if (originalDynamicPolicy == null) {
-					return null;
-				}
-
-				return originalDynamicPolicy.getProtectionDomain(codeSource);
-			}
 
 			@Override
 			public PermissionCollection getPermissions(
@@ -52,6 +43,15 @@ public class DynamicPolicyHelper {
 				Policy policy = Policy.getPolicy();
 
 				return policy.getPermissions(codeSource);
+			}
+
+			@Override
+			public ProtectionDomain getProtectionDomain(CodeSource codeSource) {
+				if (originalDynamicPolicy == null) {
+					return null;
+				}
+
+				return originalDynamicPolicy.getProtectionDomain(codeSource);
 			}
 
 			@Override
@@ -86,10 +86,11 @@ public class DynamicPolicyHelper {
 		DynamicPolicyFactory.setInstance(dynamicPolicy);
 	}
 
-	private static DynamicPolicyHelper _instance = new DynamicPolicyHelper();
+	private static final DynamicPolicyHelper _dynamicPolicyHelper =
+		new DynamicPolicyHelper();
 
 	static {
-		_instance._start();
+		_dynamicPolicyHelper.start();
 	}
 
 	private DynamicPolicy _originalDynamicPolicy;

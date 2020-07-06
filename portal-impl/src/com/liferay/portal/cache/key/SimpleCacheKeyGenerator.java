@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,8 +14,8 @@
 
 package com.liferay.portal.cache.key;
 
+import com.liferay.petra.string.StringBundler;
 import com.liferay.portal.kernel.cache.key.CacheKeyGenerator;
-import com.liferay.portal.kernel.util.StringBundler;
 
 /**
  * @author Shuyang Zhou
@@ -25,6 +25,16 @@ public class SimpleCacheKeyGenerator extends BaseCacheKeyGenerator {
 	@Override
 	public CacheKeyGenerator clone() {
 		return new SimpleCacheKeyGenerator();
+	}
+
+	/**
+	 * @deprecated As of Athanasius (7.3.x), replaced by {@link
+	 *			 #getCacheKey(StringBundler)}
+	 */
+	@Deprecated
+	@Override
+	public String getCacheKey(com.liferay.portal.kernel.util.StringBundler sb) {
+		return sb.toString();
 	}
 
 	@Override

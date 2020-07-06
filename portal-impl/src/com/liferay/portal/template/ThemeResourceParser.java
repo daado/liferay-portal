@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,8 +14,10 @@
 
 package com.liferay.portal.template;
 
+import com.liferay.petra.string.StringBundler;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
+import com.liferay.portal.kernel.spring.osgi.OSGiBeanProperties;
 import com.liferay.portal.kernel.template.TemplateConstants;
 import com.liferay.portal.theme.ThemeLoader;
 import com.liferay.portal.theme.ThemeLoaderFactory;
@@ -23,11 +25,16 @@ import com.liferay.portal.theme.ThemeLoaderFactory;
 import java.io.File;
 import java.io.IOException;
 
+import java.net.URI;
 import java.net.URL;
 
 /**
  * @author Tina Tian
  */
+@OSGiBeanProperties(
+	property = "lang.type=" + TemplateConstants.LANG_TYPE_FTL,
+	service = TemplateResourceParser.class
+)
 public class ThemeResourceParser extends URLResourceParser {
 
 	@Override
@@ -45,8 +52,9 @@ public class ThemeResourceParser extends URLResourceParser {
 
 		if (themeLoader == null) {
 			_log.error(
-				templateId + " is not valid because " + servletContextName +
-					" does not map to a theme loader");
+				StringBundler.concat(
+					templateId, " is not valid because ", servletContextName,
+					" does not map to a theme loader"));
 
 			return null;
 		}
@@ -62,15 +70,21 @@ public class ThemeResourceParser extends URLResourceParser {
 
 		if (_log.isDebugEnabled()) {
 			_log.debug(
-				templateId + " is associated with the theme loader " +
-					servletContextName + " " + themeLoader);
+				StringBundler.concat(
+					templateId, " is associated with the theme loader ",
+					servletContextName, " ", themeLoader));
 		}
 
 		File fileStorage = themeLoader.getFileStorage();
 
-		return new File(fileStorage, templateId).toURI().toURL();
+		File file = new File(fileStorage, templateId);
+
+		URI uri = file.toURI();
+
+		return uri.toURL();
 	}
 
-	private static Log _log = LogFactoryUtil.getLog(ThemeResourceParser.class);
+	private static final Log _log = LogFactoryUtil.getLog(
+		ThemeResourceParser.class);
 
 }

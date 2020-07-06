@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,20 +14,20 @@
 
 package com.liferay.portlet.documentlibrary.model.impl;
 
+import com.liferay.document.library.kernel.exception.NoSuchFolderException;
+import com.liferay.document.library.kernel.model.DLFolder;
+import com.liferay.document.library.kernel.model.DLFolderConstants;
+import com.liferay.document.library.kernel.service.DLFolderLocalServiceUtil;
+import com.liferay.document.library.kernel.service.DLFolderServiceUtil;
+import com.liferay.exportimport.kernel.lar.StagedModelType;
+import com.liferay.petra.string.CharPool;
+import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.exception.PortalException;
-import com.liferay.portal.kernel.exception.SystemException;
-import com.liferay.portal.kernel.lar.StagedModelType;
-import com.liferay.portal.kernel.repository.model.Folder;
-import com.liferay.portal.kernel.util.CharPool;
-import com.liferay.portal.kernel.util.StringPool;
+import com.liferay.portal.kernel.log.Log;
+import com.liferay.portal.kernel.log.LogFactoryUtil;
+import com.liferay.portal.kernel.model.Repository;
+import com.liferay.portal.kernel.service.RepositoryLocalServiceUtil;
 import com.liferay.portal.kernel.util.StringUtil;
-import com.liferay.portal.model.Repository;
-import com.liferay.portal.service.RepositoryLocalServiceUtil;
-import com.liferay.portlet.documentlibrary.NoSuchFolderException;
-import com.liferay.portlet.documentlibrary.model.DLFolder;
-import com.liferay.portlet.documentlibrary.model.DLFolderConstants;
-import com.liferay.portlet.documentlibrary.service.DLFolderLocalServiceUtil;
-import com.liferay.portlet.documentlibrary.service.DLFolderServiceUtil;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -37,14 +37,9 @@ import java.util.List;
  */
 public class DLFolderImpl extends DLFolderBaseImpl {
 
-	public DLFolderImpl() {
-	}
-
 	@Override
-	public List<Long> getAncestorFolderIds()
-		throws PortalException, SystemException {
-
-		List<Long> ancestorFolderIds = new ArrayList<Long>();
+	public List<Long> getAncestorFolderIds() throws PortalException {
+		List<Long> ancestorFolderIds = new ArrayList<>();
 
 		DLFolder folder = this;
 
@@ -54,12 +49,12 @@ public class DLFolderImpl extends DLFolderBaseImpl {
 
 				ancestorFolderIds.add(folder.getFolderId());
 			}
-			catch (NoSuchFolderException nsfe) {
+			catch (NoSuchFolderException noSuchFolderException) {
 				if (folder.isInTrash()) {
 					break;
 				}
 
-				throw nsfe;
+				throw noSuchFolderException;
 			}
 		}
 
@@ -67,10 +62,8 @@ public class DLFolderImpl extends DLFolderBaseImpl {
 	}
 
 	@Override
-	public List<DLFolder> getAncestors()
-		throws PortalException, SystemException {
-
-		List<DLFolder> ancestors = new ArrayList<DLFolder>();
+	public List<DLFolder> getAncestors() throws PortalException {
+		List<DLFolder> ancestors = new ArrayList<>();
 
 		DLFolder folder = this;
 
@@ -80,12 +73,12 @@ public class DLFolderImpl extends DLFolderBaseImpl {
 
 				ancestors.add(folder);
 			}
-			catch (NoSuchFolderException nsfe) {
+			catch (NoSuchFolderException noSuchFolderException) {
 				if (folder.isInTrash()) {
 					break;
 				}
 
-				throw nsfe;
+				throw noSuchFolderException;
 			}
 		}
 
@@ -93,7 +86,7 @@ public class DLFolderImpl extends DLFolderBaseImpl {
 	}
 
 	@Override
-	public DLFolder getParentFolder() throws PortalException, SystemException {
+	public DLFolder getParentFolder() throws PortalException {
 		if (getParentFolderId() == DLFolderConstants.DEFAULT_PARENT_FOLDER_ID) {
 			return null;
 		}
@@ -102,7 +95,7 @@ public class DLFolderImpl extends DLFolderBaseImpl {
 	}
 
 	@Override
-	public String getPath() throws PortalException, SystemException {
+	public String getPath() throws PortalException {
 		StringBuilder sb = new StringBuilder();
 
 		DLFolder folder = this;
@@ -118,7 +111,7 @@ public class DLFolderImpl extends DLFolderBaseImpl {
 	}
 
 	@Override
-	public String[] getPathArray() throws PortalException, SystemException {
+	public String[] getPathArray() throws PortalException {
 		String path = getPath();
 
 		// Remove leading /
@@ -130,18 +123,12 @@ public class DLFolderImpl extends DLFolderBaseImpl {
 
 	@Override
 	public StagedModelType getStagedModelType() {
-		return new StagedModelType(Folder.class);
+		return new StagedModelType(DLFolderConstants.getClassName());
 	}
 
 	@Override
 	public boolean hasInheritableLock() {
-		try {
-			return DLFolderServiceUtil.hasInheritableLock(getFolderId());
-		}
-		catch (Exception e) {
-		}
-
-		return false;
+		return DLFolderLocalServiceUtil.hasInheritableLock(getFolderId());
 	}
 
 	@Override
@@ -149,7 +136,7 @@ public class DLFolderImpl extends DLFolderBaseImpl {
 		try {
 			return DLFolderServiceUtil.hasFolderLock(getFolderId());
 		}
-		catch (Exception e) {
+		catch (Exception exception) {
 		}
 
 		return false;
@@ -158,16 +145,24 @@ public class DLFolderImpl extends DLFolderBaseImpl {
 	@Override
 	public boolean isInHiddenFolder() {
 		try {
+			long repositoryId = getRepositoryId();
+
+			if (getGroupId() == repositoryId) {
+				return false;
+			}
+
 			Repository repository = RepositoryLocalServiceUtil.getRepository(
-				getRepositoryId());
+				repositoryId);
 
-			long dlFolderId = repository.getDlFolderId();
-
-			DLFolder dlFolder = DLFolderLocalServiceUtil.getFolder(dlFolderId);
+			DLFolder dlFolder = DLFolderLocalServiceUtil.getFolder(
+				repository.getDlFolderId());
 
 			return dlFolder.isHidden();
 		}
-		catch (Exception e) {
+		catch (PortalException portalException) {
+			if (_log.isWarnEnabled()) {
+				_log.warn(portalException, portalException);
+			}
 		}
 
 		return false;
@@ -175,13 +170,7 @@ public class DLFolderImpl extends DLFolderBaseImpl {
 
 	@Override
 	public boolean isLocked() {
-		try {
-			return DLFolderServiceUtil.isFolderLocked(getFolderId());
-		}
-		catch (Exception e) {
-		}
-
-		return false;
+		return DLFolderServiceUtil.isFolderLocked(getFolderId());
 	}
 
 	@Override
@@ -192,5 +181,7 @@ public class DLFolderImpl extends DLFolderBaseImpl {
 
 		return false;
 	}
+
+	private static final Log _log = LogFactoryUtil.getLog(DLFolderImpl.class);
 
 }

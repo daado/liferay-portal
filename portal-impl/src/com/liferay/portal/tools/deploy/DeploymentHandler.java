@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -16,7 +16,7 @@ package com.liferay.portal.tools.deploy;
 
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
-import com.liferay.portal.util.ClassLoaderUtil;
+import com.liferay.portal.kernel.util.PortalClassLoaderUtil;
 
 import java.io.File;
 
@@ -36,8 +36,10 @@ public class DeploymentHandler {
 	public DeploymentHandler(
 		String dmId, String dmUser, String dmPassword, String dfClassName) {
 
+		DeploymentManager deploymentManager = null;
+
 		try {
-			ClassLoader classLoader = ClassLoaderUtil.getPortalClassLoader();
+			ClassLoader classLoader = PortalClassLoaderUtil.getClassLoader();
 
 			DeploymentFactoryManager deploymentFactoryManager =
 				DeploymentFactoryManager.getInstance();
@@ -50,12 +52,14 @@ public class DeploymentHandler {
 			deploymentFactoryManager.registerDeploymentFactory(
 				deploymentFactory);
 
-			_deploymentManager = deploymentFactoryManager.getDeploymentManager(
+			deploymentManager = deploymentFactoryManager.getDeploymentManager(
 				dmId, dmUser, dmPassword);
 		}
-		catch (Exception e) {
-			_log.error(e, e);
+		catch (Exception exception) {
+			_log.error(exception, exception);
 		}
+
+		_deploymentManager = deploymentManager;
 	}
 
 	public void deploy(File warDir, String warContext) throws Exception {
@@ -68,7 +72,9 @@ public class DeploymentHandler {
 				ModuleType.WAR, _deploymentManager.getTargets());
 
 		for (TargetModuleID targetModuleID : targetModuleIDs) {
-			if (!targetModuleID.getModuleID().equals(warContext)) {
+			String moduleID = targetModuleID.getModuleID();
+
+			if (!moduleID.equals(warContext)) {
 				continue;
 			}
 
@@ -117,15 +123,12 @@ public class DeploymentHandler {
 		while (!_error && !_started) {
 			wait();
 		}
-
-		if (_error) {
-			return;
-		}
 	}
 
-	private static Log _log = LogFactoryUtil.getLog(DeploymentHandler.class);
+	private static final Log _log = LogFactoryUtil.getLog(
+		DeploymentHandler.class);
 
-	private DeploymentManager _deploymentManager;
+	private final DeploymentManager _deploymentManager;
 	private boolean _error;
 	private boolean _started;
 

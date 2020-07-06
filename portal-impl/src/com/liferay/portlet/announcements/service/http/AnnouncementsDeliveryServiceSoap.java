@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,30 +14,28 @@
 
 package com.liferay.portlet.announcements.service.http;
 
-import aQute.bnd.annotation.ProviderType;
-
+import com.liferay.announcements.kernel.service.AnnouncementsDeliveryServiceUtil;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
-
-import com.liferay.portlet.announcements.service.AnnouncementsDeliveryServiceUtil;
 
 import java.rmi.RemoteException;
 
 /**
  * Provides the SOAP utility for the
- * {@link com.liferay.portlet.announcements.service.AnnouncementsDeliveryServiceUtil} service utility. The
- * static methods of this class calls the same methods of the service utility.
- * However, the signatures are different because it is difficult for SOAP to
- * support certain types.
+ * <code>AnnouncementsDeliveryServiceUtil</code> service
+ * utility. The static methods of this class call the same methods of the
+ * service utility. However, the signatures are different because it is
+ * difficult for SOAP to support certain types.
  *
  * <p>
  * ServiceBuilder follows certain rules in translating the methods. For example,
- * if the method in the service utility returns a {@link java.util.List}, that
- * is translated to an array of {@link com.liferay.portlet.announcements.model.AnnouncementsDeliverySoap}.
- * If the method in the service utility returns a
- * {@link com.liferay.portlet.announcements.model.AnnouncementsDelivery}, that is translated to a
- * {@link com.liferay.portlet.announcements.model.AnnouncementsDeliverySoap}. Methods that SOAP cannot
- * safely wire are skipped.
+ * if the method in the service utility returns a <code>java.util.List</code>,
+ * that is translated to an array of
+ * <code>com.liferay.announcements.kernel.model.AnnouncementsDeliverySoap</code>. If the method in the
+ * service utility returns a
+ * <code>com.liferay.announcements.kernel.model.AnnouncementsDelivery</code>, that is translated to a
+ * <code>com.liferay.announcements.kernel.model.AnnouncementsDeliverySoap</code>. Methods that SOAP
+ * cannot safely wire are skipped.
  * </p>
  *
  * <p>
@@ -59,28 +57,32 @@ import java.rmi.RemoteException;
  *
  * @author Brian Wing Shun Chan
  * @see AnnouncementsDeliveryServiceHttp
- * @see com.liferay.portlet.announcements.model.AnnouncementsDeliverySoap
- * @see com.liferay.portlet.announcements.service.AnnouncementsDeliveryServiceUtil
  * @generated
  */
-@ProviderType
 public class AnnouncementsDeliveryServiceSoap {
-	public static com.liferay.portlet.announcements.model.AnnouncementsDeliverySoap updateDelivery(
-		long userId, java.lang.String type, boolean email, boolean sms,
-		boolean website) throws RemoteException {
+
+	public static
+		com.liferay.announcements.kernel.model.AnnouncementsDeliverySoap
+				updateDelivery(
+					long userId, String type, boolean email, boolean sms)
+			throws RemoteException {
+
 		try {
-			com.liferay.portlet.announcements.model.AnnouncementsDelivery returnValue =
-				AnnouncementsDeliveryServiceUtil.updateDelivery(userId, type,
-					email, sms, website);
+			com.liferay.announcements.kernel.model.AnnouncementsDelivery
+				returnValue = AnnouncementsDeliveryServiceUtil.updateDelivery(
+					userId, type, email, sms);
 
-			return com.liferay.portlet.announcements.model.AnnouncementsDeliverySoap.toSoapModel(returnValue);
+			return com.liferay.announcements.kernel.model.
+				AnnouncementsDeliverySoap.toSoapModel(returnValue);
 		}
-		catch (Exception e) {
-			_log.error(e, e);
+		catch (Exception exception) {
+			_log.error(exception, exception);
 
-			throw new RemoteException(e.getMessage());
+			throw new RemoteException(exception.getMessage());
 		}
 	}
 
-	private static Log _log = LogFactoryUtil.getLog(AnnouncementsDeliveryServiceSoap.class);
+	private static Log _log = LogFactoryUtil.getLog(
+		AnnouncementsDeliveryServiceSoap.class);
+
 }

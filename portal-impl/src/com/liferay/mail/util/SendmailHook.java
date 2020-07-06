@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,14 +14,18 @@
 
 package com.liferay.mail.util;
 
-import com.liferay.mail.model.Filter;
+import com.liferay.mail.kernel.model.Filter;
+import com.liferay.mail.kernel.util.Hook;
+import com.liferay.petra.process.LoggingOutputProcessor;
+import com.liferay.petra.process.ProcessUtil;
+import com.liferay.petra.string.StringBundler;
+import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.io.unsync.UnsyncBufferedReader;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
-import com.liferay.portal.kernel.process.ProcessUtil;
 import com.liferay.portal.kernel.util.FileUtil;
+import com.liferay.portal.kernel.util.ListUtil;
 import com.liferay.portal.kernel.util.PropsKeys;
-import com.liferay.portal.kernel.util.StringBundler;
 import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.util.PropsUtil;
 
@@ -45,15 +49,14 @@ public class SendmailHook implements Hook {
 			if (emailAddresses != null) {
 				String home = PropsUtil.get(PropsKeys.MAIL_HOOK_SENDMAIL_HOME);
 
-				File file = new File(home + "/" + userId + "/.forward");
+				File file = new File(
+					StringBundler.concat(home, "/", userId, "/.forward"));
 
-				if (emailAddresses.size() > 0) {
+				if (!emailAddresses.isEmpty()) {
 					StringBundler sb = new StringBundler(
 						emailAddresses.size() * 2);
 
-					for (int i = 0; i < emailAddresses.size(); i++) {
-						String emailAddress = emailAddresses.get(i);
-
+					for (String emailAddress : emailAddresses) {
 						sb.append(emailAddress);
 						sb.append("\n");
 					}
@@ -65,8 +68,8 @@ public class SendmailHook implements Hook {
 				}
 			}
 		}
-		catch (Exception e) {
-			_log.error(e, e);
+		catch (Exception exception) {
+			_log.error(exception, exception);
 		}
 	}
 
@@ -87,12 +90,21 @@ public class SendmailHook implements Hook {
 
 		try {
 			Future<?> future = ProcessUtil.execute(
-				ProcessUtil.LOGGING_OUTPUT_PROCESSOR, addUserCmd);
+				new LoggingOutputProcessor(
+					(stdErr, line) -> {
+						if (stdErr) {
+							_log.error(line);
+						}
+						else if (_log.isInfoEnabled()) {
+							_log.info(line);
+						}
+					}),
+				StringUtil.split(addUserCmd, StringPool.SPACE));
 
 			future.get();
 		}
-		catch (Exception e) {
-			_log.error(e, e);
+		catch (Exception exception) {
+			_log.error(exception, exception);
 		}
 
 		updatePassword(companyId, userId, password);
@@ -126,12 +138,21 @@ public class SendmailHook implements Hook {
 
 		try {
 			Future<?> future = ProcessUtil.execute(
-				ProcessUtil.LOGGING_OUTPUT_PROCESSOR, deleteUserCmd);
+				new LoggingOutputProcessor(
+					(stdErr, line) -> {
+						if (stdErr) {
+							_log.error(line);
+						}
+						else if (_log.isInfoEnabled()) {
+							_log.info(line);
+						}
+					}),
+				StringUtil.split(deleteUserCmd, StringPool.SPACE));
 
 			future.get();
 		}
-		catch (Exception e) {
-			_log.error(e, e);
+		catch (Exception exception) {
+			_log.error(exception, exception);
 		}
 	}
 
@@ -141,9 +162,10 @@ public class SendmailHook implements Hook {
 
 		String home = PropsUtil.get(PropsKeys.MAIL_HOOK_SENDMAIL_HOME);
 
-		File file = new File(home + "/" + userId + "/.procmailrc");
+		File file = new File(
+			StringBundler.concat(home, "/", userId, "/.procmailrc"));
 
-		if ((blocked == null) || (blocked.size() == 0)) {
+		if (ListUtil.isEmpty(blocked)) {
 			file.delete();
 
 			return;
@@ -155,9 +177,7 @@ public class SendmailHook implements Hook {
 		sb.append("MAILDIR $HOME/\n");
 		sb.append("SENDMAIL /usr/smin/sendmail\n");
 
-		for (int i = 0; i < blocked.size(); i++) {
-			String emailAddress = blocked.get(i);
-
+		for (String emailAddress : blocked) {
 			sb.append("\n");
 			sb.append(":0\n");
 			sb.append("* ^From.*");
@@ -172,8 +192,8 @@ public class SendmailHook implements Hook {
 		try {
 			FileUtil.write(file, sb.toString());
 		}
-		catch (Exception e) {
-			_log.error(e, e);
+		catch (Exception exception) {
+			_log.error(exception, exception);
 		}
 	}
 
@@ -185,30 +205,28 @@ public class SendmailHook implements Hook {
 			String virtusertable = PropsUtil.get(
 				PropsKeys.MAIL_HOOK_SENDMAIL_VIRTUSERTABLE);
 
-			FileReader fileReader = new FileReader(virtusertable);
-			UnsyncBufferedReader unsyncBufferedReader =
-				new UnsyncBufferedReader(fileReader);
-
 			StringBundler sb = new StringBundler();
 
-			for (String s = unsyncBufferedReader.readLine(); s != null;
-					s = unsyncBufferedReader.readLine()) {
+			try (FileReader fileReader = new FileReader(virtusertable);
+				UnsyncBufferedReader unsyncBufferedReader =
+					new UnsyncBufferedReader(fileReader)) {
 
-				if (!s.endsWith(" " + userId)) {
-					sb.append(s);
+				for (String s = unsyncBufferedReader.readLine(); s != null;
+					 s = unsyncBufferedReader.readLine()) {
+
+					if (!s.endsWith(" " + userId)) {
+						sb.append(s);
+						sb.append('\n');
+					}
+				}
+
+				if ((emailAddress != null) && !emailAddress.equals("")) {
+					sb.append(emailAddress);
+					sb.append(" ");
+					sb.append(userId);
 					sb.append('\n');
 				}
 			}
-
-			if ((emailAddress != null) && !emailAddress.equals("")) {
-				sb.append(emailAddress);
-				sb.append(" ");
-				sb.append(userId);
-				sb.append('\n');
-			}
-
-			unsyncBufferedReader.close();
-			fileReader.close();
 
 			FileUtil.write(virtusertable, sb.toString());
 
@@ -216,12 +234,21 @@ public class SendmailHook implements Hook {
 				PropsKeys.MAIL_HOOK_SENDMAIL_VIRTUSERTABLE_REFRESH);
 
 			Future<?> future = ProcessUtil.execute(
-				ProcessUtil.LOGGING_OUTPUT_PROCESSOR, virtusertableRefreshCmd);
+				new LoggingOutputProcessor(
+					(stdErr, line) -> {
+						if (stdErr) {
+							_log.error(line);
+						}
+						else if (_log.isInfoEnabled()) {
+							_log.info(line);
+						}
+					}),
+				StringUtil.split(virtusertableRefreshCmd, StringPool.SPACE));
 
 			future.get();
 		}
-		catch (Exception e) {
-			_log.error(e, e);
+		catch (Exception exception) {
+			_log.error(exception, exception);
 		}
 	}
 
@@ -233,27 +260,40 @@ public class SendmailHook implements Hook {
 		String changePasswordCmd = PropsUtil.get(
 			PropsKeys.MAIL_HOOK_SENDMAIL_CHANGE_PASSWORD);
 
-		// Replace userId
+		// Replace user ID and password
 
-		changePasswordCmd = StringUtil.replace(
-			changePasswordCmd, "%1%", String.valueOf(userId));
+		String[] arguments = StringUtil.split(
+			changePasswordCmd, StringPool.SPACE);
 
-		// Replace password
-
-		changePasswordCmd = StringUtil.replace(
-			changePasswordCmd, "%2%", password);
+		for (int i = 0; i < arguments.length; i++) {
+			if (arguments[i].equals("%1%")) {
+				arguments[i] = String.valueOf(userId);
+			}
+			else if (arguments[i].equals("%2%")) {
+				arguments[i] = password;
+			}
+		}
 
 		try {
 			Future<?> future = ProcessUtil.execute(
-				ProcessUtil.LOGGING_OUTPUT_PROCESSOR, changePasswordCmd);
+				new LoggingOutputProcessor(
+					(stdErr, line) -> {
+						if (stdErr) {
+							_log.error(line);
+						}
+						else if (_log.isInfoEnabled()) {
+							_log.info(line);
+						}
+					}),
+				arguments);
 
 			future.get();
 		}
-		catch (Exception e) {
-			_log.error(e, e);
+		catch (Exception exception) {
+			_log.error(exception, exception);
 		}
 	}
 
-	private static Log _log = LogFactoryUtil.getLog(SendmailHook.class);
+	private static final Log _log = LogFactoryUtil.getLog(SendmailHook.class);
 
 }

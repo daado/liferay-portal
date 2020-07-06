@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,10 +14,11 @@
 
 package com.liferay.portal.model.impl;
 
-import com.liferay.portal.kernel.util.StringBundler;
-import com.liferay.portal.kernel.util.StringPool;
-import com.liferay.portal.model.CacheModel;
-import com.liferay.portal.model.UserGroup;
+import com.liferay.petra.lang.HashUtil;
+import com.liferay.petra.string.StringBundler;
+import com.liferay.portal.kernel.model.CacheModel;
+import com.liferay.portal.kernel.model.MVCCModel;
+import com.liferay.portal.kernel.model.UserGroup;
 
 import java.io.Externalizable;
 import java.io.IOException;
@@ -30,17 +31,61 @@ import java.util.Date;
  * The cache model class for representing UserGroup in entity cache.
  *
  * @author Brian Wing Shun Chan
- * @see UserGroup
  * @generated
  */
-public class UserGroupCacheModel implements CacheModel<UserGroup>,
-	Externalizable {
+public class UserGroupCacheModel
+	implements CacheModel<UserGroup>, Externalizable, MVCCModel {
+
+	@Override
+	public boolean equals(Object object) {
+		if (this == object) {
+			return true;
+		}
+
+		if (!(object instanceof UserGroupCacheModel)) {
+			return false;
+		}
+
+		UserGroupCacheModel userGroupCacheModel = (UserGroupCacheModel)object;
+
+		if ((userGroupId == userGroupCacheModel.userGroupId) &&
+			(mvccVersion == userGroupCacheModel.mvccVersion)) {
+
+			return true;
+		}
+
+		return false;
+	}
+
+	@Override
+	public int hashCode() {
+		int hashCode = HashUtil.hash(0, userGroupId);
+
+		return HashUtil.hash(hashCode, mvccVersion);
+	}
+
+	@Override
+	public long getMvccVersion() {
+		return mvccVersion;
+	}
+
+	@Override
+	public void setMvccVersion(long mvccVersion) {
+		this.mvccVersion = mvccVersion;
+	}
+
 	@Override
 	public String toString() {
-		StringBundler sb = new StringBundler(23);
+		StringBundler sb = new StringBundler(29);
 
-		sb.append("{uuid=");
+		sb.append("{mvccVersion=");
+		sb.append(mvccVersion);
+		sb.append(", ctCollectionId=");
+		sb.append(ctCollectionId);
+		sb.append(", uuid=");
 		sb.append(uuid);
+		sb.append(", externalReferenceCode=");
+		sb.append(externalReferenceCode);
 		sb.append(", userGroupId=");
 		sb.append(userGroupId);
 		sb.append(", companyId=");
@@ -70,11 +115,21 @@ public class UserGroupCacheModel implements CacheModel<UserGroup>,
 	public UserGroup toEntityModel() {
 		UserGroupImpl userGroupImpl = new UserGroupImpl();
 
+		userGroupImpl.setMvccVersion(mvccVersion);
+		userGroupImpl.setCtCollectionId(ctCollectionId);
+
 		if (uuid == null) {
-			userGroupImpl.setUuid(StringPool.BLANK);
+			userGroupImpl.setUuid("");
 		}
 		else {
 			userGroupImpl.setUuid(uuid);
+		}
+
+		if (externalReferenceCode == null) {
+			userGroupImpl.setExternalReferenceCode("");
+		}
+		else {
+			userGroupImpl.setExternalReferenceCode(externalReferenceCode);
 		}
 
 		userGroupImpl.setUserGroupId(userGroupId);
@@ -82,7 +137,7 @@ public class UserGroupCacheModel implements CacheModel<UserGroup>,
 		userGroupImpl.setUserId(userId);
 
 		if (userName == null) {
-			userGroupImpl.setUserName(StringPool.BLANK);
+			userGroupImpl.setUserName("");
 		}
 		else {
 			userGroupImpl.setUserName(userName);
@@ -105,14 +160,14 @@ public class UserGroupCacheModel implements CacheModel<UserGroup>,
 		userGroupImpl.setParentUserGroupId(parentUserGroupId);
 
 		if (name == null) {
-			userGroupImpl.setName(StringPool.BLANK);
+			userGroupImpl.setName("");
 		}
 		else {
 			userGroupImpl.setName(name);
 		}
 
 		if (description == null) {
-			userGroupImpl.setDescription(StringPool.BLANK);
+			userGroupImpl.setDescription("");
 		}
 		else {
 			userGroupImpl.setDescription(description);
@@ -127,35 +182,56 @@ public class UserGroupCacheModel implements CacheModel<UserGroup>,
 
 	@Override
 	public void readExternal(ObjectInput objectInput) throws IOException {
+		mvccVersion = objectInput.readLong();
+
+		ctCollectionId = objectInput.readLong();
 		uuid = objectInput.readUTF();
+		externalReferenceCode = objectInput.readUTF();
+
 		userGroupId = objectInput.readLong();
+
 		companyId = objectInput.readLong();
+
 		userId = objectInput.readLong();
 		userName = objectInput.readUTF();
 		createDate = objectInput.readLong();
 		modifiedDate = objectInput.readLong();
+
 		parentUserGroupId = objectInput.readLong();
 		name = objectInput.readUTF();
 		description = objectInput.readUTF();
+
 		addedByLDAPImport = objectInput.readBoolean();
 	}
 
 	@Override
-	public void writeExternal(ObjectOutput objectOutput)
-		throws IOException {
+	public void writeExternal(ObjectOutput objectOutput) throws IOException {
+		objectOutput.writeLong(mvccVersion);
+
+		objectOutput.writeLong(ctCollectionId);
+
 		if (uuid == null) {
-			objectOutput.writeUTF(StringPool.BLANK);
+			objectOutput.writeUTF("");
 		}
 		else {
 			objectOutput.writeUTF(uuid);
 		}
 
+		if (externalReferenceCode == null) {
+			objectOutput.writeUTF("");
+		}
+		else {
+			objectOutput.writeUTF(externalReferenceCode);
+		}
+
 		objectOutput.writeLong(userGroupId);
+
 		objectOutput.writeLong(companyId);
+
 		objectOutput.writeLong(userId);
 
 		if (userName == null) {
-			objectOutput.writeUTF(StringPool.BLANK);
+			objectOutput.writeUTF("");
 		}
 		else {
 			objectOutput.writeUTF(userName);
@@ -163,17 +239,18 @@ public class UserGroupCacheModel implements CacheModel<UserGroup>,
 
 		objectOutput.writeLong(createDate);
 		objectOutput.writeLong(modifiedDate);
+
 		objectOutput.writeLong(parentUserGroupId);
 
 		if (name == null) {
-			objectOutput.writeUTF(StringPool.BLANK);
+			objectOutput.writeUTF("");
 		}
 		else {
 			objectOutput.writeUTF(name);
 		}
 
 		if (description == null) {
-			objectOutput.writeUTF(StringPool.BLANK);
+			objectOutput.writeUTF("");
 		}
 		else {
 			objectOutput.writeUTF(description);
@@ -182,7 +259,10 @@ public class UserGroupCacheModel implements CacheModel<UserGroup>,
 		objectOutput.writeBoolean(addedByLDAPImport);
 	}
 
+	public long mvccVersion;
+	public long ctCollectionId;
 	public String uuid;
+	public String externalReferenceCode;
 	public long userGroupId;
 	public long companyId;
 	public long userId;
@@ -193,4 +273,5 @@ public class UserGroupCacheModel implements CacheModel<UserGroup>,
 	public String name;
 	public String description;
 	public boolean addedByLDAPImport;
+
 }

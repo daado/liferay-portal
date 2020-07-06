@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,10 +14,10 @@
 
 package com.liferay.util.ant;
 
+import com.liferay.petra.string.StringBundler;
+import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.io.unsync.UnsyncBufferedReader;
 import com.liferay.portal.kernel.io.unsync.UnsyncStringReader;
-import com.liferay.portal.kernel.util.StringBundler;
-import com.liferay.portal.kernel.util.StringPool;
 
 import java.io.IOException;
 
@@ -46,12 +46,11 @@ public class AntUtil {
 
 				StringBundler sb = new StringBundler();
 
-				try {
-					boolean first = true;
-
-					UnsyncBufferedReader unsyncBufferedReader =
+				try (UnsyncBufferedReader unsyncBufferedReader =
 						new UnsyncBufferedReader(
-							new UnsyncStringReader(buildEvent.getMessage()));
+							new UnsyncStringReader(buildEvent.getMessage()))) {
+
+					boolean first = true;
 
 					String line = unsyncBufferedReader.readLine();
 
@@ -68,7 +67,7 @@ public class AntUtil {
 						line = unsyncBufferedReader.readLine();
 					}
 				}
-				catch (IOException ioe) {
+				catch (IOException ioException) {
 				}
 
 				String message = sb.toString();
@@ -86,7 +85,7 @@ public class AntUtil {
 		};
 
 		buildLogger.setErrorPrintStream(System.err);
-		buildLogger.setMessageOutputLevel(Project.MSG_INFO);
+		buildLogger.setMessageOutputLevel(Project.MSG_WARN);
 		buildLogger.setOutputPrintStream(System.out);
 
 		project.addBuildListener(buildLogger);

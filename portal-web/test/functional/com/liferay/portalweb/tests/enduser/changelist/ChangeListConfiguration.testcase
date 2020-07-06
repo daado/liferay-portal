@@ -1,0 +1,115 @@
+@component-name = "portal-change-list"
+definition {
+
+	property portal.release = "true";
+	property portal.upstream = "true";
+	property testray.main.component.name = "Change List";
+
+	setUp {
+		TestCase.setUpPortalInstance();
+
+		User.firstLoginPG();
+	}
+
+	tearDown {
+		var testPortalInstance = PropsUtil.get("test.portal.instance");
+
+		if ("${testPortalInstance}" == "true") {
+			PortalInstances.tearDownCP();
+		}
+	}
+
+	@description = "Change list cannot be enabled when staging is turned on"
+	@ignore = "true"
+	@priority = "5"
+	test CannotEnableChangeListWhenStagingIsTurnedOn {
+		var siteName = TestCase.getSiteName(siteName = "${siteName}");
+
+		ProductMenu.gotoPortlet(
+			category = "Publishing",
+			portlet = "Staging",
+			site = "Guest");
+
+		Staging.activateStagingCP(siteName = "${siteName}");
+
+		GlobalMenu.gotoPortlet(
+			category = "Content",
+			panel = "Applications",
+			portlet = "Settings");
+
+		Alert.viewWarningSpecific(warningMessage = "Staging is enabled for at least one site in the current virtual instance. Staging and change lists cannot be used together.");
+	}
+
+	@description = "Enable Change List and go to Overview"
+	@ignore = "true"
+	@priority = "5"
+	test EnableChangeListAndGoToOverview {
+		property portal.acceptance = "true";
+
+		GlobalMenu.gotoPortlet(
+			category = "Content",
+			panel = "Applications",
+			portlet = "Settings");
+
+		ChangeList.enableChangeList(gotoOverview = "true");
+
+		AssertTextEquals(
+			locator1 = "ChangeList#MANGE_PUBLICATIONS_PAGE_TITLE",
+			value1 = "Manage Publications");
+
+		AssertElementPresent(
+			locator1 = "ChangeList#PRODUCTION_CARD_TITLE",
+			value1 = "Work on Production");
+
+		AssertElementPresent(locator1 = "ChangeList#INDICATOR");
+
+		ChangeList.viewNoStagingMenuitemsNotAvailable(site = "Guest");
+
+		ChangeList.viewWarningOnSiteExportImport(portletName = "Export");
+
+		ChangeList.viewWarningOnSiteExportImport(portletName = "Import");
+
+		ChangeList.viewWarningOnPortletExport(
+			portletName = "Web Content",
+			site = "Guest");
+
+		ChangeList.viewWarningOnPortletImport(
+			portletName = "Web Content",
+			site = "Guest");
+
+		GlobalMenu.gotoPortlet(
+			category = "Content",
+			panel = "Applications",
+			portlet = "Settings",
+			site = "Guest");
+
+		ChangeList.disableChangeList();
+
+		AssertElementPresent(locator1 = "ChangeListSettings#DISABLED_SAVE_AND_GO_TO_OVERVIEW_BUTTON");
+
+		AssertElementNotPresent(locator1 = "Icon#HEADER_VERTICAL_ELLIPSIS");
+	}
+
+	@description = "Enable and Disable Change List"
+	@priority = "5"
+	test EnableDisableChangeList {
+		property test.name.skip.portal.instance = "ChangeListConfiguration#EnableDisableChangeList";
+
+		GlobalMenu.gotoPortlet(
+			category = "Content",
+			panel = "Applications",
+			portlet = "Settings");
+
+		ChangeList.enableChangeList();
+
+		GlobalMenu.gotoPortlet(
+			category = "Content",
+			panel = "Applications",
+			portlet = "Settings");
+
+		ChangeList.disableChangeList();
+
+		AssertElementPresent(locator1 = "ChangeListSettings#DISABLED_SAVE_AND_GO_TO_OVERVIEW_BUTTON");
+	}
+
+}

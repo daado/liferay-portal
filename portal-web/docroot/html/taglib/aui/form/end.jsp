@@ -1,6 +1,6 @@
 <%--
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -16,12 +16,23 @@
 
 <%@ include file="/html/taglib/aui/form/init.jsp" %>
 
+	<c:if test="<%= (checkboxNames != null) && !checkboxNames.isEmpty() %>">
+		<aui:input name="checkboxNames" type="hidden" value="<%= StringUtil.merge(checkboxNames) %>" />
+	</c:if>
+
+	<c:if test="<%= Validator.isNotNull(onSubmit) %>">
+		</fieldset>
+	</c:if>
 </form>
+
+<%
+String fullName = namespace + HtmlUtil.escapeJS(name);
+%>
 
 <aui:script use="liferay-form">
 	Liferay.Form.register(
 		{
-			id: '<%= namespace + name %>'
+			id: '<%= fullName %>'
 
 			<c:if test="<%= validatorTagsMap != null %>">
 				, fieldRules: [
@@ -29,20 +40,21 @@
 					<%
 					int i = 0;
 
-					for (String fieldName : validatorTagsMap.keySet()) {
-						List<ValidatorTag> validatorTags = validatorTagsMap.get(fieldName);
+					for (Map.Entry<String, List<ValidatorTag>> entry : validatorTagsMap.entrySet()) {
+						String fieldName = entry.getKey();
+						List<ValidatorTag> validatorTags = entry.getValue();
 
 						for (ValidatorTag validatorTag : validatorTags) {
 					%>
 
-							<%= i != 0 ? StringPool.COMMA : StringPool.BLANK %>
+							<%= (i != 0) ? StringPool.COMMA : StringPool.BLANK %>
 
 							{
 								body: <%= validatorTag.getBody() %>,
 								custom: <%= validatorTag.isCustom() %>,
-								errorMessage: '<%= UnicodeLanguageUtil.get(pageContext, validatorTag.getErrorMessage()) %>',
-								fieldName: '<%= namespace + fieldName %>',
-								validatorName: '<%= validatorTag.getName() %>'
+								errorMessage: '<%= UnicodeLanguageUtil.get(resourceBundle, validatorTag.getErrorMessage()) %>',
+								fieldName: '<%= namespace + HtmlUtil.escapeJS(fieldName) %>',
+								validatorName: '<%= HtmlUtil.escapeJS(validatorTag.getName()) %>'
 							}
 
 					<%
@@ -59,6 +71,27 @@
 					<%= onSubmit %>
 				}
 			</c:if>
+
+			, validateOnBlur: <%= validateOnBlur %>
+		}
+	);
+
+	var onDestroyPortlet = function(event) {
+		if (event.portletId === '<%= portletDisplay.getId() %>') {
+			delete Liferay.Form._INSTANCES['<%= fullName %>'];
+		}
+	};
+
+	Liferay.on('destroyPortlet', onDestroyPortlet);
+
+	<c:if test="<%= Validator.isNotNull(onSubmit) %>">
+		A.all('#<%= fullName %> .input-container').removeAttribute('disabled');
+	</c:if>
+
+	Liferay.fire(
+		'<portlet:namespace />formReady',
+		{
+			formName: '<%= fullName %>'
 		}
 	);
 </aui:script>

@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,9 +14,9 @@
 
 package com.liferay.portlet;
 
+import com.liferay.petra.xml.XMLUtil;
 import com.liferay.portal.kernel.util.ArrayUtil;
 import com.liferay.portal.kernel.xml.simple.Element;
-import com.liferay.util.xml.XMLFormatter;
 
 import java.io.IOException;
 import java.io.Serializable;
@@ -37,22 +37,27 @@ import javax.portlet.ValidatorException;
 public abstract class BasePreferencesImpl implements Serializable {
 
 	public BasePreferencesImpl(
-		long ownerId, int ownerType, String xml,
-		Map<String, Preference> preferences) {
+		long ownerId, int ownerType, String originalXML,
+		Map<String, Preference> originalPreferences) {
 
 		_ownerId = ownerId;
 		_ownerType = ownerType;
-		_originalXML = xml;
-		_originalPreferences = preferences;
+		_originalXML = originalXML;
+		_originalPreferences = originalPreferences;
 	}
 
 	public Map<String, String[]> getMap() {
-		Map<String, String[]> map = new HashMap<String, String[]>();
-
 		Map<String, Preference> preferences = getPreferences();
+
+		if (preferences.isEmpty()) {
+			return Collections.emptyMap();
+		}
+
+		Map<String, String[]> map = new HashMap<>();
 
 		for (Map.Entry<String, Preference> entry : preferences.entrySet()) {
 			String key = entry.getKey();
+
 			Preference preference = entry.getValue();
 
 			String[] actualValues = getActualValues(preference.getValues());
@@ -60,7 +65,7 @@ public abstract class BasePreferencesImpl implements Serializable {
 			map.put(key, actualValues);
 		}
 
-		return Collections.unmodifiableMap(map);
+		return map;
 	}
 
 	public Enumeration<String> getNames() {
@@ -86,18 +91,17 @@ public abstract class BasePreferencesImpl implements Serializable {
 
 		Preference preference = preferences.get(key);
 
-		String[] values = null;
-
-		if (preference != null) {
-			values = preference.getValues();
+		if (preference == null) {
+			return def;
 		}
 
-		if (ArrayUtil.isNotEmpty(values)) {
-			return getActualValue(values[0]);
+		String[] values = preference.getValues();
+
+		if (isNull(values)) {
+			return def;
 		}
-		else {
-			return getActualValue(def);
-		}
+
+		return getActualValue(values[0]);
 	}
 
 	public String[] getValues(String key, String[] def) {
@@ -109,18 +113,17 @@ public abstract class BasePreferencesImpl implements Serializable {
 
 		Preference preference = preferences.get(key);
 
-		String[] values = null;
-
-		if (preference != null) {
-			values = preference.getValues();
+		if (preference == null) {
+			return def;
 		}
 
-		if (ArrayUtil.isNotEmpty(values)) {
-			return getActualValues(values);
+		String[] values = preference.getValues();
+
+		if (isNull(values)) {
+			return def;
 		}
-		else {
-			return getActualValues(def);
-		}
+
+		return getActualValues(values);
 	}
 
 	public boolean isReadOnly(String key) {
@@ -135,13 +138,12 @@ public abstract class BasePreferencesImpl implements Serializable {
 		if ((preference != null) && preference.isReadOnly()) {
 			return true;
 		}
-		else {
-			return false;
-		}
+
+		return false;
 	}
 
 	public void reset() {
-		_modifiedPreferences = new ConcurrentHashMap<String, Preference>();
+		_modifiedPreferences = null;
 	}
 
 	public abstract void reset(String key) throws ReadOnlyException;
@@ -161,18 +163,19 @@ public abstract class BasePreferencesImpl implements Serializable {
 			preference = new Preference(key, value);
 
 			modifiedPreferences.put(key, preference);
+
+			return;
 		}
 
 		if (preference.isReadOnly()) {
 			throw new ReadOnlyException(key);
 		}
-		else {
-			preference = (Preference)preference.clone();
 
-			modifiedPreferences.put(key, preference);
+		preference = (Preference)preference.clone();
 
-			preference.setValues(new String[] {value});
-		}
+		modifiedPreferences.put(key, preference);
+
+		preference.setValues(new String[] {value});
 	}
 
 	public void setValues(String key, String[] values)
@@ -192,18 +195,19 @@ public abstract class BasePreferencesImpl implements Serializable {
 			preference = new Preference(key, values);
 
 			modifiedPreferences.put(key, preference);
+
+			return;
 		}
 
 		if (preference.isReadOnly()) {
 			throw new ReadOnlyException(key);
 		}
-		else {
-			preference = (Preference)preference.clone();
 
-			modifiedPreferences.put(key, preference);
+		preference = (Preference)preference.clone();
 
-			preference.setValues(values);
-		}
+		modifiedPreferences.put(key, preference);
+
+		preference.setValues(values);
 	}
 
 	public int size() {
@@ -218,9 +222,8 @@ public abstract class BasePreferencesImpl implements Serializable {
 		if ((value == null) || value.equals(_NULL_VALUE)) {
 			return null;
 		}
-		else {
-			return XMLFormatter.fromCompactSafe(value);
-		}
+
+		return XMLUtil.fromCompactSafe(value);
 	}
 
 	protected String[] getActualValues(String[] values) {
@@ -233,6 +236,9 @@ public abstract class BasePreferencesImpl implements Serializable {
 
 			if (actualValue == null) {
 				return null;
+			}
+			else if (actualValue.equals(_NULL_ELEMENT)) {
+				return new String[] {null};
 			}
 			else {
 				return new String[] {actualValue};
@@ -250,7 +256,7 @@ public abstract class BasePreferencesImpl implements Serializable {
 
 	protected Map<String, Preference> getModifiedPreferences() {
 		if (_modifiedPreferences == null) {
-			_modifiedPreferences = new ConcurrentHashMap<String, Preference>(
+			_modifiedPreferences = new ConcurrentHashMap<>(
 				_originalPreferences);
 		}
 
@@ -277,14 +283,17 @@ public abstract class BasePreferencesImpl implements Serializable {
 		if (value == null) {
 			return _NULL_VALUE;
 		}
-		else {
-			return XMLFormatter.toCompactSafe(value);
-		}
+
+		return XMLUtil.toCompactSafe(value);
 	}
 
 	protected String[] getXMLSafeValues(String[] values) {
 		if (values == null) {
 			return new String[] {_NULL_VALUE};
+		}
+
+		if ((values.length == 1) && (values[0] == null)) {
+			return new String[] {_NULL_ELEMENT};
 		}
 
 		String[] xmlSafeValues = new String[values.length];
@@ -294,6 +303,26 @@ public abstract class BasePreferencesImpl implements Serializable {
 		}
 
 		return xmlSafeValues;
+	}
+
+	protected boolean isNull(String[] values) {
+		if (ArrayUtil.isEmpty(values) ||
+			((values.length == 1) && (getActualValue(values[0]) == null))) {
+
+			return true;
+		}
+
+		return false;
+	}
+
+	protected void setOriginalPreferences(
+		Map<String, Preference> originalPreferences) {
+
+		_originalPreferences = originalPreferences;
+	}
+
+	protected void setOriginalXML(String originalXML) {
+		_originalXML = originalXML;
 	}
 
 	protected String toXML() {
@@ -326,12 +355,14 @@ public abstract class BasePreferencesImpl implements Serializable {
 		return portletPreferencesElement.toXMLString();
 	}
 
+	private static final String _NULL_ELEMENT = "NULL_ELEMENT";
+
 	private static final String _NULL_VALUE = "NULL_VALUE";
 
 	private Map<String, Preference> _modifiedPreferences;
 	private Map<String, Preference> _originalPreferences;
 	private String _originalXML;
-	private long _ownerId;
-	private int _ownerType;
+	private final long _ownerId;
+	private final int _ownerType;
 
 }

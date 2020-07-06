@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,7 +14,7 @@
 
 package com.liferay.portal.xmlrpc;
 
-import com.liferay.portal.kernel.util.StringBundler;
+import com.liferay.petra.string.StringBundler;
 import com.liferay.portal.kernel.xmlrpc.Fault;
 import com.liferay.portal.kernel.xmlrpc.XmlRpcException;
 
@@ -41,7 +41,7 @@ public class FaultImpl implements Fault {
 
 	@Override
 	public String toString() {
-		return "XML-RPC fault " + _code + " " + _description;
+		return StringBundler.concat("XML-RPC fault ", _code, " ", _description);
 	}
 
 	@Override
@@ -70,7 +70,7 @@ public class FaultImpl implements Fault {
 		return sb.toString();
 	}
 
-	private int _code;
-	private String _description;
+	private final int _code;
+	private final String _description;
 
 }

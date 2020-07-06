@@ -1,7 +1,10 @@
-Bundle-Version: 6.2.0
+Bundle-Name: ${manifest.bundle.name}
+Bundle-SymbolicName: ${manifest.bundle.symbolic.name}
+Bundle-Version: 5.0.6
 Export-Package: com.liferay.util.*
-Import-Package: \
+Import-Package:\
 	com.liferay.*,\
+	\
 	*;resolution:=optional
 Include-Resource: classes
-Private-Package: *
+-include ../common.bnd

@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,20 +14,20 @@
 
 package com.liferay.portlet.usersadmin.search;
 
-import com.liferay.portal.NoSuchCountryException;
-import com.liferay.portal.NoSuchRegionException;
+import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.dao.search.DAOParamUtil;
+import com.liferay.portal.kernel.exception.NoSuchCountryException;
+import com.liferay.portal.kernel.exception.NoSuchRegionException;
 import com.liferay.portal.kernel.exception.PortalException;
-import com.liferay.portal.kernel.exception.SystemException;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
+import com.liferay.portal.kernel.model.Country;
+import com.liferay.portal.kernel.model.Region;
+import com.liferay.portal.kernel.service.CountryServiceUtil;
+import com.liferay.portal.kernel.service.RegionServiceUtil;
 import com.liferay.portal.kernel.util.ParamUtil;
 import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.util.Validator;
-import com.liferay.portal.model.Country;
-import com.liferay.portal.model.Region;
-import com.liferay.portal.service.CountryServiceUtil;
-import com.liferay.portal.service.RegionServiceUtil;
 
 import javax.portlet.PortletRequest;
 
@@ -55,12 +55,11 @@ public class OrganizationSearchTerms extends OrganizationDisplayTerms {
 		if (countryId == 0) {
 			return null;
 		}
-		else {
-			return new Long(countryId);
-		}
+
+		return Long.valueOf(countryId);
 	}
 
-	public String getCountryName() throws PortalException, SystemException {
+	public String getCountryName() throws PortalException {
 		String countryName = null;
 
 		if (countryId != 0) {
@@ -68,10 +67,12 @@ public class OrganizationSearchTerms extends OrganizationDisplayTerms {
 				Country country = CountryServiceUtil.getCountry(countryId);
 
 				countryName = StringUtil.toLowerCase(country.getName());
+
+				countryName = StringUtil.quote(countryName, StringPool.QUOTE);
 			}
-			catch (NoSuchCountryException nsce) {
+			catch (NoSuchCountryException noSuchCountryException) {
 				if (_log.isWarnEnabled()) {
-					_log.warn(nsce.getMessage());
+					_log.warn(noSuchCountryException.getMessage());
 				}
 			}
 		}
@@ -83,12 +84,11 @@ public class OrganizationSearchTerms extends OrganizationDisplayTerms {
 		if (regionId == 0) {
 			return null;
 		}
-		else {
-			return new Long(regionId);
-		}
+
+		return Long.valueOf(regionId);
 	}
 
-	public String getRegionName() throws PortalException, SystemException {
+	public String getRegionName() throws PortalException {
 		String regionName = null;
 
 		if (regionId != 0) {
@@ -96,10 +96,12 @@ public class OrganizationSearchTerms extends OrganizationDisplayTerms {
 				Region region = RegionServiceUtil.getRegion(regionId);
 
 				regionName = StringUtil.toLowerCase(region.getName());
+
+				regionName = StringUtil.quote(regionName, StringPool.QUOTE);
 			}
-			catch (NoSuchRegionException nsre) {
+			catch (NoSuchRegionException noSuchRegionException) {
 				if (_log.isWarnEnabled()) {
-					_log.warn(nsre.getMessage());
+					_log.warn(noSuchRegionException.getMessage());
 				}
 			}
 		}
@@ -126,7 +128,7 @@ public class OrganizationSearchTerms extends OrganizationDisplayTerms {
 		return false;
 	}
 
-	private static Log _log = LogFactoryUtil.getLog(
+	private static final Log _log = LogFactoryUtil.getLog(
 		OrganizationSearchTerms.class);
 
 }

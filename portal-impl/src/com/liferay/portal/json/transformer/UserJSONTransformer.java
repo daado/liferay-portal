@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,20 +14,21 @@
 
 package com.liferay.portal.json.transformer;
 
-import com.liferay.portal.kernel.util.StringPool;
-import com.liferay.portal.model.User;
-import com.liferay.portal.security.permission.ActionKeys;
-import com.liferay.portal.security.permission.PermissionChecker;
-import com.liferay.portal.security.permission.PermissionThreadLocal;
-import com.liferay.portal.service.permission.UserPermissionUtil;
+import com.liferay.petra.string.StringPool;
+import com.liferay.portal.kernel.json.JSONContext;
+import com.liferay.portal.kernel.model.User;
+import com.liferay.portal.kernel.security.permission.ActionKeys;
+import com.liferay.portal.kernel.security.permission.PermissionChecker;
+import com.liferay.portal.kernel.security.permission.PermissionThreadLocal;
+import com.liferay.portal.kernel.service.permission.UserPermissionUtil;
 
 /**
  * @author Igor Spasic
  */
-public class UserJSONTransformer extends FlexjsonObjectJSONTransformer {
+public class UserJSONTransformer extends ObjectTransformer {
 
 	@Override
-	public void transform(Object object) {
+	public void transform(JSONContext jsonContext, Object object) {
 		User user = (User)object;
 
 		boolean hidePrivateUserData = true;
@@ -35,13 +36,12 @@ public class UserJSONTransformer extends FlexjsonObjectJSONTransformer {
 		PermissionChecker permissionChecker =
 			PermissionThreadLocal.getPermissionChecker();
 
-		if (permissionChecker != null) {
-			if ((user.getUserId() == permissionChecker.getUserId()) ||
-				UserPermissionUtil.contains(
-					permissionChecker, user.getUserId(), ActionKeys.VIEW)) {
+		if ((permissionChecker != null) && !user.isDefaultUser() &&
+			((user.getUserId() == permissionChecker.getUserId()) ||
+			 UserPermissionUtil.contains(
+				 permissionChecker, user.getUserId(), ActionKeys.VIEW))) {
 
-				hidePrivateUserData = false;
-			}
+			hidePrivateUserData = false;
 		}
 
 		if (hidePrivateUserData) {
@@ -53,7 +53,7 @@ public class UserJSONTransformer extends FlexjsonObjectJSONTransformer {
 			user.setComments(StringPool.BLANK);
 		}
 
-		super.transform(object);
+		super.transform(jsonContext, object);
 	}
 
 }

@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,6 +14,10 @@
 
 package com.liferay.util.axis;
 
+import com.liferay.petra.reflect.ReflectionUtil;
+import com.liferay.petra.string.StringBundler;
+import com.liferay.petra.string.StringPool;
+import com.liferay.portal.kernel.exception.LoggedExceptionInInitializerError;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
 import com.liferay.portal.kernel.servlet.BufferCacheServletResponse;
@@ -21,13 +25,10 @@ import com.liferay.portal.kernel.servlet.ServletResponseUtil;
 import com.liferay.portal.kernel.servlet.UncommittedServletResponse;
 import com.liferay.portal.kernel.util.ContentTypes;
 import com.liferay.portal.kernel.util.GetterUtil;
-import com.liferay.portal.kernel.util.ReflectionUtil;
 import com.liferay.portal.kernel.util.ServerDetector;
-import com.liferay.portal.kernel.util.StringBundler;
-import com.liferay.portal.kernel.util.StringPool;
 import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.xml.Document;
-import com.liferay.portal.kernel.xml.SAXReaderUtil;
+import com.liferay.portal.kernel.xml.UnsecureSAXReaderUtil;
 
 import java.io.IOException;
 
@@ -51,26 +52,39 @@ public class AxisServlet extends org.apache.axis.transport.http.AxisServlet {
 			doDestroy();
 		}
 		else {
-			DestroyThread destroyThread = new DestroyThread();
+			Thread currentThread = Thread.currentThread();
 
-			destroyThread.start();
+			ClassLoader contextClassLoader =
+				currentThread.getContextClassLoader();
+
+			Class<?> clazz = getClass();
+
+			currentThread.setContextClassLoader(clazz.getClassLoader());
 
 			try {
-				destroyThread.join();
-			}
-			catch (InterruptedException ie) {
-				throw new RuntimeException(ie);
-			}
+				DestroyThread destroyThread = new DestroyThread();
 
-			Exception e = destroyThread.getException();
+				destroyThread.start();
 
-			if (e != null) {
-				if (e instanceof RuntimeException) {
-					throw (RuntimeException)e;
+				try {
+					destroyThread.join();
 				}
-				else {
-					throw new RuntimeException(e);
+				catch (InterruptedException interruptedException) {
+					throw new RuntimeException(interruptedException);
 				}
+
+				Exception exception = destroyThread.getException();
+
+				if (exception != null) {
+					if (exception instanceof RuntimeException) {
+						throw (RuntimeException)exception;
+					}
+
+					throw new RuntimeException(exception);
+				}
+			}
+			finally {
+				currentThread.setContextClassLoader(contextClassLoader);
 			}
 		}
 	}
@@ -134,7 +148,7 @@ public class AxisServlet extends org.apache.axis.transport.http.AxisServlet {
 
 		_incorrectStringArray = sb.toString();
 
-		if (ServerDetector.isResin() || ServerDetector.isWebLogic()) {
+		if (ServerDetector.isWebLogic()) {
 			doInit();
 		}
 		else {
@@ -145,26 +159,26 @@ public class AxisServlet extends org.apache.axis.transport.http.AxisServlet {
 			try {
 				initThread.join();
 			}
-			catch (InterruptedException ie) {
-				throw new ServletException(ie);
+			catch (InterruptedException interruptedException) {
+				throw new ServletException(interruptedException);
 			}
 
-			Exception e = initThread.getException();
+			Exception exception = initThread.getException();
 
-			if (e != null) {
-				if (e instanceof ServletException) {
-					throw (ServletException)e;
+			if (exception != null) {
+				if (exception instanceof ServletException) {
+					throw (ServletException)exception;
 				}
-				else {
-					throw new ServletException(e);
-				}
+
+				throw new ServletException(exception);
 			}
 		}
 	}
 
 	@Override
 	public void service(
-			HttpServletRequest request, HttpServletResponse response)
+			HttpServletRequest httpServletRequest,
+			HttpServletResponse httpServletResponse)
 		throws IOException, ServletException {
 
 		try {
@@ -173,20 +187,23 @@ public class AxisServlet extends org.apache.axis.transport.http.AxisServlet {
 			}
 
 			BufferCacheServletResponse bufferCacheServletResponse =
-				new BufferCacheServletResponse(response);
+				new BufferCacheServletResponse(httpServletResponse);
 
-			super.service(request, bufferCacheServletResponse);
+			super.service(httpServletRequest, bufferCacheServletResponse);
 
 			String contentType = bufferCacheServletResponse.getContentType();
 
-			response.setContentType(contentType);
+			httpServletResponse.setContentType(contentType);
 
 			String content = bufferCacheServletResponse.getString();
 
 			if (_fixContent) {
 				if (contentType.contains(ContentTypes.TEXT_HTML)) {
-					content = _HTML_TOP_WRAPPER.concat(content).concat(
-						_HTML_BOTTOM_WRAPPER);
+					content = _HTML_TOP_WRAPPER.concat(
+						content
+					).concat(
+						_HTML_BOTTOM_WRAPPER
+					);
 				}
 				else if (contentType.contains(ContentTypes.TEXT_XML)) {
 					content = fixXml(content);
@@ -194,28 +211,28 @@ public class AxisServlet extends org.apache.axis.transport.http.AxisServlet {
 			}
 
 			ServletResponseUtil.write(
-				new UncommittedServletResponse(response),
+				new UncommittedServletResponse(httpServletResponse),
 				content.getBytes(StringPool.UTF8));
 		}
-		catch (IOException ioe) {
-			throw ioe;
+		catch (IOException ioException) {
+			throw ioException;
 		}
-		catch (ServletException se) {
-			throw se;
+		catch (ServletException servletException) {
+			throw servletException;
 		}
-		catch (Exception e) {
-			throw new ServletException(e);
+		catch (Exception exception) {
+			throw new ServletException(exception);
 		}
 		finally {
 			try {
-				ThreadLocal<?> cache = (ThreadLocal<?>)_cacheField.get(null);
+				ThreadLocal<?> cache = (ThreadLocal<?>)_CACHE_FIELD.get(null);
 
 				if (cache != null) {
 					cache.remove();
 				}
 			}
-			catch (Exception e) {
-				_log.error(e, e);
+			catch (Exception exception) {
+				_log.error(exception, exception);
 			}
 		}
 	}
@@ -252,18 +269,28 @@ public class AxisServlet extends org.apache.axis.transport.http.AxisServlet {
 				_correctStringArray
 			});
 
-		Document document = SAXReaderUtil.read(xml);
+		Document document = UnsecureSAXReaderUtil.read(xml);
 
 		return document.formattedString();
 	}
+
+	private static final Field _CACHE_FIELD;
 
 	private static final String _HTML_BOTTOM_WRAPPER = "</body></html>";
 
 	private static final String _HTML_TOP_WRAPPER = "<html><body>";
 
-	private static Log _log = LogFactoryUtil.getLog(AxisServlet.class);
+	private static final Log _log = LogFactoryUtil.getLog(AxisServlet.class);
 
-	private static Field _cacheField;
+	static {
+		try {
+			_CACHE_FIELD = ReflectionUtil.getDeclaredField(
+				MethodCache.class, "cache");
+		}
+		catch (Exception exception) {
+			throw new LoggedExceptionInInitializerError(exception);
+		}
+	}
 
 	private String _correctLongArray;
 	private String _correctOrderByComparator;
@@ -290,8 +317,8 @@ public class AxisServlet extends org.apache.axis.transport.http.AxisServlet {
 			try {
 				doDestroy();
 			}
-			catch (Exception e) {
-				_exception = e;
+			catch (Exception exception) {
+				_exception = exception;
 			}
 		}
 
@@ -314,23 +341,13 @@ public class AxisServlet extends org.apache.axis.transport.http.AxisServlet {
 			try {
 				doInit();
 			}
-			catch (Exception e) {
-				_exception = e;
+			catch (Exception exception) {
+				_exception = exception;
 			}
 		}
 
 		private Exception _exception;
 
-	}
-
-	static {
-		try {
-			_cacheField = ReflectionUtil.getDeclaredField(
-				MethodCache.class, "cache");
-		}
-		catch (Exception e) {
-			_log.error(e, e);
-		}
 	}
 
 }

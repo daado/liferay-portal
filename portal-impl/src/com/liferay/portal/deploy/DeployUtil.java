@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,22 +14,20 @@
 
 package com.liferay.portal.deploy;
 
-import com.liferay.portal.kernel.configuration.Filter;
+import com.liferay.petra.string.CharPool;
+import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
-import com.liferay.portal.kernel.util.CharPool;
 import com.liferay.portal.kernel.util.FileUtil;
 import com.liferay.portal.kernel.util.GetterUtil;
 import com.liferay.portal.kernel.util.PropsKeys;
 import com.liferay.portal.kernel.util.ServerDetector;
 import com.liferay.portal.kernel.util.StreamUtil;
-import com.liferay.portal.kernel.util.StringPool;
 import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.util.SystemProperties;
 import com.liferay.portal.kernel.util.Validator;
 import com.liferay.portal.spring.context.PortalContextLoaderListener;
 import com.liferay.portal.util.PrefsPropsUtil;
-import com.liferay.portal.util.PropsUtil;
 import com.liferay.portal.util.PropsValues;
 import com.liferay.util.ant.CopyTask;
 import com.liferay.util.ant.DeleteTask;
@@ -39,10 +37,16 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.nio.file.FileVisitResult;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.SimpleFileVisitor;
+import java.nio.file.attribute.BasicFileAttributes;
 
-import javax.portlet.PortletPreferences;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
 
 import org.apache.commons.io.FileUtils;
 
@@ -56,19 +60,53 @@ public class DeployUtil {
 			Map<String, String> filterMap, boolean overwrite)
 		throws Exception {
 
-		File file = new File(getResourcePath(fileName));
 		File targetFile = new File(targetDir, targetFileName);
 
 		if (!targetFile.exists()) {
+			Set<Path> tempPaths = new HashSet<>();
+
+			File file = new File(getResourcePath(tempPaths, fileName));
+
 			CopyTask.copyFile(
 				file, new File(targetDir), targetFileName, filterMap, overwrite,
 				true);
+
+			for (Path tempPath : tempPaths) {
+				deletePath(tempPath);
+			}
 		}
 	}
 
+	public static void deletePath(Path tempPath) throws IOException {
+		Files.walkFileTree(
+			tempPath,
+			new SimpleFileVisitor<Path>() {
+
+				@Override
+				public FileVisitResult postVisitDirectory(
+						Path dirPath, IOException ioException)
+					throws IOException {
+
+					Files.delete(dirPath);
+
+					return FileVisitResult.CONTINUE;
+				}
+
+				@Override
+				public FileVisitResult visitFile(
+						Path filePath, BasicFileAttributes basicFileAttributes)
+					throws IOException {
+
+					Files.delete(filePath);
+
+					return FileVisitResult.CONTINUE;
+				}
+
+			});
+	}
+
 	public static String getAutoDeployDestDir() throws Exception {
-		String destDir = PrefsPropsUtil.getString(
-			PropsKeys.AUTO_DEPLOY_DEST_DIR, PropsValues.AUTO_DEPLOY_DEST_DIR);
+		String destDir = PropsValues.AUTO_DEPLOY_DEST_DIR;
 
 		if (Validator.isNull(destDir)) {
 			destDir = getAutoDeployServerDestDir();
@@ -84,22 +122,8 @@ public class DeployUtil {
 
 		String serverId = GetterUtil.getString(ServerDetector.getServerId());
 
-		if (serverId.equals(ServerDetector.JBOSS_ID) &&
-			ServerDetector.isJBoss5()) {
-
-			String name = "auto.deploy." + serverId + ".dest.dir";
-
-			PortletPreferences portletPreferences =
-				PrefsPropsUtil.getPreferences(true);
-
-			String value = PropsUtil.get(name, new Filter("5"));
-
-			destDir = portletPreferences.getValue(name, value);
-		}
-		else if (serverId.equals(ServerDetector.TOMCAT_ID)) {
-			destDir = PrefsPropsUtil.getString(
-				PropsKeys.AUTO_DEPLOY_TOMCAT_DEST_DIR,
-				PropsValues.AUTO_DEPLOY_TOMCAT_DEST_DIR);
+		if (serverId.equals(ServerDetector.TOMCAT_ID)) {
+			destDir = PropsValues.AUTO_DEPLOY_TOMCAT_DEST_DIR;
 		}
 		else {
 			destDir = PrefsPropsUtil.getString(
@@ -107,43 +131,16 @@ public class DeployUtil {
 		}
 
 		if (Validator.isNull(destDir)) {
-			destDir = PrefsPropsUtil.getString(
-				PropsKeys.AUTO_DEPLOY_DEFAULT_DEST_DIR,
-				PropsValues.AUTO_DEPLOY_DEFAULT_DEST_DIR);
+			destDir = PropsValues.AUTO_DEPLOY_DEFAULT_DEST_DIR;
 		}
 
-		destDir = StringUtil.replace(
-			destDir, CharPool.BACK_SLASH, CharPool.SLASH);
-
-		return destDir;
+		return StringUtil.replace(destDir, CharPool.BACK_SLASH, CharPool.SLASH);
 	}
 
-	public static String getResourcePath(String resource) throws Exception {
-		return _instance._getResourcePath(resource);
-	}
+	public static String getResourcePath(Set<Path> tempPaths, String resource)
+		throws Exception {
 
-	public static void redeployJetty(String context) throws Exception {
-		String contextsDirName = System.getProperty("jetty.home") + "/contexts";
-
-		if (_isPortalContext(context)) {
-			throw new UnsupportedOperationException(
-				"This method is meant for redeploying plugins, not the portal");
-		}
-
-		File contextXml = new File(contextsDirName, context + ".xml");
-
-		if (contextXml.exists()) {
-			FileUtils.touch(contextXml);
-		}
-		else {
-			Map<String, String> filterMap = new HashMap<String, String>();
-
-			filterMap.put("context", context);
-
-			copyDependencyXml(
-				"jetty-context-configure.xml", contextXml.getParent(),
-				contextXml.getName(), filterMap, true);
-		}
+		return _deployUtil._getResourcePath(tempPaths, resource);
 	}
 
 	public static void redeployTomcat(String context) throws Exception {
@@ -168,11 +165,10 @@ public class DeployUtil {
 			return;
 		}
 
-		if (!appServerType.equals(ServerDetector.GLASSFISH_ID) &&
-			!appServerType.equals(ServerDetector.JBOSS_ID) &&
-			!appServerType.equals(ServerDetector.JETTY_ID) &&
+		if (!appServerType.equals(ServerDetector.JBOSS_ID) &&
 			!appServerType.equals(ServerDetector.TOMCAT_ID) &&
-			!appServerType.equals(ServerDetector.WEBLOGIC_ID)) {
+			!appServerType.equals(ServerDetector.WEBLOGIC_ID) &&
+			!appServerType.equals(ServerDetector.WILDFLY_ID)) {
 
 			return;
 		}
@@ -214,13 +210,9 @@ public class DeployUtil {
 			DeleteTask.deleteDirectory(deployDir);
 		}
 
-		if (appServerType.equals(ServerDetector.JETTY_ID)) {
-			FileUtil.delete(
-				System.getProperty("jetty.home") + "/contexts/" +
-					deployDir.getName() + ".xml");
-		}
+		if (appServerType.equals(ServerDetector.JBOSS_ID) ||
+			appServerType.equals(ServerDetector.WILDFLY_ID)) {
 
-		if (appServerType.equals(ServerDetector.JBOSS_ID)) {
 			File deployedFile = new File(
 				deployDir.getParent(), deployDir.getName() + ".deployed");
 
@@ -255,7 +247,9 @@ public class DeployUtil {
 	private DeployUtil() {
 	}
 
-	private String _getResourcePath(String resource) throws IOException {
+	private String _getResourcePath(Set<Path> tempDirPaths, String resource)
+		throws Exception {
+
 		Class<?> clazz = getClass();
 
 		InputStream inputStream = clazz.getResourceAsStream(
@@ -265,27 +259,32 @@ public class DeployUtil {
 			return null;
 		}
 
-		String tmpDir = SystemProperties.get(SystemProperties.TMP_DIR);
+		Path tempDirPath = Files.createTempDirectory(
+			Paths.get(SystemProperties.get(SystemProperties.TMP_DIR)), null);
+
+		tempDirPaths.add(tempDirPath);
 
 		File file = new File(
-			tmpDir + "/liferay/com/liferay/portal/deploy/dependencies/" +
+			tempDirPath + "/liferay/com/liferay/portal/deploy/dependencies/" +
 				resource);
 
 		//if (!file.exists() || resource.startsWith("ext-")) {
-			File parentFile = file.getParentFile();
 
-			if (parentFile != null) {
-				parentFile.mkdirs();
-			}
+		File parentFile = file.getParentFile();
 
-			StreamUtil.transfer(inputStream, new FileOutputStream(file));
+		if (parentFile != null) {
+			FileUtil.mkdirs(parentFile);
+		}
+
+		StreamUtil.transfer(inputStream, new FileOutputStream(file));
+
 		//}
 
 		return FileUtil.getAbsolutePath(file);
 	}
 
-	private static Log _log = LogFactoryUtil.getLog(DeployUtil.class);
+	private static final Log _log = LogFactoryUtil.getLog(DeployUtil.class);
 
-	private static DeployUtil _instance = new DeployUtil();
+	private static final DeployUtil _deployUtil = new DeployUtil();
 
 }

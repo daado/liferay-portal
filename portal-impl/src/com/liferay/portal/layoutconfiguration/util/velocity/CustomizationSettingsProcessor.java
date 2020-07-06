@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,44 +14,80 @@
 
 package com.liferay.portal.layoutconfiguration.util.velocity;
 
+import com.liferay.petra.string.StringPool;
+import com.liferay.portal.kernel.model.CustomizedPages;
+import com.liferay.portal.kernel.model.Layout;
+import com.liferay.portal.kernel.model.LayoutConstants;
+import com.liferay.portal.kernel.portlet.PortletProvider;
+import com.liferay.portal.kernel.portlet.PortletProviderUtil;
+import com.liferay.portal.kernel.service.LayoutLocalServiceUtil;
+import com.liferay.portal.kernel.servlet.JSPSupportServlet;
 import com.liferay.portal.kernel.util.GetterUtil;
-import com.liferay.portal.kernel.util.StringPool;
+import com.liferay.portal.kernel.util.ParamUtil;
+import com.liferay.portal.kernel.util.PortalClassLoaderUtil;
 import com.liferay.portal.kernel.util.UnicodeProperties;
-import com.liferay.portal.model.CustomizedPages;
-import com.liferay.portal.model.Layout;
-import com.liferay.portlet.sites.util.SitesUtil;
+import com.liferay.sites.kernel.util.SitesUtil;
 import com.liferay.taglib.aui.InputTag;
 
 import java.io.Writer;
 
-import javax.servlet.ServletRequest;
+import java.util.Map;
+
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import javax.servlet.jsp.JspFactory;
 import javax.servlet.jsp.PageContext;
 import javax.servlet.jsp.tagext.Tag;
 
 /**
  * @author Raymond Augé
+ * @author Oliver Teichmann
  */
 public class CustomizationSettingsProcessor implements ColumnProcessor {
 
-	public CustomizationSettingsProcessor(PageContext pageContext) {
-		_pageContext = pageContext;
-		_writer = pageContext.getOut();
+	public CustomizationSettingsProcessor(
+		HttpServletRequest httpServletRequest,
+		HttpServletResponse httpServletResponse) {
 
-		ServletRequest servletRequest = pageContext.getRequest();
+		JspFactory jspFactory = JspFactory.getDefaultFactory();
 
-		Layout selLayout = (Layout)servletRequest.getAttribute(
-			"edit_pages.jsp-selLayout");
+		Thread currentThread = Thread.currentThread();
 
-		_layoutTypeSettings = selLayout.getTypeSettingsProperties();
+		ClassLoader contextClassLoader = currentThread.getContextClassLoader();
 
-		_customizationEnabled = true;
+		try {
+			currentThread.setContextClassLoader(
+				PortalClassLoaderUtil.getClassLoader());
 
-		if (!SitesUtil.isLayoutUpdateable(selLayout)) {
-			_customizationEnabled = false;
+			_pageContext = jspFactory.getPageContext(
+				new JSPSupportServlet(httpServletRequest.getServletContext()),
+				httpServletRequest, httpServletResponse, null, false, 0, false);
+		}
+		finally {
+			currentThread.setContextClassLoader(contextClassLoader);
 		}
 
-		if (selLayout.isLayoutPrototypeLinkActive()) {
+		_writer = _pageContext.getOut();
+
+		Layout selLayout = null;
+
+		long selPlid = ParamUtil.getLong(
+			httpServletRequest, "selPlid", LayoutConstants.DEFAULT_PLID);
+
+		if (selPlid != LayoutConstants.DEFAULT_PLID) {
+			selLayout = LayoutLocalServiceUtil.fetchLayout(selPlid);
+		}
+
+		_layoutTypeSettingsUnicodeProperties =
+			selLayout.getTypeSettingsProperties();
+
+		if (!SitesUtil.isLayoutUpdateable(selLayout) ||
+			selLayout.isLayoutPrototypeLinkActive()) {
+
 			_customizationEnabled = false;
+		}
+		else {
+			_customizationEnabled = true;
 		}
 	}
 
@@ -70,8 +106,8 @@ public class CustomizationSettingsProcessor implements ColumnProcessor {
 
 		if (_customizationEnabled) {
 			customizable = GetterUtil.getBoolean(
-				_layoutTypeSettings.getProperty(
-					customizableKey, String.valueOf(false)));
+				_layoutTypeSettingsUnicodeProperties.getProperty(
+					customizableKey, Boolean.FALSE.toString()));
 		}
 
 		_writer.append("<div class=\"");
@@ -85,11 +121,19 @@ public class CustomizationSettingsProcessor implements ColumnProcessor {
 		InputTag inputTag = new InputTag();
 
 		inputTag.setDisabled(!_customizationEnabled);
-		inputTag.setLabel("customizable");
+		inputTag.setDynamicAttribute(
+			StringPool.BLANK, "labelOff", "not-customizable");
+		inputTag.setDynamicAttribute(
+			StringPool.BLANK, "labelOn", "customizable");
+		inputTag.setLabel(StringPool.BLANK);
 		inputTag.setName(
-			"TypeSettingsProperties--".concat(customizableKey).concat("--"));
+			"TypeSettingsProperties--".concat(
+				customizableKey
+			).concat(
+				"--"
+			));
 		inputTag.setPageContext(_pageContext);
-		inputTag.setType("checkbox");
+		inputTag.setType("toggle-switch");
 		inputTag.setValue(customizable);
 
 		int result = inputTag.doStartTag();
@@ -104,16 +148,15 @@ public class CustomizationSettingsProcessor implements ColumnProcessor {
 	}
 
 	@Override
-	public String processMax() throws Exception {
+	public String processDynamicColumn(String columnId, String classNames)
+		throws Exception {
+
 		return StringPool.BLANK;
 	}
 
-	/**
-	 * @deprecated As of 6.2.0, replaced by {@link #processMax()}
-	 */
 	@Override
-	public String processMax(String classNames) throws Exception {
-		return processMax();
+	public String processMax() throws Exception {
+		return StringPool.BLANK;
 	}
 
 	@Override
@@ -125,9 +168,29 @@ public class CustomizationSettingsProcessor implements ColumnProcessor {
 		return StringPool.BLANK;
 	}
 
-	private boolean _customizationEnabled;
-	private UnicodeProperties _layoutTypeSettings;
-	private PageContext _pageContext;
-	private Writer _writer;
+	@Override
+	public String processPortlet(
+			String portletId, Map<String, ?> defaultSettingsMap)
+		throws Exception {
+
+		return processPortlet(portletId);
+	}
+
+	@Override
+	public String processPortlet(
+			String portletProviderClassName,
+			PortletProvider.Action portletProviderAction)
+		throws Exception {
+
+		String portletId = PortletProviderUtil.getPortletId(
+			portletProviderClassName, portletProviderAction);
+
+		return processPortlet(portletId);
+	}
+
+	private final boolean _customizationEnabled;
+	private final UnicodeProperties _layoutTypeSettingsUnicodeProperties;
+	private final PageContext _pageContext;
+	private final Writer _writer;
 
 }

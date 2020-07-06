@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,10 +14,8 @@
 
 package com.liferay.portlet.social.model.impl;
 
-import com.liferay.portal.kernel.exception.SystemException;
-
-import com.liferay.portlet.social.model.SocialActivityCounter;
-import com.liferay.portlet.social.service.SocialActivityCounterLocalServiceUtil;
+import com.liferay.social.kernel.model.SocialActivityCounter;
+import com.liferay.social.kernel.service.SocialActivityCounterLocalServiceUtil;
 
 /**
  * The extended model base implementation for the SocialActivityCounter service. Represents a row in the &quot;SocialActivityCounter&quot; database table, with each column mapped to a property of this class.
@@ -28,23 +26,27 @@ import com.liferay.portlet.social.service.SocialActivityCounterLocalServiceUtil;
  *
  * @author Brian Wing Shun Chan
  * @see SocialActivityCounterImpl
- * @see com.liferay.portlet.social.model.SocialActivityCounter
+ * @see SocialActivityCounter
  * @generated
  */
 public abstract class SocialActivityCounterBaseImpl
 	extends SocialActivityCounterModelImpl implements SocialActivityCounter {
+
 	/*
 	 * NOTE FOR DEVELOPERS:
 	 *
-	 * Never modify or reference this class directly. All methods that expect a social activity counter model instance should use the {@link SocialActivityCounter} interface instead.
+	 * Never modify or reference this class directly. All methods that expect a social activity counter model instance should use the <code>SocialActivityCounter</code> interface instead.
 	 */
 	@Override
-	public void persist() throws SystemException {
+	public void persist() {
 		if (this.isNew()) {
-			SocialActivityCounterLocalServiceUtil.addSocialActivityCounter(this);
+			SocialActivityCounterLocalServiceUtil.addSocialActivityCounter(
+				this);
 		}
 		else {
-			SocialActivityCounterLocalServiceUtil.updateSocialActivityCounter(this);
+			SocialActivityCounterLocalServiceUtil.updateSocialActivityCounter(
+				this);
 		}
 	}
+
 }

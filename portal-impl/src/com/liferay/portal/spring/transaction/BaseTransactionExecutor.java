@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,33 +14,37 @@
 
 package com.liferay.portal.spring.transaction;
 
-import com.liferay.portal.kernel.log.Log;
-import com.liferay.portal.kernel.log.LogFactoryUtil;
-
-import java.util.List;
-import java.util.concurrent.Callable;
+import com.liferay.petra.function.UnsafeSupplier;
 
 /**
- * @author Michael C. Han
- * @author Shuyang Zhou
+ * @author Preston Crary
  */
-public abstract class BaseTransactionExecutor implements TransactionExecutor {
+public abstract class BaseTransactionExecutor
+	implements TransactionExecutor, TransactionHandler {
 
-	protected void invokeCallbacks() {
-		List<Callable<?>> callables =
-			TransactionCommitCallbackUtil.popCallbackList();
+	@Override
+	public <T> T execute(
+			TransactionAttributeAdapter transactionAttributeAdapter,
+			UnsafeSupplier<T, Throwable> unsafeSupplier)
+		throws Throwable {
 
-		for (Callable<?> callable : callables) {
-			try {
-				callable.call();
-			}
-			catch (Exception e) {
-				_log.error("Unable to execute transaction commit callback", e);
-			}
+		TransactionStatusAdapter transactionStatusAdapter = start(
+			transactionAttributeAdapter);
+
+		T returnValue = null;
+
+		try {
+			returnValue = unsafeSupplier.get();
 		}
-	}
+		catch (Throwable throwable) {
+			rollback(
+				throwable, transactionAttributeAdapter,
+				transactionStatusAdapter);
+		}
 
-	private static Log _log = LogFactoryUtil.getLog(
-		BaseTransactionExecutor.class);
+		commit(transactionAttributeAdapter, transactionStatusAdapter);
+
+		return returnValue;
+	}
 
 }

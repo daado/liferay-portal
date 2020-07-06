@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,6 +14,8 @@
 
 package com.liferay.portal.security.pwd;
 
+import com.liferay.portal.kernel.security.pwd.PasswordEncryptor;
+import com.liferay.portal.kernel.security.pwd.PasswordEncryptorUtil;
 import com.liferay.portal.kernel.util.GetterUtil;
 import com.liferay.portal.kernel.util.Validator;
 
@@ -30,12 +32,7 @@ public class BCryptPasswordEncryptor
 	extends BasePasswordEncryptor implements PasswordEncryptor {
 
 	@Override
-	public String[] getSupportedAlgorithmTypes() {
-		return new String[] {PasswordEncryptorUtil.TYPE_BCRYPT};
-	}
-
-	@Override
-	protected String doEncrypt(
+	public String encrypt(
 		String algorithm, String plainTextPassword, String encryptedPassword) {
 
 		String salt = null;
@@ -58,9 +55,14 @@ public class BCryptPasswordEncryptor
 		return BCrypt.hashpw(plainTextPassword, salt);
 	}
 
+	@Override
+	public String[] getSupportedAlgorithmTypes() {
+		return new String[] {PasswordEncryptorUtil.TYPE_BCRYPT};
+	}
+
 	private static final int _ROUNDS = 10;
 
-	private static Pattern _pattern = Pattern.compile(
+	private static final Pattern _pattern = Pattern.compile(
 		"^BCrypt/([0-9]+)$", Pattern.CASE_INSENSITIVE);
 
 }

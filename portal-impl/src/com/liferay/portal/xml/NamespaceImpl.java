@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -34,17 +34,18 @@ public class NamespaceImpl extends NodeImpl implements Namespace {
 	}
 
 	@Override
-	public boolean equals(Object obj) {
-		if (this == obj) {
+	public boolean equals(Object object) {
+		if (this == object) {
 			return true;
 		}
 
-		if (!(obj instanceof NamespaceImpl)) {
+		if (!(object instanceof NamespaceImpl)) {
 			return false;
 		}
 
-		org.dom4j.Namespace namespace =
-			((NamespaceImpl)obj).getWrappedNamespace();
+		NamespaceImpl namespaceImpl = (NamespaceImpl)object;
+
+		org.dom4j.Namespace namespace = namespaceImpl.getWrappedNamespace();
 
 		return _namespace.equals(namespace);
 	}
@@ -83,6 +84,6 @@ public class NamespaceImpl extends NodeImpl implements Namespace {
 		return _namespace.toString();
 	}
 
-	private org.dom4j.Namespace _namespace;
+	private final org.dom4j.Namespace _namespace;
 
 }

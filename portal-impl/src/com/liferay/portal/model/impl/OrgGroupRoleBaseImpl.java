@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,7 +14,7 @@
 
 package com.liferay.portal.model.impl;
 
-import com.liferay.portal.model.OrgGroupRole;
+import com.liferay.portal.kernel.model.OrgGroupRole;
 
 /**
  * The extended model base implementation for the OrgGroupRole service. Represents a row in the &quot;OrgGroupRole&quot; database table, with each column mapped to a property of this class.
@@ -25,14 +25,18 @@ import com.liferay.portal.model.OrgGroupRole;
  *
  * @author Brian Wing Shun Chan
  * @see OrgGroupRoleImpl
- * @see com.liferay.portal.model.OrgGroupRole
+ * @see OrgGroupRole
+ * @deprecated As of Athanasius (7.3.x), with no direct replacement
  * @generated
  */
-public abstract class OrgGroupRoleBaseImpl extends OrgGroupRoleModelImpl
-	implements OrgGroupRole {
+@Deprecated
+public abstract class OrgGroupRoleBaseImpl
+	extends OrgGroupRoleModelImpl implements OrgGroupRole {
+
 	/*
 	 * NOTE FOR DEVELOPERS:
 	 *
-	 * Never modify or reference this class directly. All methods that expect a org group role model instance should use the {@link OrgGroupRole} interface instead.
+	 * Never modify or reference this class directly. All methods that expect a org group role model instance should use the <code>OrgGroupRole</code> interface instead.
 	 */
+
 }

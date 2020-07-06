@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,11 +14,11 @@
 
 package com.liferay.portlet.social.model.impl;
 
-import com.liferay.portal.kernel.util.StringBundler;
-import com.liferay.portal.kernel.util.StringPool;
-import com.liferay.portal.model.CacheModel;
-
-import com.liferay.portlet.social.model.SocialActivityCounter;
+import com.liferay.petra.lang.HashUtil;
+import com.liferay.petra.string.StringBundler;
+import com.liferay.portal.kernel.model.CacheModel;
+import com.liferay.portal.kernel.model.MVCCModel;
+import com.liferay.social.kernel.model.SocialActivityCounter;
 
 import java.io.Externalizable;
 import java.io.IOException;
@@ -29,16 +29,60 @@ import java.io.ObjectOutput;
  * The cache model class for representing SocialActivityCounter in entity cache.
  *
  * @author Brian Wing Shun Chan
- * @see SocialActivityCounter
  * @generated
  */
-public class SocialActivityCounterCacheModel implements CacheModel<SocialActivityCounter>,
-	Externalizable {
+public class SocialActivityCounterCacheModel
+	implements CacheModel<SocialActivityCounter>, Externalizable, MVCCModel {
+
+	@Override
+	public boolean equals(Object object) {
+		if (this == object) {
+			return true;
+		}
+
+		if (!(object instanceof SocialActivityCounterCacheModel)) {
+			return false;
+		}
+
+		SocialActivityCounterCacheModel socialActivityCounterCacheModel =
+			(SocialActivityCounterCacheModel)object;
+
+		if ((activityCounterId ==
+				socialActivityCounterCacheModel.activityCounterId) &&
+			(mvccVersion == socialActivityCounterCacheModel.mvccVersion)) {
+
+			return true;
+		}
+
+		return false;
+	}
+
+	@Override
+	public int hashCode() {
+		int hashCode = HashUtil.hash(0, activityCounterId);
+
+		return HashUtil.hash(hashCode, mvccVersion);
+	}
+
+	@Override
+	public long getMvccVersion() {
+		return mvccVersion;
+	}
+
+	@Override
+	public void setMvccVersion(long mvccVersion) {
+		this.mvccVersion = mvccVersion;
+	}
+
 	@Override
 	public String toString() {
-		StringBundler sb = new StringBundler(27);
+		StringBundler sb = new StringBundler(31);
 
-		sb.append("{activityCounterId=");
+		sb.append("{mvccVersion=");
+		sb.append(mvccVersion);
+		sb.append(", ctCollectionId=");
+		sb.append(ctCollectionId);
+		sb.append(", activityCounterId=");
 		sb.append(activityCounterId);
 		sb.append(", groupId=");
 		sb.append(groupId);
@@ -71,8 +115,11 @@ public class SocialActivityCounterCacheModel implements CacheModel<SocialActivit
 
 	@Override
 	public SocialActivityCounter toEntityModel() {
-		SocialActivityCounterImpl socialActivityCounterImpl = new SocialActivityCounterImpl();
+		SocialActivityCounterImpl socialActivityCounterImpl =
+			new SocialActivityCounterImpl();
 
+		socialActivityCounterImpl.setMvccVersion(mvccVersion);
+		socialActivityCounterImpl.setCtCollectionId(ctCollectionId);
 		socialActivityCounterImpl.setActivityCounterId(activityCounterId);
 		socialActivityCounterImpl.setGroupId(groupId);
 		socialActivityCounterImpl.setCompanyId(companyId);
@@ -80,7 +127,7 @@ public class SocialActivityCounterCacheModel implements CacheModel<SocialActivit
 		socialActivityCounterImpl.setClassPK(classPK);
 
 		if (name == null) {
-			socialActivityCounterImpl.setName(StringPool.BLANK);
+			socialActivityCounterImpl.setName("");
 		}
 		else {
 			socialActivityCounterImpl.setName(name);
@@ -101,46 +148,76 @@ public class SocialActivityCounterCacheModel implements CacheModel<SocialActivit
 
 	@Override
 	public void readExternal(ObjectInput objectInput) throws IOException {
+		mvccVersion = objectInput.readLong();
+
+		ctCollectionId = objectInput.readLong();
+
 		activityCounterId = objectInput.readLong();
+
 		groupId = objectInput.readLong();
+
 		companyId = objectInput.readLong();
+
 		classNameId = objectInput.readLong();
+
 		classPK = objectInput.readLong();
 		name = objectInput.readUTF();
+
 		ownerType = objectInput.readInt();
+
 		currentValue = objectInput.readInt();
+
 		totalValue = objectInput.readInt();
+
 		graceValue = objectInput.readInt();
+
 		startPeriod = objectInput.readInt();
+
 		endPeriod = objectInput.readInt();
+
 		active = objectInput.readBoolean();
 	}
 
 	@Override
-	public void writeExternal(ObjectOutput objectOutput)
-		throws IOException {
+	public void writeExternal(ObjectOutput objectOutput) throws IOException {
+		objectOutput.writeLong(mvccVersion);
+
+		objectOutput.writeLong(ctCollectionId);
+
 		objectOutput.writeLong(activityCounterId);
+
 		objectOutput.writeLong(groupId);
+
 		objectOutput.writeLong(companyId);
+
 		objectOutput.writeLong(classNameId);
+
 		objectOutput.writeLong(classPK);
 
 		if (name == null) {
-			objectOutput.writeUTF(StringPool.BLANK);
+			objectOutput.writeUTF("");
 		}
 		else {
 			objectOutput.writeUTF(name);
 		}
 
 		objectOutput.writeInt(ownerType);
+
 		objectOutput.writeInt(currentValue);
+
 		objectOutput.writeInt(totalValue);
+
 		objectOutput.writeInt(graceValue);
+
 		objectOutput.writeInt(startPeriod);
+
 		objectOutput.writeInt(endPeriod);
+
 		objectOutput.writeBoolean(active);
 	}
 
+	public long mvccVersion;
+	public long ctCollectionId;
 	public long activityCounterId;
 	public long groupId;
 	public long companyId;
@@ -154,4 +231,5 @@ public class SocialActivityCounterCacheModel implements CacheModel<SocialActivit
 	public int startPeriod;
 	public int endPeriod;
 	public boolean active;
+
 }

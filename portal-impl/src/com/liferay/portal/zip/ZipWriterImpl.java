@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,69 +14,83 @@
 
 package com.liferay.portal.zip;
 
-import com.liferay.portal.kernel.io.unsync.UnsyncByteArrayInputStream;
-import com.liferay.portal.kernel.io.unsync.UnsyncByteArrayOutputStream;
-import com.liferay.portal.kernel.log.Log;
-import com.liferay.portal.kernel.log.LogFactoryUtil;
-import com.liferay.portal.kernel.memory.DeleteFileFinalizeAction;
-import com.liferay.portal.kernel.memory.FinalizeManager;
+import com.liferay.petra.memory.DeleteFileFinalizeAction;
+import com.liferay.petra.memory.FinalizeManager;
+import com.liferay.petra.string.StringBundler;
+import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.util.FileUtil;
-import com.liferay.portal.kernel.util.StringPool;
 import com.liferay.portal.kernel.util.SystemProperties;
 import com.liferay.portal.kernel.uuid.PortalUUIDUtil;
 import com.liferay.portal.kernel.zip.ZipWriter;
 
-import de.schlichtherle.io.ArchiveDetector;
-import de.schlichtherle.io.ArchiveException;
-import de.schlichtherle.io.DefaultArchiveDetector;
-import de.schlichtherle.io.File;
-import de.schlichtherle.io.FileInputStream;
-import de.schlichtherle.io.FileOutputStream;
-import de.schlichtherle.io.archive.zip.ZipDriver;
-
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.OutputStream;
+import java.io.UncheckedIOException;
+
+import java.net.URI;
+
+import java.nio.file.FileSystem;
+import java.nio.file.FileSystems;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
+import java.nio.file.StandardOpenOption;
+
+import java.util.Collections;
 
 /**
  * @author Raymond Augé
  */
 public class ZipWriterImpl implements ZipWriter {
 
-	static {
-		File.setDefaultArchiveDetector(
-			new DefaultArchiveDetector(
-				ArchiveDetector.ALL, "lar|" + ArchiveDetector.ALL.getSuffixes(),
-				new ZipDriver()));
-	}
-
 	public ZipWriterImpl() {
-		_file = new File(
-			SystemProperties.get(SystemProperties.TMP_DIR) + StringPool.SLASH +
-				PortalUUIDUtil.generate() + ".zip");
-
-		_file.mkdir();
+		this(
+			new File(
+				StringBundler.concat(
+					SystemProperties.get(SystemProperties.TMP_DIR),
+					StringPool.SLASH, PortalUUIDUtil.generate(), ".zip")));
 
 		FinalizeManager.register(
-			_file, new DeleteFileFinalizeAction(_file.getAbsolutePath()));
+			_file, new DeleteFileFinalizeAction(_file.getAbsolutePath()),
+			FinalizeManager.PHANTOM_REFERENCE_FACTORY);
 	}
 
-	public ZipWriterImpl(java.io.File file) {
-		_file = new File(file);
+	public ZipWriterImpl(File file) {
+		_file = file.getAbsoluteFile();
 
-		_file.mkdir();
+		URI fileURI = _file.toURI();
+
+		_uri = URI.create("jar:file:" + fileURI.getPath());
+
+		try (FileSystem fileSystem = FileSystems.newFileSystem(
+				_uri, Collections.singletonMap("create", "true"))) {
+		}
+		catch (IOException ioException) {
+			throw new UncheckedIOException(ioException);
+		}
 	}
 
 	@Override
 	public void addEntry(String name, byte[] bytes) throws IOException {
-		UnsyncByteArrayInputStream unsyncByteArrayInputStream =
-			new UnsyncByteArrayInputStream(bytes);
-
-		try {
-			addEntry(name, unsyncByteArrayInputStream);
+		if (bytes == null) {
+			return;
 		}
-		finally {
-			unsyncByteArrayInputStream.close();
+
+		try (FileSystem fileSystem = FileSystems.newFileSystem(
+				_uri, Collections.emptyMap())) {
+
+			Path path = fileSystem.getPath(name);
+
+			Path parentPath = path.getParent();
+
+			if (parentPath != null) {
+				Files.createDirectories(parentPath);
+			}
+
+			Files.write(
+				path, bytes, StandardOpenOption.CREATE,
+				StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.WRITE);
 		}
 	}
 
@@ -84,78 +98,75 @@ public class ZipWriterImpl implements ZipWriter {
 	public void addEntry(String name, InputStream inputStream)
 		throws IOException {
 
-		if (name.startsWith(StringPool.SLASH)) {
-			name = name.substring(1);
-		}
-
 		if (inputStream == null) {
 			return;
 		}
 
-		if (_log.isDebugEnabled()) {
-			_log.debug("Adding " + name);
-		}
+		try (FileSystem fileSystem = FileSystems.newFileSystem(
+				_uri, Collections.emptyMap())) {
 
-		FileUtil.mkdirs(getPath());
+			Path path = fileSystem.getPath(name);
 
-		OutputStream outputStream = new FileOutputStream(
-			new File(getPath() + StringPool.SLASH + name));
+			Path parentPath = path.getParent();
 
-		try {
-			File.cat(inputStream, outputStream);
-		}
-		finally {
-			outputStream.close();
+			if (parentPath != null) {
+				Files.createDirectories(parentPath);
+			}
+
+			Files.copy(inputStream, path, StandardCopyOption.REPLACE_EXISTING);
 		}
 	}
 
 	@Override
 	public void addEntry(String name, String s) throws IOException {
+		if (s == null) {
+			return;
+		}
+
 		addEntry(name, s.getBytes(StringPool.UTF8));
 	}
 
 	@Override
 	public void addEntry(String name, StringBuilder sb) throws IOException {
+		if (sb == null) {
+			return;
+		}
+
 		addEntry(name, sb.toString());
 	}
 
+	/**
+	 * @deprecated As of Athanasius (7.3.x), replaced by {@link #getFile()}
+	 */
+	@Deprecated
 	@Override
 	public byte[] finish() throws IOException {
-		UnsyncByteArrayOutputStream unsyncByteArrayOutputStream =
-			new UnsyncByteArrayOutputStream();
-
-		InputStream inputStream = new FileInputStream(_file);
-
-		try {
-			File.cat(inputStream, unsyncByteArrayOutputStream);
-		}
-		finally {
-			unsyncByteArrayOutputStream.close();
-			inputStream.close();
-		}
-
-		return unsyncByteArrayOutputStream.toByteArray();
+		return FileUtil.getBytes(getFile());
 	}
 
 	@Override
-	public java.io.File getFile() {
-		try {
-			File.umount(_file);
-		}
-		catch (ArchiveException ae) {
-			_log.error(ae, ae);
-		}
-
-		return _file.getDelegate();
+	public File getFile() {
+		return _file;
 	}
 
+	/**
+	 * @deprecated As of Athanasius (7.3.x), replaced by {@link #getFile()}
+	 */
+	@Deprecated
 	@Override
 	public String getPath() {
 		return _file.getPath();
 	}
 
-	private static Log _log = LogFactoryUtil.getLog(ZipWriterImpl.class);
+	/**
+	 * @deprecated As of Athanasius (7.3.x), replaced by {@link #getFile()}
+	 */
+	@Deprecated
+	@Override
+	public void umount() {
+	}
 
-	private File _file;
+	private final File _file;
+	private final URI _uri;
 
 }

@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,10 +14,8 @@
 
 package com.liferay.portlet.documentlibrary.model.impl;
 
-import com.liferay.portal.kernel.exception.SystemException;
-
-import com.liferay.portlet.documentlibrary.model.DLFileShortcut;
-import com.liferay.portlet.documentlibrary.service.DLFileShortcutLocalServiceUtil;
+import com.liferay.document.library.kernel.model.DLFileShortcut;
+import com.liferay.document.library.kernel.service.DLFileShortcutLocalServiceUtil;
 
 /**
  * The extended model base implementation for the DLFileShortcut service. Represents a row in the &quot;DLFileShortcut&quot; database table, with each column mapped to a property of this class.
@@ -28,18 +26,19 @@ import com.liferay.portlet.documentlibrary.service.DLFileShortcutLocalServiceUti
  *
  * @author Brian Wing Shun Chan
  * @see DLFileShortcutImpl
- * @see com.liferay.portlet.documentlibrary.model.DLFileShortcut
+ * @see DLFileShortcut
  * @generated
  */
-public abstract class DLFileShortcutBaseImpl extends DLFileShortcutModelImpl
-	implements DLFileShortcut {
+public abstract class DLFileShortcutBaseImpl
+	extends DLFileShortcutModelImpl implements DLFileShortcut {
+
 	/*
 	 * NOTE FOR DEVELOPERS:
 	 *
-	 * Never modify or reference this class directly. All methods that expect a document library file shortcut model instance should use the {@link DLFileShortcut} interface instead.
+	 * Never modify or reference this class directly. All methods that expect a document library file shortcut model instance should use the <code>DLFileShortcut</code> interface instead.
 	 */
 	@Override
-	public void persist() throws SystemException {
+	public void persist() {
 		if (this.isNew()) {
 			DLFileShortcutLocalServiceUtil.addDLFileShortcut(this);
 		}
@@ -49,11 +48,12 @@ public abstract class DLFileShortcutBaseImpl extends DLFileShortcutModelImpl
 	}
 
 	@Override
-	public void updateTreePath(String treePath) throws SystemException {
+	public void updateTreePath(String treePath) {
 		DLFileShortcut dlFileShortcut = this;
 
 		dlFileShortcut.setTreePath(treePath);
 
 		DLFileShortcutLocalServiceUtil.updateDLFileShortcut(dlFileShortcut);
 	}
+
 }

@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,10 +14,11 @@
 
 package com.liferay.portal.model.impl;
 
-import com.liferay.portal.kernel.util.StringBundler;
-import com.liferay.portal.kernel.util.StringPool;
-import com.liferay.portal.model.CacheModel;
-import com.liferay.portal.model.Portlet;
+import com.liferay.petra.lang.HashUtil;
+import com.liferay.petra.string.StringBundler;
+import com.liferay.portal.kernel.model.CacheModel;
+import com.liferay.portal.kernel.model.MVCCModel;
+import com.liferay.portal.kernel.model.Portlet;
 
 import java.io.Externalizable;
 import java.io.IOException;
@@ -28,15 +29,56 @@ import java.io.ObjectOutput;
  * The cache model class for representing Portlet in entity cache.
  *
  * @author Brian Wing Shun Chan
- * @see Portlet
  * @generated
  */
-public class PortletCacheModel implements CacheModel<Portlet>, Externalizable {
+public class PortletCacheModel
+	implements CacheModel<Portlet>, Externalizable, MVCCModel {
+
+	@Override
+	public boolean equals(Object object) {
+		if (this == object) {
+			return true;
+		}
+
+		if (!(object instanceof PortletCacheModel)) {
+			return false;
+		}
+
+		PortletCacheModel portletCacheModel = (PortletCacheModel)object;
+
+		if ((id == portletCacheModel.id) &&
+			(mvccVersion == portletCacheModel.mvccVersion)) {
+
+			return true;
+		}
+
+		return false;
+	}
+
+	@Override
+	public int hashCode() {
+		int hashCode = HashUtil.hash(0, id);
+
+		return HashUtil.hash(hashCode, mvccVersion);
+	}
+
+	@Override
+	public long getMvccVersion() {
+		return mvccVersion;
+	}
+
+	@Override
+	public void setMvccVersion(long mvccVersion) {
+		this.mvccVersion = mvccVersion;
+	}
+
 	@Override
 	public String toString() {
-		StringBundler sb = new StringBundler(11);
+		StringBundler sb = new StringBundler(13);
 
-		sb.append("{id=");
+		sb.append("{mvccVersion=");
+		sb.append(mvccVersion);
+		sb.append(", id=");
 		sb.append(id);
 		sb.append(", companyId=");
 		sb.append(companyId);
@@ -55,18 +97,19 @@ public class PortletCacheModel implements CacheModel<Portlet>, Externalizable {
 	public Portlet toEntityModel() {
 		PortletImpl portletImpl = new PortletImpl();
 
+		portletImpl.setMvccVersion(mvccVersion);
 		portletImpl.setId(id);
 		portletImpl.setCompanyId(companyId);
 
 		if (portletId == null) {
-			portletImpl.setPortletId(StringPool.BLANK);
+			portletImpl.setPortletId("");
 		}
 		else {
 			portletImpl.setPortletId(portletId);
 		}
 
 		if (roles == null) {
-			portletImpl.setRoles(StringPool.BLANK);
+			portletImpl.setRoles("");
 		}
 		else {
 			portletImpl.setRoles(roles);
@@ -81,28 +124,34 @@ public class PortletCacheModel implements CacheModel<Portlet>, Externalizable {
 
 	@Override
 	public void readExternal(ObjectInput objectInput) throws IOException {
+		mvccVersion = objectInput.readLong();
+
 		id = objectInput.readLong();
+
 		companyId = objectInput.readLong();
 		portletId = objectInput.readUTF();
 		roles = objectInput.readUTF();
+
 		active = objectInput.readBoolean();
 	}
 
 	@Override
-	public void writeExternal(ObjectOutput objectOutput)
-		throws IOException {
+	public void writeExternal(ObjectOutput objectOutput) throws IOException {
+		objectOutput.writeLong(mvccVersion);
+
 		objectOutput.writeLong(id);
+
 		objectOutput.writeLong(companyId);
 
 		if (portletId == null) {
-			objectOutput.writeUTF(StringPool.BLANK);
+			objectOutput.writeUTF("");
 		}
 		else {
 			objectOutput.writeUTF(portletId);
 		}
 
 		if (roles == null) {
-			objectOutput.writeUTF(StringPool.BLANK);
+			objectOutput.writeUTF("");
 		}
 		else {
 			objectOutput.writeUTF(roles);
@@ -111,9 +160,11 @@ public class PortletCacheModel implements CacheModel<Portlet>, Externalizable {
 		objectOutput.writeBoolean(active);
 	}
 
+	public long mvccVersion;
 	public long id;
 	public long companyId;
 	public String portletId;
 	public String roles;
 	public boolean active;
+
 }

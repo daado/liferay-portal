@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,10 +14,11 @@
 
 package com.liferay.util.axis;
 
+import com.liferay.petra.reflect.ReflectionUtil;
+import com.liferay.portal.kernel.exception.LoggedExceptionInInitializerError;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
 import com.liferay.portal.kernel.servlet.BaseFilter;
-import com.liferay.portal.kernel.util.ReflectionUtil;
 
 import java.lang.reflect.Field;
 
@@ -40,40 +41,42 @@ public class AxisCleanUpFilter extends BaseFilter {
 
 	@Override
 	protected void processFilter(
-			HttpServletRequest request, HttpServletResponse response,
-			FilterChain filterChain)
+			HttpServletRequest httpServletRequest,
+			HttpServletResponse httpServletResponse, FilterChain filterChain)
 		throws Exception {
 
 		try {
 			processFilter(
-				AxisCleanUpFilter.class, request, response, filterChain);
+				AxisCleanUpFilter.class.getName(), httpServletRequest,
+				httpServletResponse, filterChain);
 		}
 		finally {
 			try {
 				ThreadLocal<?> cacheThreadLocal =
-					(ThreadLocal<?>)_cacheField.get(null);
+					(ThreadLocal<?>)_CACHE_FIELD.get(null);
 
 				if (cacheThreadLocal != null) {
 					cacheThreadLocal.remove();
 				}
 			}
-			catch (Exception e) {
-				_log.error(e, e);
+			catch (Exception exception) {
+				_log.error(exception, exception);
 			}
 		}
 	}
 
-	private static Log _log = LogFactoryUtil.getLog(AxisCleanUpFilter.class);
+	private static final Field _CACHE_FIELD;
 
-	private static Field _cacheField;
+	private static final Log _log = LogFactoryUtil.getLog(
+		AxisCleanUpFilter.class);
 
 	static {
 		try {
-			_cacheField = ReflectionUtil.getDeclaredField(
+			_CACHE_FIELD = ReflectionUtil.getDeclaredField(
 				MethodCache.class, "cache");
 		}
-		catch (Exception e) {
-			_log.error(e, e);
+		catch (Exception exception) {
+			throw new LoggedExceptionInInitializerError(exception);
 		}
 	}
 

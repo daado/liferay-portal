@@ -1,6 +1,6 @@
 <%--
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -25,23 +25,28 @@ User statusByUser = UserLocalServiceUtil.fetchUser(statusByUserId);
 %>
 
 <c:if test="<%= statusByUser != null %>">
-	<liferay-util:buffer var="buffer">
+	<liferay-util:buffer
+		var="buffer"
+	>
 		<div class="user-status-tooltip">
 			<span class="user-status-avatar">
-				<img alt="<%= HtmlUtil.escapeAttribute(statusByUser.getFullName()) %>" class="user-status-avatar-image" src="<%= HtmlUtil.escape(statusByUser.getPortraitURL(themeDisplay)) %>" />
+				<liferay-ui:user-portrait
+					user="<%= statusByUser %>"
+				/>
 			</span>
 			<span class="user-status-info">
 				<div class="user-status-name">
-					<aui:a href="<%= statusByUser.getDisplayURL(themeDisplay) %>"><%= StringUtil.shorten(statusByUser.getFullName(), 20) %></aui:a>
+					<aui:a href="<%= statusByUser.isActive() ? statusByUser.getDisplayURL(themeDisplay) : null %>"><%= HtmlUtil.escape(StringUtil.shorten(statusByUser.getFullName(), 20)) %></aui:a>
 				</div>
+
 				<div class="user-status-date">
-					<liferay-ui:message arguments="<%= LanguageUtil.getTimeDescription(pageContext, System.currentTimeMillis() - statusDate.getTime(), true) %>" key="x-ago" />
+					<liferay-ui:message arguments="<%= LanguageUtil.getTimeDescription(request, System.currentTimeMillis() - statusDate.getTime(), true) %>" key="x-ago" translateArguments="<%= false %>" />
 				</div>
 			</span>
 		</div>
 	</liferay-util:buffer>
 
-	<span onmouseover="Liferay.Portal.ToolTip.show(this, '<%= HtmlUtil.escapeJS(buffer) %>')">
+	<span class="lfr-portal-tooltip" title="<%= HtmlUtil.escape(HtmlUtil.extractText(buffer)) %>">
 </c:if>
 
 <aui:workflow-status showIcon="<%= false %>" showLabel="<%= false %>" status="<%= status %>" />

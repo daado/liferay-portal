@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -16,11 +16,25 @@ package com.liferay.taglib.aui;
 
 import com.liferay.taglib.aui.base.BaseRowTag;
 
+import javax.servlet.jsp.JspWriter;
+
 /**
  * @author Eduardo Lundgren
  * @author Bruno Basto
  * @author Nathan Cavanaugh
  * @author Julio Camarero
+ * @deprecated As of Athanasius (7.3.x), replaced by clay:row
  */
+@Deprecated
 public class RowTag extends BaseRowTag {
+
+	@Override
+	protected int processEndTag() throws Exception {
+		JspWriter jspWriter = pageContext.getOut();
+
+		jspWriter.write("</div>");
+
+		return EVAL_PAGE;
+	}
+
 }

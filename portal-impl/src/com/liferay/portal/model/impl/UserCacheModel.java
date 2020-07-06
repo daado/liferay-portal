@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,10 +14,11 @@
 
 package com.liferay.portal.model.impl;
 
-import com.liferay.portal.kernel.util.StringBundler;
-import com.liferay.portal.kernel.util.StringPool;
-import com.liferay.portal.model.CacheModel;
-import com.liferay.portal.model.User;
+import com.liferay.petra.lang.HashUtil;
+import com.liferay.petra.string.StringBundler;
+import com.liferay.portal.kernel.model.CacheModel;
+import com.liferay.portal.kernel.model.MVCCModel;
+import com.liferay.portal.kernel.model.User;
 
 import java.io.Externalizable;
 import java.io.IOException;
@@ -30,16 +31,61 @@ import java.util.Date;
  * The cache model class for representing User in entity cache.
  *
  * @author Brian Wing Shun Chan
- * @see User
  * @generated
  */
-public class UserCacheModel implements CacheModel<User>, Externalizable {
+public class UserCacheModel
+	implements CacheModel<User>, Externalizable, MVCCModel {
+
+	@Override
+	public boolean equals(Object object) {
+		if (this == object) {
+			return true;
+		}
+
+		if (!(object instanceof UserCacheModel)) {
+			return false;
+		}
+
+		UserCacheModel userCacheModel = (UserCacheModel)object;
+
+		if ((userId == userCacheModel.userId) &&
+			(mvccVersion == userCacheModel.mvccVersion)) {
+
+			return true;
+		}
+
+		return false;
+	}
+
+	@Override
+	public int hashCode() {
+		int hashCode = HashUtil.hash(0, userId);
+
+		return HashUtil.hash(hashCode, mvccVersion);
+	}
+
+	@Override
+	public long getMvccVersion() {
+		return mvccVersion;
+	}
+
+	@Override
+	public void setMvccVersion(long mvccVersion) {
+		this.mvccVersion = mvccVersion;
+	}
+
 	@Override
 	public String toString() {
-		StringBundler sb = new StringBundler(81);
+		StringBundler sb = new StringBundler(89);
 
-		sb.append("{uuid=");
+		sb.append("{mvccVersion=");
+		sb.append(mvccVersion);
+		sb.append(", ctCollectionId=");
+		sb.append(ctCollectionId);
+		sb.append(", uuid=");
 		sb.append(uuid);
+		sb.append(", externalReferenceCode=");
+		sb.append(externalReferenceCode);
 		sb.append(", userId=");
 		sb.append(userId);
 		sb.append(", companyId=");
@@ -74,6 +120,8 @@ public class UserCacheModel implements CacheModel<User>, Externalizable {
 		sb.append(emailAddress);
 		sb.append(", facebookId=");
 		sb.append(facebookId);
+		sb.append(", googleUserId=");
+		sb.append(googleUserId);
 		sb.append(", ldapServerId=");
 		sb.append(ldapServerId);
 		sb.append(", openId=");
@@ -127,11 +175,21 @@ public class UserCacheModel implements CacheModel<User>, Externalizable {
 	public User toEntityModel() {
 		UserImpl userImpl = new UserImpl();
 
+		userImpl.setMvccVersion(mvccVersion);
+		userImpl.setCtCollectionId(ctCollectionId);
+
 		if (uuid == null) {
-			userImpl.setUuid(StringPool.BLANK);
+			userImpl.setUuid("");
 		}
 		else {
 			userImpl.setUuid(uuid);
+		}
+
+		if (externalReferenceCode == null) {
+			userImpl.setExternalReferenceCode("");
+		}
+		else {
+			userImpl.setExternalReferenceCode(externalReferenceCode);
 		}
 
 		userImpl.setUserId(userId);
@@ -155,7 +213,7 @@ public class UserCacheModel implements CacheModel<User>, Externalizable {
 		userImpl.setContactId(contactId);
 
 		if (password == null) {
-			userImpl.setPassword(StringPool.BLANK);
+			userImpl.setPassword("");
 		}
 		else {
 			userImpl.setPassword(password);
@@ -172,21 +230,21 @@ public class UserCacheModel implements CacheModel<User>, Externalizable {
 		}
 
 		if (digest == null) {
-			userImpl.setDigest(StringPool.BLANK);
+			userImpl.setDigest("");
 		}
 		else {
 			userImpl.setDigest(digest);
 		}
 
 		if (reminderQueryQuestion == null) {
-			userImpl.setReminderQueryQuestion(StringPool.BLANK);
+			userImpl.setReminderQueryQuestion("");
 		}
 		else {
 			userImpl.setReminderQueryQuestion(reminderQueryQuestion);
 		}
 
 		if (reminderQueryAnswer == null) {
-			userImpl.setReminderQueryAnswer(StringPool.BLANK);
+			userImpl.setReminderQueryAnswer("");
 		}
 		else {
 			userImpl.setReminderQueryAnswer(reminderQueryAnswer);
@@ -195,24 +253,32 @@ public class UserCacheModel implements CacheModel<User>, Externalizable {
 		userImpl.setGraceLoginCount(graceLoginCount);
 
 		if (screenName == null) {
-			userImpl.setScreenName(StringPool.BLANK);
+			userImpl.setScreenName("");
 		}
 		else {
 			userImpl.setScreenName(screenName);
 		}
 
 		if (emailAddress == null) {
-			userImpl.setEmailAddress(StringPool.BLANK);
+			userImpl.setEmailAddress("");
 		}
 		else {
 			userImpl.setEmailAddress(emailAddress);
 		}
 
 		userImpl.setFacebookId(facebookId);
+
+		if (googleUserId == null) {
+			userImpl.setGoogleUserId("");
+		}
+		else {
+			userImpl.setGoogleUserId(googleUserId);
+		}
+
 		userImpl.setLdapServerId(ldapServerId);
 
 		if (openId == null) {
-			userImpl.setOpenId(StringPool.BLANK);
+			userImpl.setOpenId("");
 		}
 		else {
 			userImpl.setOpenId(openId);
@@ -221,56 +287,56 @@ public class UserCacheModel implements CacheModel<User>, Externalizable {
 		userImpl.setPortraitId(portraitId);
 
 		if (languageId == null) {
-			userImpl.setLanguageId(StringPool.BLANK);
+			userImpl.setLanguageId("");
 		}
 		else {
 			userImpl.setLanguageId(languageId);
 		}
 
 		if (timeZoneId == null) {
-			userImpl.setTimeZoneId(StringPool.BLANK);
+			userImpl.setTimeZoneId("");
 		}
 		else {
 			userImpl.setTimeZoneId(timeZoneId);
 		}
 
 		if (greeting == null) {
-			userImpl.setGreeting(StringPool.BLANK);
+			userImpl.setGreeting("");
 		}
 		else {
 			userImpl.setGreeting(greeting);
 		}
 
 		if (comments == null) {
-			userImpl.setComments(StringPool.BLANK);
+			userImpl.setComments("");
 		}
 		else {
 			userImpl.setComments(comments);
 		}
 
 		if (firstName == null) {
-			userImpl.setFirstName(StringPool.BLANK);
+			userImpl.setFirstName("");
 		}
 		else {
 			userImpl.setFirstName(firstName);
 		}
 
 		if (middleName == null) {
-			userImpl.setMiddleName(StringPool.BLANK);
+			userImpl.setMiddleName("");
 		}
 		else {
 			userImpl.setMiddleName(middleName);
 		}
 
 		if (lastName == null) {
-			userImpl.setLastName(StringPool.BLANK);
+			userImpl.setLastName("");
 		}
 		else {
 			userImpl.setLastName(lastName);
 		}
 
 		if (jobTitle == null) {
-			userImpl.setJobTitle(StringPool.BLANK);
+			userImpl.setJobTitle("");
 		}
 		else {
 			userImpl.setJobTitle(jobTitle);
@@ -284,7 +350,7 @@ public class UserCacheModel implements CacheModel<User>, Externalizable {
 		}
 
 		if (loginIP == null) {
-			userImpl.setLoginIP(StringPool.BLANK);
+			userImpl.setLoginIP("");
 		}
 		else {
 			userImpl.setLoginIP(loginIP);
@@ -298,7 +364,7 @@ public class UserCacheModel implements CacheModel<User>, Externalizable {
 		}
 
 		if (lastLoginIP == null) {
-			userImpl.setLastLoginIP(StringPool.BLANK);
+			userImpl.setLastLoginIP("");
 		}
 		else {
 			userImpl.setLastLoginIP(lastLoginIP);
@@ -332,26 +398,41 @@ public class UserCacheModel implements CacheModel<User>, Externalizable {
 
 	@Override
 	public void readExternal(ObjectInput objectInput) throws IOException {
+		mvccVersion = objectInput.readLong();
+
+		ctCollectionId = objectInput.readLong();
 		uuid = objectInput.readUTF();
+		externalReferenceCode = objectInput.readUTF();
+
 		userId = objectInput.readLong();
+
 		companyId = objectInput.readLong();
 		createDate = objectInput.readLong();
 		modifiedDate = objectInput.readLong();
+
 		defaultUser = objectInput.readBoolean();
+
 		contactId = objectInput.readLong();
 		password = objectInput.readUTF();
+
 		passwordEncrypted = objectInput.readBoolean();
+
 		passwordReset = objectInput.readBoolean();
 		passwordModifiedDate = objectInput.readLong();
 		digest = objectInput.readUTF();
 		reminderQueryQuestion = objectInput.readUTF();
 		reminderQueryAnswer = objectInput.readUTF();
+
 		graceLoginCount = objectInput.readInt();
 		screenName = objectInput.readUTF();
 		emailAddress = objectInput.readUTF();
+
 		facebookId = objectInput.readLong();
+		googleUserId = objectInput.readUTF();
+
 		ldapServerId = objectInput.readLong();
 		openId = objectInput.readUTF();
+
 		portraitId = objectInput.readLong();
 		languageId = objectInput.readUTF();
 		timeZoneId = objectInput.readUTF();
@@ -366,58 +447,77 @@ public class UserCacheModel implements CacheModel<User>, Externalizable {
 		lastLoginDate = objectInput.readLong();
 		lastLoginIP = objectInput.readUTF();
 		lastFailedLoginDate = objectInput.readLong();
+
 		failedLoginAttempts = objectInput.readInt();
+
 		lockout = objectInput.readBoolean();
 		lockoutDate = objectInput.readLong();
+
 		agreedToTermsOfUse = objectInput.readBoolean();
+
 		emailAddressVerified = objectInput.readBoolean();
+
 		status = objectInput.readInt();
 	}
 
 	@Override
-	public void writeExternal(ObjectOutput objectOutput)
-		throws IOException {
+	public void writeExternal(ObjectOutput objectOutput) throws IOException {
+		objectOutput.writeLong(mvccVersion);
+
+		objectOutput.writeLong(ctCollectionId);
+
 		if (uuid == null) {
-			objectOutput.writeUTF(StringPool.BLANK);
+			objectOutput.writeUTF("");
 		}
 		else {
 			objectOutput.writeUTF(uuid);
 		}
 
+		if (externalReferenceCode == null) {
+			objectOutput.writeUTF("");
+		}
+		else {
+			objectOutput.writeUTF(externalReferenceCode);
+		}
+
 		objectOutput.writeLong(userId);
+
 		objectOutput.writeLong(companyId);
 		objectOutput.writeLong(createDate);
 		objectOutput.writeLong(modifiedDate);
+
 		objectOutput.writeBoolean(defaultUser);
+
 		objectOutput.writeLong(contactId);
 
 		if (password == null) {
-			objectOutput.writeUTF(StringPool.BLANK);
+			objectOutput.writeUTF("");
 		}
 		else {
 			objectOutput.writeUTF(password);
 		}
 
 		objectOutput.writeBoolean(passwordEncrypted);
+
 		objectOutput.writeBoolean(passwordReset);
 		objectOutput.writeLong(passwordModifiedDate);
 
 		if (digest == null) {
-			objectOutput.writeUTF(StringPool.BLANK);
+			objectOutput.writeUTF("");
 		}
 		else {
 			objectOutput.writeUTF(digest);
 		}
 
 		if (reminderQueryQuestion == null) {
-			objectOutput.writeUTF(StringPool.BLANK);
+			objectOutput.writeUTF("");
 		}
 		else {
 			objectOutput.writeUTF(reminderQueryQuestion);
 		}
 
 		if (reminderQueryAnswer == null) {
-			objectOutput.writeUTF(StringPool.BLANK);
+			objectOutput.writeUTF("");
 		}
 		else {
 			objectOutput.writeUTF(reminderQueryAnswer);
@@ -426,24 +526,32 @@ public class UserCacheModel implements CacheModel<User>, Externalizable {
 		objectOutput.writeInt(graceLoginCount);
 
 		if (screenName == null) {
-			objectOutput.writeUTF(StringPool.BLANK);
+			objectOutput.writeUTF("");
 		}
 		else {
 			objectOutput.writeUTF(screenName);
 		}
 
 		if (emailAddress == null) {
-			objectOutput.writeUTF(StringPool.BLANK);
+			objectOutput.writeUTF("");
 		}
 		else {
 			objectOutput.writeUTF(emailAddress);
 		}
 
 		objectOutput.writeLong(facebookId);
+
+		if (googleUserId == null) {
+			objectOutput.writeUTF("");
+		}
+		else {
+			objectOutput.writeUTF(googleUserId);
+		}
+
 		objectOutput.writeLong(ldapServerId);
 
 		if (openId == null) {
-			objectOutput.writeUTF(StringPool.BLANK);
+			objectOutput.writeUTF("");
 		}
 		else {
 			objectOutput.writeUTF(openId);
@@ -452,56 +560,56 @@ public class UserCacheModel implements CacheModel<User>, Externalizable {
 		objectOutput.writeLong(portraitId);
 
 		if (languageId == null) {
-			objectOutput.writeUTF(StringPool.BLANK);
+			objectOutput.writeUTF("");
 		}
 		else {
 			objectOutput.writeUTF(languageId);
 		}
 
 		if (timeZoneId == null) {
-			objectOutput.writeUTF(StringPool.BLANK);
+			objectOutput.writeUTF("");
 		}
 		else {
 			objectOutput.writeUTF(timeZoneId);
 		}
 
 		if (greeting == null) {
-			objectOutput.writeUTF(StringPool.BLANK);
+			objectOutput.writeUTF("");
 		}
 		else {
 			objectOutput.writeUTF(greeting);
 		}
 
 		if (comments == null) {
-			objectOutput.writeUTF(StringPool.BLANK);
+			objectOutput.writeUTF("");
 		}
 		else {
 			objectOutput.writeUTF(comments);
 		}
 
 		if (firstName == null) {
-			objectOutput.writeUTF(StringPool.BLANK);
+			objectOutput.writeUTF("");
 		}
 		else {
 			objectOutput.writeUTF(firstName);
 		}
 
 		if (middleName == null) {
-			objectOutput.writeUTF(StringPool.BLANK);
+			objectOutput.writeUTF("");
 		}
 		else {
 			objectOutput.writeUTF(middleName);
 		}
 
 		if (lastName == null) {
-			objectOutput.writeUTF(StringPool.BLANK);
+			objectOutput.writeUTF("");
 		}
 		else {
 			objectOutput.writeUTF(lastName);
 		}
 
 		if (jobTitle == null) {
-			objectOutput.writeUTF(StringPool.BLANK);
+			objectOutput.writeUTF("");
 		}
 		else {
 			objectOutput.writeUTF(jobTitle);
@@ -510,7 +618,7 @@ public class UserCacheModel implements CacheModel<User>, Externalizable {
 		objectOutput.writeLong(loginDate);
 
 		if (loginIP == null) {
-			objectOutput.writeUTF(StringPool.BLANK);
+			objectOutput.writeUTF("");
 		}
 		else {
 			objectOutput.writeUTF(loginIP);
@@ -519,22 +627,30 @@ public class UserCacheModel implements CacheModel<User>, Externalizable {
 		objectOutput.writeLong(lastLoginDate);
 
 		if (lastLoginIP == null) {
-			objectOutput.writeUTF(StringPool.BLANK);
+			objectOutput.writeUTF("");
 		}
 		else {
 			objectOutput.writeUTF(lastLoginIP);
 		}
 
 		objectOutput.writeLong(lastFailedLoginDate);
+
 		objectOutput.writeInt(failedLoginAttempts);
+
 		objectOutput.writeBoolean(lockout);
 		objectOutput.writeLong(lockoutDate);
+
 		objectOutput.writeBoolean(agreedToTermsOfUse);
+
 		objectOutput.writeBoolean(emailAddressVerified);
+
 		objectOutput.writeInt(status);
 	}
 
+	public long mvccVersion;
+	public long ctCollectionId;
 	public String uuid;
+	public String externalReferenceCode;
 	public long userId;
 	public long companyId;
 	public long createDate;
@@ -552,6 +668,7 @@ public class UserCacheModel implements CacheModel<User>, Externalizable {
 	public String screenName;
 	public String emailAddress;
 	public long facebookId;
+	public String googleUserId;
 	public long ldapServerId;
 	public String openId;
 	public long portraitId;
@@ -574,4 +691,5 @@ public class UserCacheModel implements CacheModel<User>, Externalizable {
 	public boolean agreedToTermsOfUse;
 	public boolean emailAddressVerified;
 	public int status;
+
 }

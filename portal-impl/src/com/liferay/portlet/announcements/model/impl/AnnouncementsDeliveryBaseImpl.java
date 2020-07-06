@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,10 +14,8 @@
 
 package com.liferay.portlet.announcements.model.impl;
 
-import com.liferay.portal.kernel.exception.SystemException;
-
-import com.liferay.portlet.announcements.model.AnnouncementsDelivery;
-import com.liferay.portlet.announcements.service.AnnouncementsDeliveryLocalServiceUtil;
+import com.liferay.announcements.kernel.model.AnnouncementsDelivery;
+import com.liferay.announcements.kernel.service.AnnouncementsDeliveryLocalServiceUtil;
 
 /**
  * The extended model base implementation for the AnnouncementsDelivery service. Represents a row in the &quot;AnnouncementsDelivery&quot; database table, with each column mapped to a property of this class.
@@ -28,23 +26,27 @@ import com.liferay.portlet.announcements.service.AnnouncementsDeliveryLocalServi
  *
  * @author Brian Wing Shun Chan
  * @see AnnouncementsDeliveryImpl
- * @see com.liferay.portlet.announcements.model.AnnouncementsDelivery
+ * @see AnnouncementsDelivery
  * @generated
  */
 public abstract class AnnouncementsDeliveryBaseImpl
 	extends AnnouncementsDeliveryModelImpl implements AnnouncementsDelivery {
+
 	/*
 	 * NOTE FOR DEVELOPERS:
 	 *
-	 * Never modify or reference this class directly. All methods that expect a announcements delivery model instance should use the {@link AnnouncementsDelivery} interface instead.
+	 * Never modify or reference this class directly. All methods that expect a announcements delivery model instance should use the <code>AnnouncementsDelivery</code> interface instead.
 	 */
 	@Override
-	public void persist() throws SystemException {
+	public void persist() {
 		if (this.isNew()) {
-			AnnouncementsDeliveryLocalServiceUtil.addAnnouncementsDelivery(this);
+			AnnouncementsDeliveryLocalServiceUtil.addAnnouncementsDelivery(
+				this);
 		}
 		else {
-			AnnouncementsDeliveryLocalServiceUtil.updateAnnouncementsDelivery(this);
+			AnnouncementsDeliveryLocalServiceUtil.updateAnnouncementsDelivery(
+				this);
 		}
 	}
+
 }

@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,13 +14,25 @@
 
 package com.liferay.portal.dao.orm.hibernate;
 
+import java.sql.Types;
+
 import org.hibernate.LockMode;
+import org.hibernate.dialect.function.SQLFunctionTemplate;
+import org.hibernate.type.StandardBasicTypes;
 
 /**
  * @author Shuyang Zhou
  */
 public class SybaseASE157Dialect
 	extends org.hibernate.dialect.SybaseASE157Dialect {
+
+	public SybaseASE157Dialect() {
+		registerColumnType(Types.TIMESTAMP, "bigdatetime");
+		registerFunction(
+			"datetime",
+			new SQLFunctionTemplate(
+				StandardBasicTypes.TIMESTAMP, "bigdatetime"));
+	}
 
 	@Override
 	public String appendLockHint(LockMode mode, String tableName) {

@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,18 +14,17 @@
 
 package com.liferay.portal.atom;
 
+import com.liferay.petra.string.CharPool;
+import com.liferay.petra.string.StringBundler;
+import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.atom.AtomRequestContext;
 import com.liferay.portal.kernel.exception.PortalException;
-import com.liferay.portal.kernel.exception.SystemException;
-import com.liferay.portal.kernel.util.CharPool;
-import com.liferay.portal.kernel.util.StringBundler;
-import com.liferay.portal.kernel.util.StringPool;
+import com.liferay.portal.kernel.model.Company;
+import com.liferay.portal.kernel.model.User;
+import com.liferay.portal.kernel.security.auth.CompanyThreadLocal;
+import com.liferay.portal.kernel.service.CompanyLocalServiceUtil;
+import com.liferay.portal.kernel.util.PortalUtil;
 import com.liferay.portal.kernel.util.StringUtil;
-import com.liferay.portal.model.Company;
-import com.liferay.portal.model.User;
-import com.liferay.portal.security.auth.CompanyThreadLocal;
-import com.liferay.portal.service.CompanyLocalServiceUtil;
-import com.liferay.portal.util.PortalUtil;
 
 import javax.servlet.http.HttpServletRequest;
 
@@ -83,7 +82,7 @@ public class AtomUtil {
 
 			portletTitle = company.getName();
 		}
-		catch (Exception e) {
+		catch (Exception exception) {
 			return null;
 		}
 
@@ -105,7 +104,7 @@ public class AtomUtil {
 		try {
 			company = getCompany();
 		}
-		catch (Exception e) {
+		catch (Exception exception) {
 			return StringPool.BLANK;
 		}
 
@@ -122,10 +121,9 @@ public class AtomUtil {
 		return StringUtil.toLowerCase(idTagPrefix);
 	}
 
-	public static Company getCompany() throws PortalException, SystemException {
-		long companyId = CompanyThreadLocal.getCompanyId();
-
-		return CompanyLocalServiceUtil.getCompanyById(companyId);
+	public static Company getCompany() throws PortalException {
+		return CompanyLocalServiceUtil.getCompanyById(
+			CompanyThreadLocal.getCompanyId());
 	}
 
 	public static AtomPager getPager(RequestContext requestContext) {
@@ -171,9 +169,9 @@ public class AtomUtil {
 	}
 
 	public static void saveUserInRequest(
-		HttpServletRequest request, User user) {
+		HttpServletRequest httpServletRequest, User user) {
 
-		request.setAttribute(_USER, user);
+		httpServletRequest.setAttribute(_USER, user);
 	}
 
 	public static String setPageInUrl(String url, int page) {

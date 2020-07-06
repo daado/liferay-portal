@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -38,16 +38,16 @@ public class ReleaseInfoBuilder {
 
 			// Get version
 
-			Properties releaseProps = _fileUtil.toProperties(
+			Properties releaseProps = _fileImpl.toProperties(
 				"../release.properties");
 
 			String version = releaseProps.getProperty("lp.version");
 
 			File file = new File(
-				"../portal-service/src/com/liferay/portal/kernel/util/" +
-					"ReleaseInfo.java");
+				"../portal-kernel/src/com/liferay/portal/kernel/util" +
+					"/ReleaseInfo.java");
 
-			String content = _fileUtil.read(file);
+			String content = _fileImpl.read(file);
 
 			int x = content.indexOf("String _VERSION = \"");
 
@@ -83,27 +83,13 @@ public class ReleaseInfoBuilder {
 
 			// Update ReleaseInfo.java
 
-			_fileUtil.write(file, content);
-
-			// Update portal-release.sql
-
-			file = new File("../sql/portal-data-release.sql");
-
-			content = _fileUtil.read(file);
-
-			x = content.indexOf("insert into Release_");
-			y = content.indexOf(", FALSE);", x);
-			x = content.lastIndexOf(" ", y - 1) + 1;
-
-			content = content.substring(0, x) + build + content.substring(y);
-
-			_fileUtil.write(file, content);
+			_fileImpl.write(file, content);
 		}
-		catch (Exception e) {
-			e.printStackTrace();
+		catch (Exception exception) {
+			exception.printStackTrace();
 		}
 	}
 
-	private static FileImpl _fileUtil = FileImpl.getInstance();
+	private static final FileImpl _fileImpl = FileImpl.getInstance();
 
 }

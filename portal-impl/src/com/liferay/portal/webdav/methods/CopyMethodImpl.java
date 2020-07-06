@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,9 +14,9 @@
 
 package com.liferay.portal.webdav.methods;
 
+import com.liferay.petra.string.StringBundler;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
-import com.liferay.portal.kernel.util.StringBundler;
 import com.liferay.portal.kernel.webdav.Resource;
 import com.liferay.portal.kernel.webdav.WebDAVException;
 import com.liferay.portal.kernel.webdav.WebDAVRequest;
@@ -36,15 +36,18 @@ public class CopyMethodImpl implements Method {
 	@Override
 	public int process(WebDAVRequest webDAVRequest) throws WebDAVException {
 		WebDAVStorage storage = webDAVRequest.getWebDAVStorage();
-		HttpServletRequest request = webDAVRequest.getHttpServletRequest();
+		HttpServletRequest httpServletRequest =
+			webDAVRequest.getHttpServletRequest();
 
 		long companyId = webDAVRequest.getCompanyId();
 		String destination = WebDAVUtil.getDestination(
-			request, storage.getRootPath());
+			httpServletRequest, storage.getRootPath());
 
-		StringBundler sb = new StringBundler();
+		StringBundler sb = null;
 
 		if (_log.isInfoEnabled()) {
+			sb = new StringBundler(6);
+
 			sb.append("Destination is ");
 			sb.append(destination);
 		}
@@ -60,8 +63,8 @@ public class CopyMethodImpl implements Method {
 			}
 
 			if (resource.isCollection()) {
-				boolean overwrite = WebDAVUtil.isOverwrite(request);
-				long depth = WebDAVUtil.getDepth(request);
+				boolean overwrite = WebDAVUtil.isOverwrite(httpServletRequest);
+				long depth = WebDAVUtil.getDepth(httpServletRequest);
 
 				if (_log.isInfoEnabled()) {
 					sb.append(", overwrite is ");
@@ -76,7 +79,7 @@ public class CopyMethodImpl implements Method {
 					webDAVRequest, resource, destination, overwrite, depth);
 			}
 
-			boolean overwrite = WebDAVUtil.isOverwrite(request);
+			boolean overwrite = WebDAVUtil.isOverwrite(httpServletRequest);
 
 			if (_log.isInfoEnabled()) {
 				sb.append(", overwrite is ");
@@ -92,6 +95,6 @@ public class CopyMethodImpl implements Method {
 		return HttpServletResponse.SC_FORBIDDEN;
 	}
 
-	private static Log _log = LogFactoryUtil.getLog(CopyMethodImpl.class);
+	private static final Log _log = LogFactoryUtil.getLog(CopyMethodImpl.class);
 
 }

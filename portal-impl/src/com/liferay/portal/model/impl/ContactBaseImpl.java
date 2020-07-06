@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,9 +14,8 @@
 
 package com.liferay.portal.model.impl;
 
-import com.liferay.portal.kernel.exception.SystemException;
-import com.liferay.portal.model.Contact;
-import com.liferay.portal.service.ContactLocalServiceUtil;
+import com.liferay.portal.kernel.model.Contact;
+import com.liferay.portal.kernel.service.ContactLocalServiceUtil;
 
 /**
  * The extended model base implementation for the Contact service. Represents a row in the &quot;Contact_&quot; database table, with each column mapped to a property of this class.
@@ -27,18 +26,19 @@ import com.liferay.portal.service.ContactLocalServiceUtil;
  *
  * @author Brian Wing Shun Chan
  * @see ContactImpl
- * @see com.liferay.portal.model.Contact
+ * @see Contact
  * @generated
  */
-public abstract class ContactBaseImpl extends ContactModelImpl
-	implements Contact {
+public abstract class ContactBaseImpl
+	extends ContactModelImpl implements Contact {
+
 	/*
 	 * NOTE FOR DEVELOPERS:
 	 *
-	 * Never modify or reference this class directly. All methods that expect a contact model instance should use the {@link Contact} interface instead.
+	 * Never modify or reference this class directly. All methods that expect a contact model instance should use the <code>Contact</code> interface instead.
 	 */
 	@Override
-	public void persist() throws SystemException {
+	public void persist() {
 		if (this.isNew()) {
 			ContactLocalServiceUtil.addContact(this);
 		}
@@ -46,4 +46,5 @@ public abstract class ContactBaseImpl extends ContactModelImpl
 			ContactLocalServiceUtil.updateContact(this);
 		}
 	}
+
 }

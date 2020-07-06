@@ -27,16 +27,16 @@
 	<xs:element name="entry">
 		<xs:complexType>
 			<xs:simpleContent>
-		      <xs:extension base="xs:string">
-		       	<xs:attribute name="name" type="entry-name" />
-		      </xs:extension>
-		    </xs:simpleContent>
+				<xs:extension base="xs:string">
+					<xs:attribute name="name" type="entry-name" />
+				</xs:extension>
+			</xs:simpleContent>
 		</xs:complexType>
 	</xs:element>
 	<xs:element name="meta-data">
 		<xs:complexType>
 			<xs:choice>
-				<xs:element ref="entry" maxOccurs="unbounded" />
+				<xs:element maxOccurs="unbounded" ref="entry" />
 			</xs:choice>
 			<xs:attribute name="locale" type="xs:string" use="required" />
 		</xs:complexType>
@@ -44,7 +44,7 @@
 	<xs:element name="root">
 		<xs:complexType>
 			<xs:choice>
-				<xs:element ref="dynamic-element" maxOccurs="unbounded" />
+				<xs:element maxOccurs="unbounded" ref="dynamic-element" />
 			</xs:choice>
 			<xs:attribute name="available-locales" type="xs:string" use="required" />
 			<xs:attribute name="default-locale" type="xs:string" use="required" />
@@ -52,8 +52,8 @@
 	</xs:element>
 	<xs:group name="dynamic-element-group">
 		<xs:sequence>
-			<xs:element ref="dynamic-element" minOccurs="0" maxOccurs="unbounded" />
-			<xs:element ref="meta-data" maxOccurs="unbounded" />
+			<xs:element maxOccurs="unbounded" minOccurs="0" ref="dynamic-element" />
+			<xs:element maxOccurs="unbounded" ref="meta-data" />
 		</xs:sequence>
 	</xs:group>
 	<xs:simpleType name="data-type">
@@ -95,23 +95,7 @@
 	</xs:simpleType>
 	<xs:simpleType name="type">
 		<xs:restriction base="xs:string">
-			<xs:enumeration value="checkbox" />
-			<xs:enumeration value="ddm-date" />
-			<xs:enumeration value="ddm-decimal" />
-			<xs:enumeration value="ddm-documentlibrary" />
-			<xs:enumeration value="ddm-integer" />
-			<xs:enumeration value="ddm-link-to-page" />
-			<xs:enumeration value="ddm-number" />
-			<xs:enumeration value="ddm-paragraph" />
-			<xs:enumeration value="ddm-separator" />
-			<xs:enumeration value="ddm-text-html" />
-			<xs:enumeration value="fieldset" />
-			<xs:enumeration value="option" />
-			<xs:enumeration value="radio" />
-			<xs:enumeration value="select" />
-			<xs:enumeration value="text" />
-			<xs:enumeration value="textarea" />
-			<xs:enumeration value="wcm-image" />
+			<xs:pattern value="(\w|\-|_)+" />
 		</xs:restriction>
 	</xs:simpleType>
 </xs:schema>

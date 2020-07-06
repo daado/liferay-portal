@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,9 +14,8 @@
 
 package com.liferay.portal.model.impl;
 
-import com.liferay.portal.kernel.exception.SystemException;
-import com.liferay.portal.model.BrowserTracker;
-import com.liferay.portal.service.BrowserTrackerLocalServiceUtil;
+import com.liferay.portal.kernel.model.BrowserTracker;
+import com.liferay.portal.kernel.service.BrowserTrackerLocalServiceUtil;
 
 /**
  * The extended model base implementation for the BrowserTracker service. Represents a row in the &quot;BrowserTracker&quot; database table, with each column mapped to a property of this class.
@@ -27,18 +26,19 @@ import com.liferay.portal.service.BrowserTrackerLocalServiceUtil;
  *
  * @author Brian Wing Shun Chan
  * @see BrowserTrackerImpl
- * @see com.liferay.portal.model.BrowserTracker
+ * @see BrowserTracker
  * @generated
  */
-public abstract class BrowserTrackerBaseImpl extends BrowserTrackerModelImpl
-	implements BrowserTracker {
+public abstract class BrowserTrackerBaseImpl
+	extends BrowserTrackerModelImpl implements BrowserTracker {
+
 	/*
 	 * NOTE FOR DEVELOPERS:
 	 *
-	 * Never modify or reference this class directly. All methods that expect a browser tracker model instance should use the {@link BrowserTracker} interface instead.
+	 * Never modify or reference this class directly. All methods that expect a browser tracker model instance should use the <code>BrowserTracker</code> interface instead.
 	 */
 	@Override
-	public void persist() throws SystemException {
+	public void persist() {
 		if (this.isNew()) {
 			BrowserTrackerLocalServiceUtil.addBrowserTracker(this);
 		}
@@ -46,4 +46,5 @@ public abstract class BrowserTrackerBaseImpl extends BrowserTrackerModelImpl
 			BrowserTrackerLocalServiceUtil.updateBrowserTracker(this);
 		}
 	}
+
 }

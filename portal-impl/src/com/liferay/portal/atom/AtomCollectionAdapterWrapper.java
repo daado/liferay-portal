@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -59,15 +59,15 @@ public class AtomCollectionAdapterWrapper<E>
 			_atomCollectionAdapter.deleteEntry(
 				resourceName, new AtomRequestContextImpl(requestContext));
 		}
-		catch (AtomException ae) {
+		catch (AtomException atomException) {
 			throw new ResponseContextException(
-				ae.getErrorCode(), ae.getCause());
+				atomException.getErrorCode(), atomException.getCause());
 		}
 	}
 
 	@Override
 	public List<Person> getAuthors(E entry, RequestContext requestContext) {
-		List<Person> persons = new ArrayList<Person>();
+		List<Person> persons = new ArrayList<>();
 
 		List<String> authors = _atomCollectionAdapter.getEntryAuthors(entry);
 
@@ -121,9 +121,9 @@ public class AtomCollectionAdapterWrapper<E>
 			return _atomCollectionAdapter.getFeedEntries(
 				new AtomRequestContextImpl(requestContext));
 		}
-		catch (AtomException ae) {
+		catch (AtomException atomException) {
 			throw new ResponseContextException(
-				ae.getErrorCode(), ae.getCause());
+				atomException.getErrorCode(), atomException.getCause());
 		}
 	}
 
@@ -140,9 +140,9 @@ public class AtomCollectionAdapterWrapper<E>
 			return _atomCollectionAdapter.getEntry(
 				resourceName, new AtomRequestContextImpl(requestContext));
 		}
-		catch (AtomException ae) {
+		catch (AtomException atomException) {
 			throw new ResponseContextException(
-				ae.getErrorCode(), ae.getCause());
+				atomException.getErrorCode(), atomException.getCause());
 		}
 	}
 
@@ -151,9 +151,9 @@ public class AtomCollectionAdapterWrapper<E>
 		try {
 			return _atomCollectionAdapter.getMediaName(entry);
 		}
-		catch (AtomException ae) {
+		catch (AtomException atomException) {
 			throw new ResponseContextException(
-				ae.getErrorCode(), ae.getCause());
+				atomException.getErrorCode(), atomException.getCause());
 		}
 	}
 
@@ -162,9 +162,9 @@ public class AtomCollectionAdapterWrapper<E>
 		try {
 			return _atomCollectionAdapter.getMediaStream(entry);
 		}
-		catch (AtomException ae) {
+		catch (AtomException atomException) {
 			throw new ResponseContextException(
-				ae.getErrorCode(), ae.getCause());
+				atomException.getErrorCode(), atomException.getCause());
 		}
 	}
 
@@ -209,9 +209,9 @@ public class AtomCollectionAdapterWrapper<E>
 				title, summary, content.getText(), updated,
 				new AtomRequestContextImpl(requestContext));
 		}
-		catch (AtomException ae) {
+		catch (AtomException atomException) {
 			throw new ResponseContextException(
-				ae.getErrorCode(), ae.getCause());
+				atomException.getErrorCode(), atomException.getCause());
 		}
 	}
 
@@ -226,9 +226,9 @@ public class AtomCollectionAdapterWrapper<E>
 				mimeType.toString(), slug, inputStream,
 				new AtomRequestContextImpl(requestContext));
 		}
-		catch (AtomException ae) {
+		catch (AtomException atomException) {
 			throw new ResponseContextException(
-				ae.getErrorCode(), ae.getCause());
+				atomException.getErrorCode(), atomException.getCause());
 		}
 	}
 
@@ -243,9 +243,9 @@ public class AtomCollectionAdapterWrapper<E>
 				entry, title, summary, content.getText(), updated,
 				new AtomRequestContextImpl(requestContext));
 		}
-		catch (AtomException ae) {
+		catch (AtomException atomException) {
 			throw new ResponseContextException(
-				ae.getErrorCode(), ae.getCause());
+				atomException.getErrorCode(), atomException.getCause());
 		}
 	}
 
@@ -260,9 +260,9 @@ public class AtomCollectionAdapterWrapper<E>
 				entry, contentType.toString(), slug, inputStream,
 				new AtomRequestContextImpl(requestContext));
 		}
-		catch (AtomException ae) {
+		catch (AtomException atomException) {
 			throw new ResponseContextException(
-				ae.getErrorCode(), ae.getCause());
+				atomException.getErrorCode(), atomException.getCause());
 		}
 	}
 
@@ -299,6 +299,6 @@ public class AtomCollectionAdapterWrapper<E>
 		}
 	}
 
-	private AtomCollectionAdapter<E> _atomCollectionAdapter;
+	private final AtomCollectionAdapter<E> _atomCollectionAdapter;
 
 }

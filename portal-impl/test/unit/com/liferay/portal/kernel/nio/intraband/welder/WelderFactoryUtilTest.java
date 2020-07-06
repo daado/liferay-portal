@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -18,28 +18,38 @@ import com.liferay.portal.kernel.nio.intraband.Intraband;
 import com.liferay.portal.kernel.nio.intraband.RegistrationReference;
 import com.liferay.portal.kernel.nio.intraband.welder.fifo.FIFOWelder;
 import com.liferay.portal.kernel.nio.intraband.welder.socket.SocketWelder;
-import com.liferay.portal.kernel.test.CodeCoverageAssertor;
+import com.liferay.portal.kernel.test.rule.AggregateTestRule;
+import com.liferay.portal.kernel.test.rule.CodeCoverageAssertor;
+import com.liferay.portal.kernel.test.rule.NewEnv;
 import com.liferay.portal.kernel.util.PropsKeys;
-import com.liferay.portal.test.AdviseWith;
-import com.liferay.portal.test.AspectJMockingNewClassLoaderJUnitTestRunner;
+import com.liferay.portal.test.rule.AdviseWith;
+import com.liferay.portal.test.rule.AspectJNewEnvTestRule;
 
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
 
 import org.junit.Assert;
 import org.junit.ClassRule;
+import org.junit.Rule;
 import org.junit.Test;
-import org.junit.runner.RunWith;
 
 /**
  * @author Shuyang Zhou
  */
-@RunWith(AspectJMockingNewClassLoaderJUnitTestRunner.class)
+@NewEnv(type = NewEnv.Type.CLASSLOADER)
 public class WelderFactoryUtilTest {
 
 	@ClassRule
-	public static CodeCoverageAssertor codeCoverageAssertor =
-		new CodeCoverageAssertor();
+	@Rule
+	public static final AggregateTestRule aggregateTestRule =
+		new AggregateTestRule(
+			AspectJNewEnvTestRule.INSTANCE, CodeCoverageAssertor.INSTANCE);
+
+	@NewEnv(type = NewEnv.Type.NONE)
+	@Test
+	public void testConstructor() {
+		new WelderFactoryUtil();
+	}
 
 	@Test
 	public void testCreateWelder() {
@@ -67,8 +77,9 @@ public class WelderFactoryUtilTest {
 
 			Assert.fail();
 		}
-		catch (RuntimeException re) {
-			Assert.assertTrue(re.getCause() instanceof IllegalAccessException);
+		catch (RuntimeException runtimeException) {
+			Assert.assertTrue(
+				runtimeException.getCause() instanceof IllegalAccessException);
 		}
 		finally {
 			System.clearProperty(PropsKeys.INTRABAND_WELDER_IMPL);
@@ -84,8 +95,9 @@ public class WelderFactoryUtilTest {
 
 			Assert.fail();
 		}
-		catch (RuntimeException re) {
-			Assert.assertTrue(re.getCause() instanceof ClassNotFoundException);
+		catch (RuntimeException runtimeException) {
+			Assert.assertTrue(
+				runtimeException.getCause() instanceof ClassNotFoundException);
 		}
 		finally {
 			System.clearProperty(PropsKeys.INTRABAND_WELDER_IMPL);
@@ -108,7 +120,7 @@ public class WelderFactoryUtilTest {
 
 	@AdviseWith(adviceClasses = {FIFOUtilAdvice.class, OSDetectorAdvice.class})
 	@Test
-	public void testGetWelderClassOnNonWindowsWithFIFO() {
+	public void testGetWelderClassOnNonwindowsWithFIFO() {
 		FIFOUtilAdvice._fifoSupported = true;
 		OSDetectorAdvice._windows = false;
 
@@ -117,7 +129,7 @@ public class WelderFactoryUtilTest {
 
 	@AdviseWith(adviceClasses = {FIFOUtilAdvice.class, OSDetectorAdvice.class})
 	@Test
-	public void testGetWelderClassOnNonWindowsWithoutFIFO() {
+	public void testGetWelderClassOnnonWindowsWithoutFIFO() {
 		FIFOUtilAdvice._fifoSupported = false;
 		OSDetectorAdvice._windows = false;
 
@@ -125,7 +137,7 @@ public class WelderFactoryUtilTest {
 			SocketWelder.class, WelderFactoryUtil.getWelderClass());
 	}
 
-	@AdviseWith(adviceClasses = {OSDetectorAdvice.class})
+	@AdviseWith(adviceClasses = OSDetectorAdvice.class)
 	@Test
 	public void testGetWelderClassOnWindows() {
 		OSDetectorAdvice._windows = true;
@@ -138,8 +150,9 @@ public class WelderFactoryUtilTest {
 	public static class FIFOUtilAdvice {
 
 		@Around(
-			"execution(public static boolean com.liferay.portal.kernel." +
-				"nio.intraband.welder.fifo.FIFOUtil.isFIFOSupported())")
+			"execution(public static boolean com.liferay.portal.kernel.nio." +
+				"intraband.welder.fifo.FIFOUtil.isFIFOSupported())"
+		)
 		public boolean isFIFOSupported() {
 			return _fifoSupported;
 		}
@@ -153,7 +166,8 @@ public class WelderFactoryUtilTest {
 
 		@Around(
 			"execution(public static boolean com.liferay.portal.kernel.util." +
-				"OSDetector.isWindows())")
+				"OSDetector.isWindows())"
+		)
 		public boolean isWindows() {
 			return _windows;
 		}

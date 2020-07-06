@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,8 +14,9 @@
 
 package com.liferay.taglib.theme;
 
+import com.liferay.portal.kernel.theme.ThemeDisplay;
+import com.liferay.portal.kernel.util.GetterUtil;
 import com.liferay.portal.kernel.util.WebKeys;
-import com.liferay.portal.theme.ThemeDisplay;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.jsp.tagext.TagSupport;
@@ -27,21 +28,28 @@ public class DefineObjectsTag extends TagSupport {
 
 	@Override
 	public int doStartTag() {
-		HttpServletRequest request =
+		HttpServletRequest httpServletRequest =
 			(HttpServletRequest)pageContext.getRequest();
 
-		ThemeDisplay themeDisplay = (ThemeDisplay)request.getAttribute(
-			WebKeys.THEME_DISPLAY);
+		ThemeDisplay themeDisplay =
+			(ThemeDisplay)httpServletRequest.getAttribute(
+				WebKeys.THEME_DISPLAY);
 
 		if (themeDisplay == null) {
 			return SKIP_BODY;
 		}
 
-		pageContext.setAttribute("themeDisplay", themeDisplay);
-		pageContext.setAttribute("company", themeDisplay.getCompany());
+		if (!GetterUtil.getBoolean(
+				pageContext.getAttribute(WebKeys.THEME_DEFINE_OBJECTS), true)) {
+
+			pageContext.setAttribute("themeDisplay", themeDisplay);
+
+			return SKIP_BODY;
+		}
+
 		pageContext.setAttribute("account", themeDisplay.getAccount());
-		pageContext.setAttribute("user", themeDisplay.getUser());
-		pageContext.setAttribute("realUser", themeDisplay.getRealUser());
+		pageContext.setAttribute("colorScheme", themeDisplay.getColorScheme());
+		pageContext.setAttribute("company", themeDisplay.getCompany());
 		pageContext.setAttribute("contact", themeDisplay.getContact());
 
 		if (themeDisplay.getLayout() != null) {
@@ -52,28 +60,29 @@ public class DefineObjectsTag extends TagSupport {
 			pageContext.setAttribute("layouts", themeDisplay.getLayouts());
 		}
 
-		pageContext.setAttribute("plid", new Long(themeDisplay.getPlid()));
-
 		if (themeDisplay.getLayoutTypePortlet() != null) {
 			pageContext.setAttribute(
 				"layoutTypePortlet", themeDisplay.getLayoutTypePortlet());
 		}
 
-		pageContext.setAttribute(
-			"scopeGroupId", new Long(themeDisplay.getScopeGroupId()));
+		pageContext.setAttribute("locale", themeDisplay.getLocale());
 		pageContext.setAttribute(
 			"permissionChecker", themeDisplay.getPermissionChecker());
-		pageContext.setAttribute("locale", themeDisplay.getLocale());
-		pageContext.setAttribute("timeZone", themeDisplay.getTimeZone());
-		pageContext.setAttribute("theme", themeDisplay.getTheme());
-		pageContext.setAttribute("colorScheme", themeDisplay.getColorScheme());
+		pageContext.setAttribute("plid", Long.valueOf(themeDisplay.getPlid()));
 		pageContext.setAttribute(
 			"portletDisplay", themeDisplay.getPortletDisplay());
+		pageContext.setAttribute("realUser", themeDisplay.getRealUser());
+		pageContext.setAttribute(
+			"scopeGroupId", Long.valueOf(themeDisplay.getScopeGroupId()));
+		pageContext.setAttribute("theme", themeDisplay.getTheme());
+		pageContext.setAttribute("themeDisplay", themeDisplay);
+		pageContext.setAttribute("timeZone", themeDisplay.getTimeZone());
+		pageContext.setAttribute("user", themeDisplay.getUser());
 
 		// Deprecated
 
 		pageContext.setAttribute(
-			"portletGroupId", new Long(themeDisplay.getScopeGroupId()));
+			"portletGroupId", themeDisplay.getScopeGroupId());
 
 		return SKIP_BODY;
 	}

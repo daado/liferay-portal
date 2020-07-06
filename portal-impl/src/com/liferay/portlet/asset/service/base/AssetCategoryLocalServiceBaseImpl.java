@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,44 +14,49 @@
 
 package com.liferay.portlet.asset.service.base;
 
+import com.liferay.asset.kernel.model.AssetCategory;
+import com.liferay.asset.kernel.service.AssetCategoryLocalService;
+import com.liferay.asset.kernel.service.persistence.AssetCategoryFinder;
+import com.liferay.asset.kernel.service.persistence.AssetCategoryPersistence;
+import com.liferay.asset.kernel.service.persistence.AssetEntryFinder;
+import com.liferay.asset.kernel.service.persistence.AssetEntryPersistence;
+import com.liferay.asset.kernel.service.persistence.AssetVocabularyFinder;
+import com.liferay.asset.kernel.service.persistence.AssetVocabularyPersistence;
+import com.liferay.exportimport.kernel.lar.ExportImportHelperUtil;
+import com.liferay.exportimport.kernel.lar.ManifestSummary;
+import com.liferay.exportimport.kernel.lar.PortletDataContext;
+import com.liferay.exportimport.kernel.lar.StagedModelDataHandlerUtil;
+import com.liferay.exportimport.kernel.lar.StagedModelType;
+import com.liferay.petra.function.UnsafeFunction;
+import com.liferay.petra.sql.dsl.query.DSLQuery;
 import com.liferay.portal.kernel.bean.BeanReference;
-import com.liferay.portal.kernel.bean.IdentifiableBean;
 import com.liferay.portal.kernel.dao.db.DB;
-import com.liferay.portal.kernel.dao.db.DBFactoryUtil;
+import com.liferay.portal.kernel.dao.db.DBManagerUtil;
 import com.liferay.portal.kernel.dao.jdbc.SqlUpdate;
 import com.liferay.portal.kernel.dao.jdbc.SqlUpdateFactoryUtil;
+import com.liferay.portal.kernel.dao.orm.ActionableDynamicQuery;
+import com.liferay.portal.kernel.dao.orm.DefaultActionableDynamicQuery;
 import com.liferay.portal.kernel.dao.orm.DynamicQuery;
 import com.liferay.portal.kernel.dao.orm.DynamicQueryFactoryUtil;
+import com.liferay.portal.kernel.dao.orm.ExportActionableDynamicQuery;
+import com.liferay.portal.kernel.dao.orm.IndexableActionableDynamicQuery;
 import com.liferay.portal.kernel.dao.orm.Projection;
 import com.liferay.portal.kernel.exception.PortalException;
 import com.liferay.portal.kernel.exception.SystemException;
+import com.liferay.portal.kernel.model.PersistedModel;
+import com.liferay.portal.kernel.module.framework.service.IdentifiableOSGiService;
 import com.liferay.portal.kernel.search.Indexable;
 import com.liferay.portal.kernel.search.IndexableType;
+import com.liferay.portal.kernel.service.BaseLocalServiceImpl;
+import com.liferay.portal.kernel.service.PersistedModelLocalServiceRegistry;
+import com.liferay.portal.kernel.service.persistence.BasePersistence;
+import com.liferay.portal.kernel.service.persistence.ClassNamePersistence;
+import com.liferay.portal.kernel.service.persistence.UserFinder;
+import com.liferay.portal.kernel.service.persistence.UserPersistence;
+import com.liferay.portal.kernel.service.persistence.change.tracking.CTPersistence;
+import com.liferay.portal.kernel.transaction.Transactional;
 import com.liferay.portal.kernel.util.OrderByComparator;
-import com.liferay.portal.model.PersistedModel;
-import com.liferay.portal.service.BaseLocalServiceImpl;
-import com.liferay.portal.service.PersistedModelLocalServiceRegistry;
-import com.liferay.portal.service.persistence.UserFinder;
-import com.liferay.portal.service.persistence.UserPersistence;
-import com.liferay.portal.util.PortalUtil;
-
-import com.liferay.portlet.asset.model.AssetCategory;
-import com.liferay.portlet.asset.service.AssetCategoryLocalService;
-import com.liferay.portlet.asset.service.persistence.AssetCategoryFinder;
-import com.liferay.portlet.asset.service.persistence.AssetCategoryPersistence;
-import com.liferay.portlet.asset.service.persistence.AssetCategoryPropertyFinder;
-import com.liferay.portlet.asset.service.persistence.AssetCategoryPropertyPersistence;
-import com.liferay.portlet.asset.service.persistence.AssetEntryFinder;
-import com.liferay.portlet.asset.service.persistence.AssetEntryPersistence;
-import com.liferay.portlet.asset.service.persistence.AssetLinkPersistence;
-import com.liferay.portlet.asset.service.persistence.AssetTagFinder;
-import com.liferay.portlet.asset.service.persistence.AssetTagPersistence;
-import com.liferay.portlet.asset.service.persistence.AssetTagPropertyFinder;
-import com.liferay.portlet.asset.service.persistence.AssetTagPropertyKeyFinder;
-import com.liferay.portlet.asset.service.persistence.AssetTagPropertyPersistence;
-import com.liferay.portlet.asset.service.persistence.AssetTagStatsPersistence;
-import com.liferay.portlet.asset.service.persistence.AssetVocabularyFinder;
-import com.liferay.portlet.asset.service.persistence.AssetVocabularyPersistence;
+import com.liferay.portal.kernel.util.PortalUtil;
 
 import java.io.Serializable;
 
@@ -68,16 +73,16 @@ import javax.sql.DataSource;
  *
  * @author Brian Wing Shun Chan
  * @see com.liferay.portlet.asset.service.impl.AssetCategoryLocalServiceImpl
- * @see com.liferay.portlet.asset.service.AssetCategoryLocalServiceUtil
  * @generated
  */
 public abstract class AssetCategoryLocalServiceBaseImpl
-	extends BaseLocalServiceImpl implements AssetCategoryLocalService,
-		IdentifiableBean {
+	extends BaseLocalServiceImpl
+	implements AssetCategoryLocalService, IdentifiableOSGiService {
+
 	/*
 	 * NOTE FOR DEVELOPERS:
 	 *
-	 * Never modify or reference this class directly. Always use {@link com.liferay.portlet.asset.service.AssetCategoryLocalServiceUtil} to access the asset category local service.
+	 * Never modify or reference this class directly. Use <code>AssetCategoryLocalService</code> via injection or a <code>org.osgi.util.tracker.ServiceTracker</code> or use <code>com.liferay.asset.kernel.service.AssetCategoryLocalServiceUtil</code>.
 	 */
 
 	/**
@@ -85,12 +90,10 @@ public abstract class AssetCategoryLocalServiceBaseImpl
 	 *
 	 * @param assetCategory the asset category
 	 * @return the asset category that was added
-	 * @throws SystemException if a system exception occurred
 	 */
 	@Indexable(type = IndexableType.REINDEX)
 	@Override
-	public AssetCategory addAssetCategory(AssetCategory assetCategory)
-		throws SystemException {
+	public AssetCategory addAssetCategory(AssetCategory assetCategory) {
 		assetCategory.setNew(true);
 
 		return assetCategoryPersistence.update(assetCategory);
@@ -103,6 +106,7 @@ public abstract class AssetCategoryLocalServiceBaseImpl
 	 * @return the new asset category
 	 */
 	@Override
+	@Transactional(enabled = false)
 	public AssetCategory createAssetCategory(long categoryId) {
 		return assetCategoryPersistence.create(categoryId);
 	}
@@ -113,12 +117,12 @@ public abstract class AssetCategoryLocalServiceBaseImpl
 	 * @param categoryId the primary key of the asset category
 	 * @return the asset category that was removed
 	 * @throws PortalException if a asset category with the primary key could not be found
-	 * @throws SystemException if a system exception occurred
 	 */
 	@Indexable(type = IndexableType.DELETE)
 	@Override
 	public AssetCategory deleteAssetCategory(long categoryId)
-		throws PortalException, SystemException {
+		throws PortalException {
+
 		return assetCategoryPersistence.remove(categoryId);
 	}
 
@@ -127,21 +131,24 @@ public abstract class AssetCategoryLocalServiceBaseImpl
 	 *
 	 * @param assetCategory the asset category
 	 * @return the asset category that was removed
-	 * @throws SystemException if a system exception occurred
 	 */
 	@Indexable(type = IndexableType.DELETE)
 	@Override
-	public AssetCategory deleteAssetCategory(AssetCategory assetCategory)
-		throws SystemException {
+	public AssetCategory deleteAssetCategory(AssetCategory assetCategory) {
 		return assetCategoryPersistence.remove(assetCategory);
+	}
+
+	@Override
+	public <T> T dslQuery(DSLQuery dslQuery) {
+		return assetCategoryPersistence.dslQuery(dslQuery);
 	}
 
 	@Override
 	public DynamicQuery dynamicQuery() {
 		Class<?> clazz = getClass();
 
-		return DynamicQueryFactoryUtil.forClass(AssetCategory.class,
-			clazz.getClassLoader());
+		return DynamicQueryFactoryUtil.forClass(
+			AssetCategory.class, clazz.getClassLoader());
 	}
 
 	/**
@@ -149,12 +156,9 @@ public abstract class AssetCategoryLocalServiceBaseImpl
 	 *
 	 * @param dynamicQuery the dynamic query
 	 * @return the matching rows
-	 * @throws SystemException if a system exception occurred
 	 */
 	@Override
-	@SuppressWarnings("rawtypes")
-	public List dynamicQuery(DynamicQuery dynamicQuery)
-		throws SystemException {
+	public <T> List<T> dynamicQuery(DynamicQuery dynamicQuery) {
 		return assetCategoryPersistence.findWithDynamicQuery(dynamicQuery);
 	}
 
@@ -162,28 +166,27 @@ public abstract class AssetCategoryLocalServiceBaseImpl
 	 * Performs a dynamic query on the database and returns a range of the matching rows.
 	 *
 	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to {@link com.liferay.portal.kernel.dao.orm.QueryUtil#ALL_POS} will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent and pagination is required (<code>start</code> and <code>end</code> are not {@link com.liferay.portal.kernel.dao.orm.QueryUtil#ALL_POS}), then the query will include the default ORDER BY logic from {@link com.liferay.portlet.asset.model.impl.AssetCategoryModelImpl}. If both <code>orderByComparator</code> and pagination are absent, for performance reasons, the query will not have an ORDER BY clause and the returned result set will be sorted on by the primary key in an ascending order.
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>com.liferay.portal.kernel.dao.orm.QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>com.liferay.portlet.asset.model.impl.AssetCategoryModelImpl</code>.
 	 * </p>
 	 *
 	 * @param dynamicQuery the dynamic query
 	 * @param start the lower bound of the range of model instances
 	 * @param end the upper bound of the range of model instances (not inclusive)
 	 * @return the range of matching rows
-	 * @throws SystemException if a system exception occurred
 	 */
 	@Override
-	@SuppressWarnings("rawtypes")
-	public List dynamicQuery(DynamicQuery dynamicQuery, int start, int end)
-		throws SystemException {
-		return assetCategoryPersistence.findWithDynamicQuery(dynamicQuery,
-			start, end);
+	public <T> List<T> dynamicQuery(
+		DynamicQuery dynamicQuery, int start, int end) {
+
+		return assetCategoryPersistence.findWithDynamicQuery(
+			dynamicQuery, start, end);
 	}
 
 	/**
 	 * Performs a dynamic query on the database and returns an ordered range of the matching rows.
 	 *
 	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to {@link com.liferay.portal.kernel.dao.orm.QueryUtil#ALL_POS} will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent and pagination is required (<code>start</code> and <code>end</code> are not {@link com.liferay.portal.kernel.dao.orm.QueryUtil#ALL_POS}), then the query will include the default ORDER BY logic from {@link com.liferay.portlet.asset.model.impl.AssetCategoryModelImpl}. If both <code>orderByComparator</code> and pagination are absent, for performance reasons, the query will not have an ORDER BY clause and the returned result set will be sorted on by the primary key in an ascending order.
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>com.liferay.portal.kernel.dao.orm.QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>com.liferay.portlet.asset.model.impl.AssetCategoryModelImpl</code>.
 	 * </p>
 	 *
 	 * @param dynamicQuery the dynamic query
@@ -191,63 +194,45 @@ public abstract class AssetCategoryLocalServiceBaseImpl
 	 * @param end the upper bound of the range of model instances (not inclusive)
 	 * @param orderByComparator the comparator to order the results by (optionally <code>null</code>)
 	 * @return the ordered range of matching rows
-	 * @throws SystemException if a system exception occurred
 	 */
 	@Override
-	@SuppressWarnings("rawtypes")
-	public List dynamicQuery(DynamicQuery dynamicQuery, int start, int end,
-		OrderByComparator orderByComparator) throws SystemException {
-		return assetCategoryPersistence.findWithDynamicQuery(dynamicQuery,
-			start, end, orderByComparator);
+	public <T> List<T> dynamicQuery(
+		DynamicQuery dynamicQuery, int start, int end,
+		OrderByComparator<T> orderByComparator) {
+
+		return assetCategoryPersistence.findWithDynamicQuery(
+			dynamicQuery, start, end, orderByComparator);
 	}
 
 	/**
-	 * Returns the number of rows that match the dynamic query.
+	 * Returns the number of rows matching the dynamic query.
 	 *
 	 * @param dynamicQuery the dynamic query
-	 * @return the number of rows that match the dynamic query
-	 * @throws SystemException if a system exception occurred
+	 * @return the number of rows matching the dynamic query
 	 */
 	@Override
-	public long dynamicQueryCount(DynamicQuery dynamicQuery)
-		throws SystemException {
+	public long dynamicQueryCount(DynamicQuery dynamicQuery) {
 		return assetCategoryPersistence.countWithDynamicQuery(dynamicQuery);
 	}
 
 	/**
-	 * Returns the number of rows that match the dynamic query.
+	 * Returns the number of rows matching the dynamic query.
 	 *
 	 * @param dynamicQuery the dynamic query
 	 * @param projection the projection to apply to the query
-	 * @return the number of rows that match the dynamic query
-	 * @throws SystemException if a system exception occurred
+	 * @return the number of rows matching the dynamic query
 	 */
 	@Override
-	public long dynamicQueryCount(DynamicQuery dynamicQuery,
-		Projection projection) throws SystemException {
-		return assetCategoryPersistence.countWithDynamicQuery(dynamicQuery,
-			projection);
+	public long dynamicQueryCount(
+		DynamicQuery dynamicQuery, Projection projection) {
+
+		return assetCategoryPersistence.countWithDynamicQuery(
+			dynamicQuery, projection);
 	}
 
 	@Override
-	public AssetCategory fetchAssetCategory(long categoryId)
-		throws SystemException {
+	public AssetCategory fetchAssetCategory(long categoryId) {
 		return assetCategoryPersistence.fetchByPrimaryKey(categoryId);
-	}
-
-	/**
-	 * Returns the asset category with the matching UUID and company.
-	 *
-	 * @param uuid the asset category's UUID
-	 * @param  companyId the primary key of the company
-	 * @return the matching asset category, or <code>null</code> if a matching asset category could not be found
-	 * @throws SystemException if a system exception occurred
-	 */
-	@Override
-	public AssetCategory fetchAssetCategoryByUuidAndCompanyId(String uuid,
-		long companyId) throws SystemException {
-		return assetCategoryPersistence.fetchByUuid_C_First(uuid, companyId,
-			null);
 	}
 
 	/**
@@ -256,12 +241,27 @@ public abstract class AssetCategoryLocalServiceBaseImpl
 	 * @param uuid the asset category's UUID
 	 * @param groupId the primary key of the group
 	 * @return the matching asset category, or <code>null</code> if a matching asset category could not be found
-	 * @throws SystemException if a system exception occurred
 	 */
 	@Override
-	public AssetCategory fetchAssetCategoryByUuidAndGroupId(String uuid,
-		long groupId) throws SystemException {
+	public AssetCategory fetchAssetCategoryByUuidAndGroupId(
+		String uuid, long groupId) {
+
 		return assetCategoryPersistence.fetchByUUID_G(uuid, groupId);
+	}
+
+	/**
+	 * Returns the asset category with the matching external reference code and company.
+	 *
+	 * @param companyId the primary key of the company
+	 * @param externalReferenceCode the asset category's external reference code
+	 * @return the matching asset category, or <code>null</code> if a matching asset category could not be found
+	 */
+	@Override
+	public AssetCategory fetchAssetCategoryByReferenceCode(
+		long companyId, String externalReferenceCode) {
+
+		return assetCategoryPersistence.fetchByC_ERC(
+			companyId, externalReferenceCode);
 	}
 
 	/**
@@ -270,33 +270,190 @@ public abstract class AssetCategoryLocalServiceBaseImpl
 	 * @param categoryId the primary key of the asset category
 	 * @return the asset category
 	 * @throws PortalException if a asset category with the primary key could not be found
-	 * @throws SystemException if a system exception occurred
 	 */
 	@Override
 	public AssetCategory getAssetCategory(long categoryId)
-		throws PortalException, SystemException {
+		throws PortalException {
+
 		return assetCategoryPersistence.findByPrimaryKey(categoryId);
 	}
 
 	@Override
+	public ActionableDynamicQuery getActionableDynamicQuery() {
+		ActionableDynamicQuery actionableDynamicQuery =
+			new DefaultActionableDynamicQuery();
+
+		actionableDynamicQuery.setBaseLocalService(assetCategoryLocalService);
+		actionableDynamicQuery.setClassLoader(getClassLoader());
+		actionableDynamicQuery.setModelClass(AssetCategory.class);
+
+		actionableDynamicQuery.setPrimaryKeyPropertyName("categoryId");
+
+		return actionableDynamicQuery;
+	}
+
+	@Override
+	public IndexableActionableDynamicQuery
+		getIndexableActionableDynamicQuery() {
+
+		IndexableActionableDynamicQuery indexableActionableDynamicQuery =
+			new IndexableActionableDynamicQuery();
+
+		indexableActionableDynamicQuery.setBaseLocalService(
+			assetCategoryLocalService);
+		indexableActionableDynamicQuery.setClassLoader(getClassLoader());
+		indexableActionableDynamicQuery.setModelClass(AssetCategory.class);
+
+		indexableActionableDynamicQuery.setPrimaryKeyPropertyName("categoryId");
+
+		return indexableActionableDynamicQuery;
+	}
+
+	protected void initActionableDynamicQuery(
+		ActionableDynamicQuery actionableDynamicQuery) {
+
+		actionableDynamicQuery.setBaseLocalService(assetCategoryLocalService);
+		actionableDynamicQuery.setClassLoader(getClassLoader());
+		actionableDynamicQuery.setModelClass(AssetCategory.class);
+
+		actionableDynamicQuery.setPrimaryKeyPropertyName("categoryId");
+	}
+
+	@Override
+	public ExportActionableDynamicQuery getExportActionableDynamicQuery(
+		final PortletDataContext portletDataContext) {
+
+		final ExportActionableDynamicQuery exportActionableDynamicQuery =
+			new ExportActionableDynamicQuery() {
+
+				@Override
+				public long performCount() throws PortalException {
+					ManifestSummary manifestSummary =
+						portletDataContext.getManifestSummary();
+
+					StagedModelType stagedModelType = getStagedModelType();
+
+					long modelAdditionCount = super.performCount();
+
+					manifestSummary.addModelAdditionCount(
+						stagedModelType, modelAdditionCount);
+
+					long modelDeletionCount =
+						ExportImportHelperUtil.getModelDeletionCount(
+							portletDataContext, stagedModelType);
+
+					manifestSummary.addModelDeletionCount(
+						stagedModelType, modelDeletionCount);
+
+					return modelAdditionCount;
+				}
+
+			};
+
+		initActionableDynamicQuery(exportActionableDynamicQuery);
+
+		exportActionableDynamicQuery.setAddCriteriaMethod(
+			new ActionableDynamicQuery.AddCriteriaMethod() {
+
+				@Override
+				public void addCriteria(DynamicQuery dynamicQuery) {
+					portletDataContext.addDateRangeCriteria(
+						dynamicQuery, "modifiedDate");
+				}
+
+			});
+
+		exportActionableDynamicQuery.setCompanyId(
+			portletDataContext.getCompanyId());
+
+		exportActionableDynamicQuery.setGroupId(
+			portletDataContext.getScopeGroupId());
+
+		exportActionableDynamicQuery.setPerformActionMethod(
+			new ActionableDynamicQuery.PerformActionMethod<AssetCategory>() {
+
+				@Override
+				public void performAction(AssetCategory assetCategory)
+					throws PortalException {
+
+					StagedModelDataHandlerUtil.exportStagedModel(
+						portletDataContext, assetCategory);
+				}
+
+			});
+		exportActionableDynamicQuery.setStagedModelType(
+			new StagedModelType(
+				PortalUtil.getClassNameId(AssetCategory.class.getName())));
+
+		return exportActionableDynamicQuery;
+	}
+
+	/**
+	 * @throws PortalException
+	 */
+	public PersistedModel createPersistedModel(Serializable primaryKeyObj)
+		throws PortalException {
+
+		return assetCategoryPersistence.create(
+			((Long)primaryKeyObj).longValue());
+	}
+
+	/**
+	 * @throws PortalException
+	 */
+	@Override
+	public PersistedModel deletePersistedModel(PersistedModel persistedModel)
+		throws PortalException {
+
+		return assetCategoryLocalService.deleteAssetCategory(
+			(AssetCategory)persistedModel);
+	}
+
+	public BasePersistence<AssetCategory> getBasePersistence() {
+		return assetCategoryPersistence;
+	}
+
+	/**
+	 * @throws PortalException
+	 */
+	@Override
 	public PersistedModel getPersistedModel(Serializable primaryKeyObj)
-		throws PortalException, SystemException {
+		throws PortalException {
+
 		return assetCategoryPersistence.findByPrimaryKey(primaryKeyObj);
 	}
 
 	/**
-	 * Returns the asset category with the matching UUID and company.
+	 * Returns all the asset categories matching the UUID and company.
 	 *
-	 * @param uuid the asset category's UUID
-	 * @param  companyId the primary key of the company
-	 * @return the matching asset category
-	 * @throws PortalException if a matching asset category could not be found
-	 * @throws SystemException if a system exception occurred
+	 * @param uuid the UUID of the asset categories
+	 * @param companyId the primary key of the company
+	 * @return the matching asset categories, or an empty list if no matches were found
 	 */
 	@Override
-	public AssetCategory getAssetCategoryByUuidAndCompanyId(String uuid,
-		long companyId) throws PortalException, SystemException {
-		return assetCategoryPersistence.findByUuid_C_First(uuid, companyId, null);
+	public List<AssetCategory> getAssetCategoriesByUuidAndCompanyId(
+		String uuid, long companyId) {
+
+		return assetCategoryPersistence.findByUuid_C(uuid, companyId);
+	}
+
+	/**
+	 * Returns a range of asset categories matching the UUID and company.
+	 *
+	 * @param uuid the UUID of the asset categories
+	 * @param companyId the primary key of the company
+	 * @param start the lower bound of the range of asset categories
+	 * @param end the upper bound of the range of asset categories (not inclusive)
+	 * @param orderByComparator the comparator to order the results by (optionally <code>null</code>)
+	 * @return the range of matching asset categories, or an empty list if no matches were found
+	 */
+	@Override
+	public List<AssetCategory> getAssetCategoriesByUuidAndCompanyId(
+		String uuid, long companyId, int start, int end,
+		OrderByComparator<AssetCategory> orderByComparator) {
+
+		return assetCategoryPersistence.findByUuid_C(
+			uuid, companyId, start, end, orderByComparator);
 	}
 
 	/**
@@ -306,11 +463,12 @@ public abstract class AssetCategoryLocalServiceBaseImpl
 	 * @param groupId the primary key of the group
 	 * @return the matching asset category
 	 * @throws PortalException if a matching asset category could not be found
-	 * @throws SystemException if a system exception occurred
 	 */
 	@Override
-	public AssetCategory getAssetCategoryByUuidAndGroupId(String uuid,
-		long groupId) throws PortalException, SystemException {
+	public AssetCategory getAssetCategoryByUuidAndGroupId(
+			String uuid, long groupId)
+		throws PortalException {
+
 		return assetCategoryPersistence.findByUUID_G(uuid, groupId);
 	}
 
@@ -318,17 +476,15 @@ public abstract class AssetCategoryLocalServiceBaseImpl
 	 * Returns a range of all the asset categories.
 	 *
 	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to {@link com.liferay.portal.kernel.dao.orm.QueryUtil#ALL_POS} will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent and pagination is required (<code>start</code> and <code>end</code> are not {@link com.liferay.portal.kernel.dao.orm.QueryUtil#ALL_POS}), then the query will include the default ORDER BY logic from {@link com.liferay.portlet.asset.model.impl.AssetCategoryModelImpl}. If both <code>orderByComparator</code> and pagination are absent, for performance reasons, the query will not have an ORDER BY clause and the returned result set will be sorted on by the primary key in an ascending order.
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>com.liferay.portal.kernel.dao.orm.QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>com.liferay.portlet.asset.model.impl.AssetCategoryModelImpl</code>.
 	 * </p>
 	 *
 	 * @param start the lower bound of the range of asset categories
 	 * @param end the upper bound of the range of asset categories (not inclusive)
 	 * @return the range of asset categories
-	 * @throws SystemException if a system exception occurred
 	 */
 	@Override
-	public List<AssetCategory> getAssetCategories(int start, int end)
-		throws SystemException {
+	public List<AssetCategory> getAssetCategories(int start, int end) {
 		return assetCategoryPersistence.findAll(start, end);
 	}
 
@@ -336,10 +492,9 @@ public abstract class AssetCategoryLocalServiceBaseImpl
 	 * Returns the number of asset categories.
 	 *
 	 * @return the number of asset categories
-	 * @throws SystemException if a system exception occurred
 	 */
 	@Override
-	public int getAssetCategoriesCount() throws SystemException {
+	public int getAssetCategoriesCount() {
 		return assetCategoryPersistence.countAll();
 	}
 
@@ -348,158 +503,149 @@ public abstract class AssetCategoryLocalServiceBaseImpl
 	 *
 	 * @param assetCategory the asset category
 	 * @return the asset category that was updated
-	 * @throws SystemException if a system exception occurred
 	 */
 	@Indexable(type = IndexableType.REINDEX)
 	@Override
-	public AssetCategory updateAssetCategory(AssetCategory assetCategory)
-		throws SystemException {
+	public AssetCategory updateAssetCategory(AssetCategory assetCategory) {
 		return assetCategoryPersistence.update(assetCategory);
 	}
 
 	/**
-	 * @throws SystemException if a system exception occurred
 	 */
 	@Override
-	public void addAssetEntryAssetCategory(long entryId, long categoryId)
-		throws SystemException {
+	public void addAssetEntryAssetCategory(long entryId, long categoryId) {
 		assetEntryPersistence.addAssetCategory(entryId, categoryId);
 	}
 
 	/**
-	 * @throws SystemException if a system exception occurred
 	 */
 	@Override
-	public void addAssetEntryAssetCategory(long entryId,
-		AssetCategory assetCategory) throws SystemException {
+	public void addAssetEntryAssetCategory(
+		long entryId, AssetCategory assetCategory) {
+
 		assetEntryPersistence.addAssetCategory(entryId, assetCategory);
 	}
 
 	/**
-	 * @throws SystemException if a system exception occurred
 	 */
 	@Override
-	public void addAssetEntryAssetCategories(long entryId, long[] categoryIds)
-		throws SystemException {
+	public void addAssetEntryAssetCategories(long entryId, long[] categoryIds) {
 		assetEntryPersistence.addAssetCategories(entryId, categoryIds);
 	}
 
 	/**
-	 * @throws SystemException if a system exception occurred
 	 */
 	@Override
-	public void addAssetEntryAssetCategories(long entryId,
-		List<AssetCategory> AssetCategories) throws SystemException {
-		assetEntryPersistence.addAssetCategories(entryId, AssetCategories);
+	public void addAssetEntryAssetCategories(
+		long entryId, List<AssetCategory> assetCategories) {
+
+		assetEntryPersistence.addAssetCategories(entryId, assetCategories);
 	}
 
 	/**
-	 * @throws SystemException if a system exception occurred
 	 */
 	@Override
-	public void clearAssetEntryAssetCategories(long entryId)
-		throws SystemException {
+	public void clearAssetEntryAssetCategories(long entryId) {
 		assetEntryPersistence.clearAssetCategories(entryId);
 	}
 
 	/**
-	 * @throws SystemException if a system exception occurred
 	 */
 	@Override
-	public void deleteAssetEntryAssetCategory(long entryId, long categoryId)
-		throws SystemException {
+	public void deleteAssetEntryAssetCategory(long entryId, long categoryId) {
 		assetEntryPersistence.removeAssetCategory(entryId, categoryId);
 	}
 
 	/**
-	 * @throws SystemException if a system exception occurred
 	 */
 	@Override
-	public void deleteAssetEntryAssetCategory(long entryId,
-		AssetCategory assetCategory) throws SystemException {
+	public void deleteAssetEntryAssetCategory(
+		long entryId, AssetCategory assetCategory) {
+
 		assetEntryPersistence.removeAssetCategory(entryId, assetCategory);
 	}
 
 	/**
-	 * @throws SystemException if a system exception occurred
 	 */
 	@Override
-	public void deleteAssetEntryAssetCategories(long entryId, long[] categoryIds)
-		throws SystemException {
+	public void deleteAssetEntryAssetCategories(
+		long entryId, long[] categoryIds) {
+
 		assetEntryPersistence.removeAssetCategories(entryId, categoryIds);
 	}
 
 	/**
-	 * @throws SystemException if a system exception occurred
 	 */
 	@Override
-	public void deleteAssetEntryAssetCategories(long entryId,
-		List<AssetCategory> AssetCategories) throws SystemException {
-		assetEntryPersistence.removeAssetCategories(entryId, AssetCategories);
+	public void deleteAssetEntryAssetCategories(
+		long entryId, List<AssetCategory> assetCategories) {
+
+		assetEntryPersistence.removeAssetCategories(entryId, assetCategories);
 	}
 
 	/**
-	 * @throws SystemException if a system exception occurred
+	 * Returns the entryIds of the asset entries associated with the asset category.
+	 *
+	 * @param categoryId the categoryId of the asset category
+	 * @return long[] the entryIds of asset entries associated with the asset category
 	 */
 	@Override
-	public List<AssetCategory> getAssetEntryAssetCategories(long entryId)
-		throws SystemException {
+	public long[] getAssetEntryPrimaryKeys(long categoryId) {
+		return assetCategoryPersistence.getAssetEntryPrimaryKeys(categoryId);
+	}
+
+	/**
+	 */
+	@Override
+	public List<AssetCategory> getAssetEntryAssetCategories(long entryId) {
 		return assetEntryPersistence.getAssetCategories(entryId);
 	}
 
 	/**
-	 * @throws SystemException if a system exception occurred
 	 */
 	@Override
-	public List<AssetCategory> getAssetEntryAssetCategories(long entryId,
-		int start, int end) throws SystemException {
+	public List<AssetCategory> getAssetEntryAssetCategories(
+		long entryId, int start, int end) {
+
 		return assetEntryPersistence.getAssetCategories(entryId, start, end);
 	}
 
 	/**
-	 * @throws SystemException if a system exception occurred
 	 */
 	@Override
-	public List<AssetCategory> getAssetEntryAssetCategories(long entryId,
-		int start, int end, OrderByComparator orderByComparator)
-		throws SystemException {
-		return assetEntryPersistence.getAssetCategories(entryId, start, end,
-			orderByComparator);
+	public List<AssetCategory> getAssetEntryAssetCategories(
+		long entryId, int start, int end,
+		OrderByComparator<AssetCategory> orderByComparator) {
+
+		return assetEntryPersistence.getAssetCategories(
+			entryId, start, end, orderByComparator);
 	}
 
 	/**
-	 * @throws SystemException if a system exception occurred
 	 */
 	@Override
-	public int getAssetEntryAssetCategoriesCount(long entryId)
-		throws SystemException {
+	public int getAssetEntryAssetCategoriesCount(long entryId) {
 		return assetEntryPersistence.getAssetCategoriesSize(entryId);
 	}
 
 	/**
-	 * @throws SystemException if a system exception occurred
 	 */
 	@Override
-	public boolean hasAssetEntryAssetCategory(long entryId, long categoryId)
-		throws SystemException {
+	public boolean hasAssetEntryAssetCategory(long entryId, long categoryId) {
 		return assetEntryPersistence.containsAssetCategory(entryId, categoryId);
 	}
 
 	/**
-	 * @throws SystemException if a system exception occurred
 	 */
 	@Override
-	public boolean hasAssetEntryAssetCategories(long entryId)
-		throws SystemException {
+	public boolean hasAssetEntryAssetCategories(long entryId) {
 		return assetEntryPersistence.containsAssetCategories(entryId);
 	}
 
 	/**
-	 * @throws SystemException if a system exception occurred
 	 */
 	@Override
-	public void setAssetEntryAssetCategories(long entryId, long[] categoryIds)
-		throws SystemException {
+	public void setAssetEntryAssetCategories(long entryId, long[] categoryIds) {
 		assetEntryPersistence.setAssetCategories(entryId, categoryIds);
 	}
 
@@ -508,7 +654,7 @@ public abstract class AssetCategoryLocalServiceBaseImpl
 	 *
 	 * @return the asset category local service
 	 */
-	public com.liferay.portlet.asset.service.AssetCategoryLocalService getAssetCategoryLocalService() {
+	public AssetCategoryLocalService getAssetCategoryLocalService() {
 		return assetCategoryLocalService;
 	}
 
@@ -518,27 +664,9 @@ public abstract class AssetCategoryLocalServiceBaseImpl
 	 * @param assetCategoryLocalService the asset category local service
 	 */
 	public void setAssetCategoryLocalService(
-		com.liferay.portlet.asset.service.AssetCategoryLocalService assetCategoryLocalService) {
+		AssetCategoryLocalService assetCategoryLocalService) {
+
 		this.assetCategoryLocalService = assetCategoryLocalService;
-	}
-
-	/**
-	 * Returns the asset category remote service.
-	 *
-	 * @return the asset category remote service
-	 */
-	public com.liferay.portlet.asset.service.AssetCategoryService getAssetCategoryService() {
-		return assetCategoryService;
-	}
-
-	/**
-	 * Sets the asset category remote service.
-	 *
-	 * @param assetCategoryService the asset category remote service
-	 */
-	public void setAssetCategoryService(
-		com.liferay.portlet.asset.service.AssetCategoryService assetCategoryService) {
-		this.assetCategoryService = assetCategoryService;
 	}
 
 	/**
@@ -557,6 +685,7 @@ public abstract class AssetCategoryLocalServiceBaseImpl
 	 */
 	public void setAssetCategoryPersistence(
 		AssetCategoryPersistence assetCategoryPersistence) {
+
 		this.assetCategoryPersistence = assetCategoryPersistence;
 	}
 
@@ -574,480 +703,10 @@ public abstract class AssetCategoryLocalServiceBaseImpl
 	 *
 	 * @param assetCategoryFinder the asset category finder
 	 */
-	public void setAssetCategoryFinder(AssetCategoryFinder assetCategoryFinder) {
+	public void setAssetCategoryFinder(
+		AssetCategoryFinder assetCategoryFinder) {
+
 		this.assetCategoryFinder = assetCategoryFinder;
-	}
-
-	/**
-	 * Returns the asset category property local service.
-	 *
-	 * @return the asset category property local service
-	 */
-	public com.liferay.portlet.asset.service.AssetCategoryPropertyLocalService getAssetCategoryPropertyLocalService() {
-		return assetCategoryPropertyLocalService;
-	}
-
-	/**
-	 * Sets the asset category property local service.
-	 *
-	 * @param assetCategoryPropertyLocalService the asset category property local service
-	 */
-	public void setAssetCategoryPropertyLocalService(
-		com.liferay.portlet.asset.service.AssetCategoryPropertyLocalService assetCategoryPropertyLocalService) {
-		this.assetCategoryPropertyLocalService = assetCategoryPropertyLocalService;
-	}
-
-	/**
-	 * Returns the asset category property remote service.
-	 *
-	 * @return the asset category property remote service
-	 */
-	public com.liferay.portlet.asset.service.AssetCategoryPropertyService getAssetCategoryPropertyService() {
-		return assetCategoryPropertyService;
-	}
-
-	/**
-	 * Sets the asset category property remote service.
-	 *
-	 * @param assetCategoryPropertyService the asset category property remote service
-	 */
-	public void setAssetCategoryPropertyService(
-		com.liferay.portlet.asset.service.AssetCategoryPropertyService assetCategoryPropertyService) {
-		this.assetCategoryPropertyService = assetCategoryPropertyService;
-	}
-
-	/**
-	 * Returns the asset category property persistence.
-	 *
-	 * @return the asset category property persistence
-	 */
-	public AssetCategoryPropertyPersistence getAssetCategoryPropertyPersistence() {
-		return assetCategoryPropertyPersistence;
-	}
-
-	/**
-	 * Sets the asset category property persistence.
-	 *
-	 * @param assetCategoryPropertyPersistence the asset category property persistence
-	 */
-	public void setAssetCategoryPropertyPersistence(
-		AssetCategoryPropertyPersistence assetCategoryPropertyPersistence) {
-		this.assetCategoryPropertyPersistence = assetCategoryPropertyPersistence;
-	}
-
-	/**
-	 * Returns the asset category property finder.
-	 *
-	 * @return the asset category property finder
-	 */
-	public AssetCategoryPropertyFinder getAssetCategoryPropertyFinder() {
-		return assetCategoryPropertyFinder;
-	}
-
-	/**
-	 * Sets the asset category property finder.
-	 *
-	 * @param assetCategoryPropertyFinder the asset category property finder
-	 */
-	public void setAssetCategoryPropertyFinder(
-		AssetCategoryPropertyFinder assetCategoryPropertyFinder) {
-		this.assetCategoryPropertyFinder = assetCategoryPropertyFinder;
-	}
-
-	/**
-	 * Returns the asset entry local service.
-	 *
-	 * @return the asset entry local service
-	 */
-	public com.liferay.portlet.asset.service.AssetEntryLocalService getAssetEntryLocalService() {
-		return assetEntryLocalService;
-	}
-
-	/**
-	 * Sets the asset entry local service.
-	 *
-	 * @param assetEntryLocalService the asset entry local service
-	 */
-	public void setAssetEntryLocalService(
-		com.liferay.portlet.asset.service.AssetEntryLocalService assetEntryLocalService) {
-		this.assetEntryLocalService = assetEntryLocalService;
-	}
-
-	/**
-	 * Returns the asset entry remote service.
-	 *
-	 * @return the asset entry remote service
-	 */
-	public com.liferay.portlet.asset.service.AssetEntryService getAssetEntryService() {
-		return assetEntryService;
-	}
-
-	/**
-	 * Sets the asset entry remote service.
-	 *
-	 * @param assetEntryService the asset entry remote service
-	 */
-	public void setAssetEntryService(
-		com.liferay.portlet.asset.service.AssetEntryService assetEntryService) {
-		this.assetEntryService = assetEntryService;
-	}
-
-	/**
-	 * Returns the asset entry persistence.
-	 *
-	 * @return the asset entry persistence
-	 */
-	public AssetEntryPersistence getAssetEntryPersistence() {
-		return assetEntryPersistence;
-	}
-
-	/**
-	 * Sets the asset entry persistence.
-	 *
-	 * @param assetEntryPersistence the asset entry persistence
-	 */
-	public void setAssetEntryPersistence(
-		AssetEntryPersistence assetEntryPersistence) {
-		this.assetEntryPersistence = assetEntryPersistence;
-	}
-
-	/**
-	 * Returns the asset entry finder.
-	 *
-	 * @return the asset entry finder
-	 */
-	public AssetEntryFinder getAssetEntryFinder() {
-		return assetEntryFinder;
-	}
-
-	/**
-	 * Sets the asset entry finder.
-	 *
-	 * @param assetEntryFinder the asset entry finder
-	 */
-	public void setAssetEntryFinder(AssetEntryFinder assetEntryFinder) {
-		this.assetEntryFinder = assetEntryFinder;
-	}
-
-	/**
-	 * Returns the asset link local service.
-	 *
-	 * @return the asset link local service
-	 */
-	public com.liferay.portlet.asset.service.AssetLinkLocalService getAssetLinkLocalService() {
-		return assetLinkLocalService;
-	}
-
-	/**
-	 * Sets the asset link local service.
-	 *
-	 * @param assetLinkLocalService the asset link local service
-	 */
-	public void setAssetLinkLocalService(
-		com.liferay.portlet.asset.service.AssetLinkLocalService assetLinkLocalService) {
-		this.assetLinkLocalService = assetLinkLocalService;
-	}
-
-	/**
-	 * Returns the asset link persistence.
-	 *
-	 * @return the asset link persistence
-	 */
-	public AssetLinkPersistence getAssetLinkPersistence() {
-		return assetLinkPersistence;
-	}
-
-	/**
-	 * Sets the asset link persistence.
-	 *
-	 * @param assetLinkPersistence the asset link persistence
-	 */
-	public void setAssetLinkPersistence(
-		AssetLinkPersistence assetLinkPersistence) {
-		this.assetLinkPersistence = assetLinkPersistence;
-	}
-
-	/**
-	 * Returns the asset tag local service.
-	 *
-	 * @return the asset tag local service
-	 */
-	public com.liferay.portlet.asset.service.AssetTagLocalService getAssetTagLocalService() {
-		return assetTagLocalService;
-	}
-
-	/**
-	 * Sets the asset tag local service.
-	 *
-	 * @param assetTagLocalService the asset tag local service
-	 */
-	public void setAssetTagLocalService(
-		com.liferay.portlet.asset.service.AssetTagLocalService assetTagLocalService) {
-		this.assetTagLocalService = assetTagLocalService;
-	}
-
-	/**
-	 * Returns the asset tag remote service.
-	 *
-	 * @return the asset tag remote service
-	 */
-	public com.liferay.portlet.asset.service.AssetTagService getAssetTagService() {
-		return assetTagService;
-	}
-
-	/**
-	 * Sets the asset tag remote service.
-	 *
-	 * @param assetTagService the asset tag remote service
-	 */
-	public void setAssetTagService(
-		com.liferay.portlet.asset.service.AssetTagService assetTagService) {
-		this.assetTagService = assetTagService;
-	}
-
-	/**
-	 * Returns the asset tag persistence.
-	 *
-	 * @return the asset tag persistence
-	 */
-	public AssetTagPersistence getAssetTagPersistence() {
-		return assetTagPersistence;
-	}
-
-	/**
-	 * Sets the asset tag persistence.
-	 *
-	 * @param assetTagPersistence the asset tag persistence
-	 */
-	public void setAssetTagPersistence(AssetTagPersistence assetTagPersistence) {
-		this.assetTagPersistence = assetTagPersistence;
-	}
-
-	/**
-	 * Returns the asset tag finder.
-	 *
-	 * @return the asset tag finder
-	 */
-	public AssetTagFinder getAssetTagFinder() {
-		return assetTagFinder;
-	}
-
-	/**
-	 * Sets the asset tag finder.
-	 *
-	 * @param assetTagFinder the asset tag finder
-	 */
-	public void setAssetTagFinder(AssetTagFinder assetTagFinder) {
-		this.assetTagFinder = assetTagFinder;
-	}
-
-	/**
-	 * Returns the asset tag property local service.
-	 *
-	 * @return the asset tag property local service
-	 */
-	public com.liferay.portlet.asset.service.AssetTagPropertyLocalService getAssetTagPropertyLocalService() {
-		return assetTagPropertyLocalService;
-	}
-
-	/**
-	 * Sets the asset tag property local service.
-	 *
-	 * @param assetTagPropertyLocalService the asset tag property local service
-	 */
-	public void setAssetTagPropertyLocalService(
-		com.liferay.portlet.asset.service.AssetTagPropertyLocalService assetTagPropertyLocalService) {
-		this.assetTagPropertyLocalService = assetTagPropertyLocalService;
-	}
-
-	/**
-	 * Returns the asset tag property remote service.
-	 *
-	 * @return the asset tag property remote service
-	 */
-	public com.liferay.portlet.asset.service.AssetTagPropertyService getAssetTagPropertyService() {
-		return assetTagPropertyService;
-	}
-
-	/**
-	 * Sets the asset tag property remote service.
-	 *
-	 * @param assetTagPropertyService the asset tag property remote service
-	 */
-	public void setAssetTagPropertyService(
-		com.liferay.portlet.asset.service.AssetTagPropertyService assetTagPropertyService) {
-		this.assetTagPropertyService = assetTagPropertyService;
-	}
-
-	/**
-	 * Returns the asset tag property persistence.
-	 *
-	 * @return the asset tag property persistence
-	 */
-	public AssetTagPropertyPersistence getAssetTagPropertyPersistence() {
-		return assetTagPropertyPersistence;
-	}
-
-	/**
-	 * Sets the asset tag property persistence.
-	 *
-	 * @param assetTagPropertyPersistence the asset tag property persistence
-	 */
-	public void setAssetTagPropertyPersistence(
-		AssetTagPropertyPersistence assetTagPropertyPersistence) {
-		this.assetTagPropertyPersistence = assetTagPropertyPersistence;
-	}
-
-	/**
-	 * Returns the asset tag property finder.
-	 *
-	 * @return the asset tag property finder
-	 */
-	public AssetTagPropertyFinder getAssetTagPropertyFinder() {
-		return assetTagPropertyFinder;
-	}
-
-	/**
-	 * Sets the asset tag property finder.
-	 *
-	 * @param assetTagPropertyFinder the asset tag property finder
-	 */
-	public void setAssetTagPropertyFinder(
-		AssetTagPropertyFinder assetTagPropertyFinder) {
-		this.assetTagPropertyFinder = assetTagPropertyFinder;
-	}
-
-	/**
-	 * Returns the asset tag property key finder.
-	 *
-	 * @return the asset tag property key finder
-	 */
-	public AssetTagPropertyKeyFinder getAssetTagPropertyKeyFinder() {
-		return assetTagPropertyKeyFinder;
-	}
-
-	/**
-	 * Sets the asset tag property key finder.
-	 *
-	 * @param assetTagPropertyKeyFinder the asset tag property key finder
-	 */
-	public void setAssetTagPropertyKeyFinder(
-		AssetTagPropertyKeyFinder assetTagPropertyKeyFinder) {
-		this.assetTagPropertyKeyFinder = assetTagPropertyKeyFinder;
-	}
-
-	/**
-	 * Returns the asset tag stats local service.
-	 *
-	 * @return the asset tag stats local service
-	 */
-	public com.liferay.portlet.asset.service.AssetTagStatsLocalService getAssetTagStatsLocalService() {
-		return assetTagStatsLocalService;
-	}
-
-	/**
-	 * Sets the asset tag stats local service.
-	 *
-	 * @param assetTagStatsLocalService the asset tag stats local service
-	 */
-	public void setAssetTagStatsLocalService(
-		com.liferay.portlet.asset.service.AssetTagStatsLocalService assetTagStatsLocalService) {
-		this.assetTagStatsLocalService = assetTagStatsLocalService;
-	}
-
-	/**
-	 * Returns the asset tag stats persistence.
-	 *
-	 * @return the asset tag stats persistence
-	 */
-	public AssetTagStatsPersistence getAssetTagStatsPersistence() {
-		return assetTagStatsPersistence;
-	}
-
-	/**
-	 * Sets the asset tag stats persistence.
-	 *
-	 * @param assetTagStatsPersistence the asset tag stats persistence
-	 */
-	public void setAssetTagStatsPersistence(
-		AssetTagStatsPersistence assetTagStatsPersistence) {
-		this.assetTagStatsPersistence = assetTagStatsPersistence;
-	}
-
-	/**
-	 * Returns the asset vocabulary local service.
-	 *
-	 * @return the asset vocabulary local service
-	 */
-	public com.liferay.portlet.asset.service.AssetVocabularyLocalService getAssetVocabularyLocalService() {
-		return assetVocabularyLocalService;
-	}
-
-	/**
-	 * Sets the asset vocabulary local service.
-	 *
-	 * @param assetVocabularyLocalService the asset vocabulary local service
-	 */
-	public void setAssetVocabularyLocalService(
-		com.liferay.portlet.asset.service.AssetVocabularyLocalService assetVocabularyLocalService) {
-		this.assetVocabularyLocalService = assetVocabularyLocalService;
-	}
-
-	/**
-	 * Returns the asset vocabulary remote service.
-	 *
-	 * @return the asset vocabulary remote service
-	 */
-	public com.liferay.portlet.asset.service.AssetVocabularyService getAssetVocabularyService() {
-		return assetVocabularyService;
-	}
-
-	/**
-	 * Sets the asset vocabulary remote service.
-	 *
-	 * @param assetVocabularyService the asset vocabulary remote service
-	 */
-	public void setAssetVocabularyService(
-		com.liferay.portlet.asset.service.AssetVocabularyService assetVocabularyService) {
-		this.assetVocabularyService = assetVocabularyService;
-	}
-
-	/**
-	 * Returns the asset vocabulary persistence.
-	 *
-	 * @return the asset vocabulary persistence
-	 */
-	public AssetVocabularyPersistence getAssetVocabularyPersistence() {
-		return assetVocabularyPersistence;
-	}
-
-	/**
-	 * Sets the asset vocabulary persistence.
-	 *
-	 * @param assetVocabularyPersistence the asset vocabulary persistence
-	 */
-	public void setAssetVocabularyPersistence(
-		AssetVocabularyPersistence assetVocabularyPersistence) {
-		this.assetVocabularyPersistence = assetVocabularyPersistence;
-	}
-
-	/**
-	 * Returns the asset vocabulary finder.
-	 *
-	 * @return the asset vocabulary finder
-	 */
-	public AssetVocabularyFinder getAssetVocabularyFinder() {
-		return assetVocabularyFinder;
-	}
-
-	/**
-	 * Sets the asset vocabulary finder.
-	 *
-	 * @param assetVocabularyFinder the asset vocabulary finder
-	 */
-	public void setAssetVocabularyFinder(
-		AssetVocabularyFinder assetVocabularyFinder) {
-		this.assetVocabularyFinder = assetVocabularyFinder;
 	}
 
 	/**
@@ -1055,7 +714,9 @@ public abstract class AssetCategoryLocalServiceBaseImpl
 	 *
 	 * @return the counter local service
 	 */
-	public com.liferay.counter.service.CounterLocalService getCounterLocalService() {
+	public com.liferay.counter.kernel.service.CounterLocalService
+		getCounterLocalService() {
+
 		return counterLocalService;
 	}
 
@@ -1065,8 +726,53 @@ public abstract class AssetCategoryLocalServiceBaseImpl
 	 * @param counterLocalService the counter local service
 	 */
 	public void setCounterLocalService(
-		com.liferay.counter.service.CounterLocalService counterLocalService) {
+		com.liferay.counter.kernel.service.CounterLocalService
+			counterLocalService) {
+
 		this.counterLocalService = counterLocalService;
+	}
+
+	/**
+	 * Returns the class name local service.
+	 *
+	 * @return the class name local service
+	 */
+	public com.liferay.portal.kernel.service.ClassNameLocalService
+		getClassNameLocalService() {
+
+		return classNameLocalService;
+	}
+
+	/**
+	 * Sets the class name local service.
+	 *
+	 * @param classNameLocalService the class name local service
+	 */
+	public void setClassNameLocalService(
+		com.liferay.portal.kernel.service.ClassNameLocalService
+			classNameLocalService) {
+
+		this.classNameLocalService = classNameLocalService;
+	}
+
+	/**
+	 * Returns the class name persistence.
+	 *
+	 * @return the class name persistence
+	 */
+	public ClassNamePersistence getClassNamePersistence() {
+		return classNamePersistence;
+	}
+
+	/**
+	 * Sets the class name persistence.
+	 *
+	 * @param classNamePersistence the class name persistence
+	 */
+	public void setClassNamePersistence(
+		ClassNamePersistence classNamePersistence) {
+
+		this.classNamePersistence = classNamePersistence;
 	}
 
 	/**
@@ -1074,7 +780,9 @@ public abstract class AssetCategoryLocalServiceBaseImpl
 	 *
 	 * @return the resource local service
 	 */
-	public com.liferay.portal.service.ResourceLocalService getResourceLocalService() {
+	public com.liferay.portal.kernel.service.ResourceLocalService
+		getResourceLocalService() {
+
 		return resourceLocalService;
 	}
 
@@ -1084,7 +792,9 @@ public abstract class AssetCategoryLocalServiceBaseImpl
 	 * @param resourceLocalService the resource local service
 	 */
 	public void setResourceLocalService(
-		com.liferay.portal.service.ResourceLocalService resourceLocalService) {
+		com.liferay.portal.kernel.service.ResourceLocalService
+			resourceLocalService) {
+
 		this.resourceLocalService = resourceLocalService;
 	}
 
@@ -1093,7 +803,9 @@ public abstract class AssetCategoryLocalServiceBaseImpl
 	 *
 	 * @return the user local service
 	 */
-	public com.liferay.portal.service.UserLocalService getUserLocalService() {
+	public com.liferay.portal.kernel.service.UserLocalService
+		getUserLocalService() {
+
 		return userLocalService;
 	}
 
@@ -1103,27 +815,9 @@ public abstract class AssetCategoryLocalServiceBaseImpl
 	 * @param userLocalService the user local service
 	 */
 	public void setUserLocalService(
-		com.liferay.portal.service.UserLocalService userLocalService) {
+		com.liferay.portal.kernel.service.UserLocalService userLocalService) {
+
 		this.userLocalService = userLocalService;
-	}
-
-	/**
-	 * Returns the user remote service.
-	 *
-	 * @return the user remote service
-	 */
-	public com.liferay.portal.service.UserService getUserService() {
-		return userService;
-	}
-
-	/**
-	 * Sets the user remote service.
-	 *
-	 * @param userService the user remote service
-	 */
-	public void setUserService(
-		com.liferay.portal.service.UserService userService) {
-		this.userService = userService;
 	}
 
 	/**
@@ -1162,38 +856,168 @@ public abstract class AssetCategoryLocalServiceBaseImpl
 		this.userFinder = userFinder;
 	}
 
+	/**
+	 * Returns the asset entry local service.
+	 *
+	 * @return the asset entry local service
+	 */
+	public com.liferay.asset.kernel.service.AssetEntryLocalService
+		getAssetEntryLocalService() {
+
+		return assetEntryLocalService;
+	}
+
+	/**
+	 * Sets the asset entry local service.
+	 *
+	 * @param assetEntryLocalService the asset entry local service
+	 */
+	public void setAssetEntryLocalService(
+		com.liferay.asset.kernel.service.AssetEntryLocalService
+			assetEntryLocalService) {
+
+		this.assetEntryLocalService = assetEntryLocalService;
+	}
+
+	/**
+	 * Returns the asset entry persistence.
+	 *
+	 * @return the asset entry persistence
+	 */
+	public AssetEntryPersistence getAssetEntryPersistence() {
+		return assetEntryPersistence;
+	}
+
+	/**
+	 * Sets the asset entry persistence.
+	 *
+	 * @param assetEntryPersistence the asset entry persistence
+	 */
+	public void setAssetEntryPersistence(
+		AssetEntryPersistence assetEntryPersistence) {
+
+		this.assetEntryPersistence = assetEntryPersistence;
+	}
+
+	/**
+	 * Returns the asset entry finder.
+	 *
+	 * @return the asset entry finder
+	 */
+	public AssetEntryFinder getAssetEntryFinder() {
+		return assetEntryFinder;
+	}
+
+	/**
+	 * Sets the asset entry finder.
+	 *
+	 * @param assetEntryFinder the asset entry finder
+	 */
+	public void setAssetEntryFinder(AssetEntryFinder assetEntryFinder) {
+		this.assetEntryFinder = assetEntryFinder;
+	}
+
+	/**
+	 * Returns the asset vocabulary local service.
+	 *
+	 * @return the asset vocabulary local service
+	 */
+	public com.liferay.asset.kernel.service.AssetVocabularyLocalService
+		getAssetVocabularyLocalService() {
+
+		return assetVocabularyLocalService;
+	}
+
+	/**
+	 * Sets the asset vocabulary local service.
+	 *
+	 * @param assetVocabularyLocalService the asset vocabulary local service
+	 */
+	public void setAssetVocabularyLocalService(
+		com.liferay.asset.kernel.service.AssetVocabularyLocalService
+			assetVocabularyLocalService) {
+
+		this.assetVocabularyLocalService = assetVocabularyLocalService;
+	}
+
+	/**
+	 * Returns the asset vocabulary persistence.
+	 *
+	 * @return the asset vocabulary persistence
+	 */
+	public AssetVocabularyPersistence getAssetVocabularyPersistence() {
+		return assetVocabularyPersistence;
+	}
+
+	/**
+	 * Sets the asset vocabulary persistence.
+	 *
+	 * @param assetVocabularyPersistence the asset vocabulary persistence
+	 */
+	public void setAssetVocabularyPersistence(
+		AssetVocabularyPersistence assetVocabularyPersistence) {
+
+		this.assetVocabularyPersistence = assetVocabularyPersistence;
+	}
+
+	/**
+	 * Returns the asset vocabulary finder.
+	 *
+	 * @return the asset vocabulary finder
+	 */
+	public AssetVocabularyFinder getAssetVocabularyFinder() {
+		return assetVocabularyFinder;
+	}
+
+	/**
+	 * Sets the asset vocabulary finder.
+	 *
+	 * @param assetVocabularyFinder the asset vocabulary finder
+	 */
+	public void setAssetVocabularyFinder(
+		AssetVocabularyFinder assetVocabularyFinder) {
+
+		this.assetVocabularyFinder = assetVocabularyFinder;
+	}
+
 	public void afterPropertiesSet() {
-		persistedModelLocalServiceRegistry.register("com.liferay.portlet.asset.model.AssetCategory",
+		persistedModelLocalServiceRegistry.register(
+			"com.liferay.asset.kernel.model.AssetCategory",
 			assetCategoryLocalService);
 	}
 
 	public void destroy() {
 		persistedModelLocalServiceRegistry.unregister(
-			"com.liferay.portlet.asset.model.AssetCategory");
+			"com.liferay.asset.kernel.model.AssetCategory");
 	}
 
 	/**
-	 * Returns the Spring bean ID for this bean.
+	 * Returns the OSGi service identifier.
 	 *
-	 * @return the Spring bean ID for this bean
+	 * @return the OSGi service identifier
 	 */
 	@Override
-	public String getBeanIdentifier() {
-		return _beanIdentifier;
+	public String getOSGiServiceIdentifier() {
+		return AssetCategoryLocalService.class.getName();
 	}
 
-	/**
-	 * Sets the Spring bean ID for this bean.
-	 *
-	 * @param beanIdentifier the Spring bean ID for this bean
-	 */
 	@Override
-	public void setBeanIdentifier(String beanIdentifier) {
-		_beanIdentifier = beanIdentifier;
+	public CTPersistence<AssetCategory> getCTPersistence() {
+		return assetCategoryPersistence;
 	}
 
-	protected Class<?> getModelClass() {
+	@Override
+	public Class<AssetCategory> getModelClass() {
 		return AssetCategory.class;
+	}
+
+	@Override
+	public <R, E extends Throwable> R updateWithUnsafeFunction(
+			UnsafeFunction<CTPersistence<AssetCategory>, R, E>
+				updateUnsafeFunction)
+		throws E {
+
+		return updateUnsafeFunction.apply(assetCategoryPersistence);
 	}
 
 	protected String getModelClassName() {
@@ -1205,96 +1029,93 @@ public abstract class AssetCategoryLocalServiceBaseImpl
 	 *
 	 * @param sql the sql query
 	 */
-	protected void runSQL(String sql) throws SystemException {
+	protected void runSQL(String sql) {
 		try {
 			DataSource dataSource = assetCategoryPersistence.getDataSource();
 
-			DB db = DBFactoryUtil.getDB();
+			DB db = DBManagerUtil.getDB();
 
 			sql = db.buildSQL(sql);
 			sql = PortalUtil.transformSQL(sql);
 
-			SqlUpdate sqlUpdate = SqlUpdateFactoryUtil.getSqlUpdate(dataSource,
-					sql, new int[0]);
+			SqlUpdate sqlUpdate = SqlUpdateFactoryUtil.getSqlUpdate(
+				dataSource, sql);
 
 			sqlUpdate.update();
 		}
-		catch (Exception e) {
-			throw new SystemException(e);
+		catch (Exception exception) {
+			throw new SystemException(exception);
 		}
 	}
 
-	@BeanReference(type = com.liferay.portlet.asset.service.AssetCategoryLocalService.class)
-	protected com.liferay.portlet.asset.service.AssetCategoryLocalService assetCategoryLocalService;
-	@BeanReference(type = com.liferay.portlet.asset.service.AssetCategoryService.class)
-	protected com.liferay.portlet.asset.service.AssetCategoryService assetCategoryService;
+	@BeanReference(type = AssetCategoryLocalService.class)
+	protected AssetCategoryLocalService assetCategoryLocalService;
+
 	@BeanReference(type = AssetCategoryPersistence.class)
 	protected AssetCategoryPersistence assetCategoryPersistence;
+
 	@BeanReference(type = AssetCategoryFinder.class)
 	protected AssetCategoryFinder assetCategoryFinder;
-	@BeanReference(type = com.liferay.portlet.asset.service.AssetCategoryPropertyLocalService.class)
-	protected com.liferay.portlet.asset.service.AssetCategoryPropertyLocalService assetCategoryPropertyLocalService;
-	@BeanReference(type = com.liferay.portlet.asset.service.AssetCategoryPropertyService.class)
-	protected com.liferay.portlet.asset.service.AssetCategoryPropertyService assetCategoryPropertyService;
-	@BeanReference(type = AssetCategoryPropertyPersistence.class)
-	protected AssetCategoryPropertyPersistence assetCategoryPropertyPersistence;
-	@BeanReference(type = AssetCategoryPropertyFinder.class)
-	protected AssetCategoryPropertyFinder assetCategoryPropertyFinder;
-	@BeanReference(type = com.liferay.portlet.asset.service.AssetEntryLocalService.class)
-	protected com.liferay.portlet.asset.service.AssetEntryLocalService assetEntryLocalService;
-	@BeanReference(type = com.liferay.portlet.asset.service.AssetEntryService.class)
-	protected com.liferay.portlet.asset.service.AssetEntryService assetEntryService;
-	@BeanReference(type = AssetEntryPersistence.class)
-	protected AssetEntryPersistence assetEntryPersistence;
-	@BeanReference(type = AssetEntryFinder.class)
-	protected AssetEntryFinder assetEntryFinder;
-	@BeanReference(type = com.liferay.portlet.asset.service.AssetLinkLocalService.class)
-	protected com.liferay.portlet.asset.service.AssetLinkLocalService assetLinkLocalService;
-	@BeanReference(type = AssetLinkPersistence.class)
-	protected AssetLinkPersistence assetLinkPersistence;
-	@BeanReference(type = com.liferay.portlet.asset.service.AssetTagLocalService.class)
-	protected com.liferay.portlet.asset.service.AssetTagLocalService assetTagLocalService;
-	@BeanReference(type = com.liferay.portlet.asset.service.AssetTagService.class)
-	protected com.liferay.portlet.asset.service.AssetTagService assetTagService;
-	@BeanReference(type = AssetTagPersistence.class)
-	protected AssetTagPersistence assetTagPersistence;
-	@BeanReference(type = AssetTagFinder.class)
-	protected AssetTagFinder assetTagFinder;
-	@BeanReference(type = com.liferay.portlet.asset.service.AssetTagPropertyLocalService.class)
-	protected com.liferay.portlet.asset.service.AssetTagPropertyLocalService assetTagPropertyLocalService;
-	@BeanReference(type = com.liferay.portlet.asset.service.AssetTagPropertyService.class)
-	protected com.liferay.portlet.asset.service.AssetTagPropertyService assetTagPropertyService;
-	@BeanReference(type = AssetTagPropertyPersistence.class)
-	protected AssetTagPropertyPersistence assetTagPropertyPersistence;
-	@BeanReference(type = AssetTagPropertyFinder.class)
-	protected AssetTagPropertyFinder assetTagPropertyFinder;
-	@BeanReference(type = AssetTagPropertyKeyFinder.class)
-	protected AssetTagPropertyKeyFinder assetTagPropertyKeyFinder;
-	@BeanReference(type = com.liferay.portlet.asset.service.AssetTagStatsLocalService.class)
-	protected com.liferay.portlet.asset.service.AssetTagStatsLocalService assetTagStatsLocalService;
-	@BeanReference(type = AssetTagStatsPersistence.class)
-	protected AssetTagStatsPersistence assetTagStatsPersistence;
-	@BeanReference(type = com.liferay.portlet.asset.service.AssetVocabularyLocalService.class)
-	protected com.liferay.portlet.asset.service.AssetVocabularyLocalService assetVocabularyLocalService;
-	@BeanReference(type = com.liferay.portlet.asset.service.AssetVocabularyService.class)
-	protected com.liferay.portlet.asset.service.AssetVocabularyService assetVocabularyService;
-	@BeanReference(type = AssetVocabularyPersistence.class)
-	protected AssetVocabularyPersistence assetVocabularyPersistence;
-	@BeanReference(type = AssetVocabularyFinder.class)
-	protected AssetVocabularyFinder assetVocabularyFinder;
-	@BeanReference(type = com.liferay.counter.service.CounterLocalService.class)
-	protected com.liferay.counter.service.CounterLocalService counterLocalService;
-	@BeanReference(type = com.liferay.portal.service.ResourceLocalService.class)
-	protected com.liferay.portal.service.ResourceLocalService resourceLocalService;
-	@BeanReference(type = com.liferay.portal.service.UserLocalService.class)
-	protected com.liferay.portal.service.UserLocalService userLocalService;
-	@BeanReference(type = com.liferay.portal.service.UserService.class)
-	protected com.liferay.portal.service.UserService userService;
+
+	@BeanReference(
+		type = com.liferay.counter.kernel.service.CounterLocalService.class
+	)
+	protected com.liferay.counter.kernel.service.CounterLocalService
+		counterLocalService;
+
+	@BeanReference(
+		type = com.liferay.portal.kernel.service.ClassNameLocalService.class
+	)
+	protected com.liferay.portal.kernel.service.ClassNameLocalService
+		classNameLocalService;
+
+	@BeanReference(type = ClassNamePersistence.class)
+	protected ClassNamePersistence classNamePersistence;
+
+	@BeanReference(
+		type = com.liferay.portal.kernel.service.ResourceLocalService.class
+	)
+	protected com.liferay.portal.kernel.service.ResourceLocalService
+		resourceLocalService;
+
+	@BeanReference(
+		type = com.liferay.portal.kernel.service.UserLocalService.class
+	)
+	protected com.liferay.portal.kernel.service.UserLocalService
+		userLocalService;
+
 	@BeanReference(type = UserPersistence.class)
 	protected UserPersistence userPersistence;
+
 	@BeanReference(type = UserFinder.class)
 	protected UserFinder userFinder;
+
+	@BeanReference(
+		type = com.liferay.asset.kernel.service.AssetEntryLocalService.class
+	)
+	protected com.liferay.asset.kernel.service.AssetEntryLocalService
+		assetEntryLocalService;
+
+	@BeanReference(type = AssetEntryPersistence.class)
+	protected AssetEntryPersistence assetEntryPersistence;
+
+	@BeanReference(type = AssetEntryFinder.class)
+	protected AssetEntryFinder assetEntryFinder;
+
+	@BeanReference(
+		type = com.liferay.asset.kernel.service.AssetVocabularyLocalService.class
+	)
+	protected com.liferay.asset.kernel.service.AssetVocabularyLocalService
+		assetVocabularyLocalService;
+
+	@BeanReference(type = AssetVocabularyPersistence.class)
+	protected AssetVocabularyPersistence assetVocabularyPersistence;
+
+	@BeanReference(type = AssetVocabularyFinder.class)
+	protected AssetVocabularyFinder assetVocabularyFinder;
+
 	@BeanReference(type = PersistedModelLocalServiceRegistry.class)
-	protected PersistedModelLocalServiceRegistry persistedModelLocalServiceRegistry;
-	private String _beanIdentifier;
+	protected PersistedModelLocalServiceRegistry
+		persistedModelLocalServiceRegistry;
+
 }

@@ -1,5 +1,0 @@
-<definition extends="fail">
-	<command name="name" priority="5">
-		<var name="name" value="value" />
-	</command>
-</definition>

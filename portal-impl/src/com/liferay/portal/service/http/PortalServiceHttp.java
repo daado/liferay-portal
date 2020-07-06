@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -16,17 +16,19 @@ package com.liferay.portal.service.http;
 
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
+import com.liferay.portal.kernel.security.auth.HttpPrincipal;
+import com.liferay.portal.kernel.service.PortalServiceUtil;
+import com.liferay.portal.kernel.service.http.TunnelUtil;
 import com.liferay.portal.kernel.util.MethodHandler;
 import com.liferay.portal.kernel.util.MethodKey;
-import com.liferay.portal.security.auth.HttpPrincipal;
-import com.liferay.portal.service.PortalServiceUtil;
 
 /**
  * Provides the HTTP utility for the
- * {@link com.liferay.portal.service.PortalServiceUtil} service utility. The
+ * <code>PortalServiceUtil</code> service
+ * utility. The
  * static methods of this class calls the same methods of the service utility.
  * However, the signatures are different because it requires an additional
- * {@link com.liferay.portal.security.auth.HttpPrincipal} parameter.
+ * <code>HttpPrincipal</code> parameter.
  *
  * <p>
  * The benefits of using the HTTP utility is that it is fast and allows for
@@ -45,18 +47,15 @@ import com.liferay.portal.service.PortalServiceUtil;
  *
  * @author Brian Wing Shun Chan
  * @see PortalServiceSoap
- * @see com.liferay.portal.security.auth.HttpPrincipal
- * @see com.liferay.portal.service.PortalServiceUtil
  * @generated
  */
 public class PortalServiceHttp {
-	public static java.lang.String getAutoDeployDirectory(
-		HttpPrincipal httpPrincipal)
-		throws com.liferay.portal.kernel.exception.SystemException {
+
+	public static String getAutoDeployDirectory(HttpPrincipal httpPrincipal) {
 		try {
-			MethodKey methodKey = new MethodKey(PortalServiceUtil.class,
-					"getAutoDeployDirectory",
-					_getAutoDeployDirectoryParameterTypes0);
+			MethodKey methodKey = new MethodKey(
+				PortalServiceUtil.class, "getAutoDeployDirectory",
+				_getAutoDeployDirectoryParameterTypes0);
 
 			MethodHandler methodHandler = new MethodHandler(methodKey);
 
@@ -65,28 +64,27 @@ public class PortalServiceHttp {
 			try {
 				returnObj = TunnelUtil.invoke(httpPrincipal, methodHandler);
 			}
-			catch (Exception e) {
-				if (e instanceof com.liferay.portal.kernel.exception.SystemException) {
-					throw (com.liferay.portal.kernel.exception.SystemException)e;
-				}
-
-				throw new com.liferay.portal.kernel.exception.SystemException(e);
+			catch (Exception exception) {
+				throw new com.liferay.portal.kernel.exception.SystemException(
+					exception);
 			}
 
-			return (java.lang.String)returnObj;
+			return (String)returnObj;
 		}
-		catch (com.liferay.portal.kernel.exception.SystemException se) {
-			_log.error(se, se);
+		catch (com.liferay.portal.kernel.exception.SystemException
+					systemException) {
 
-			throw se;
+			_log.error(systemException, systemException);
+
+			throw systemException;
 		}
 	}
 
-	public static int getBuildNumber(HttpPrincipal httpPrincipal)
-		throws com.liferay.portal.kernel.exception.SystemException {
+	public static int getBuildNumber(HttpPrincipal httpPrincipal) {
 		try {
-			MethodKey methodKey = new MethodKey(PortalServiceUtil.class,
-					"getBuildNumber", _getBuildNumberParameterTypes1);
+			MethodKey methodKey = new MethodKey(
+				PortalServiceUtil.class, "getBuildNumber",
+				_getBuildNumberParameterTypes1);
 
 			MethodHandler methodHandler = new MethodHandler(methodKey);
 
@@ -95,228 +93,263 @@ public class PortalServiceHttp {
 			try {
 				returnObj = TunnelUtil.invoke(httpPrincipal, methodHandler);
 			}
-			catch (Exception e) {
-				throw new com.liferay.portal.kernel.exception.SystemException(e);
+			catch (Exception exception) {
+				throw new com.liferay.portal.kernel.exception.SystemException(
+					exception);
 			}
 
 			return ((Integer)returnObj).intValue();
 		}
-		catch (com.liferay.portal.kernel.exception.SystemException se) {
-			_log.error(se, se);
+		catch (com.liferay.portal.kernel.exception.SystemException
+					systemException) {
 
-			throw se;
+			_log.error(systemException, systemException);
+
+			throw systemException;
 		}
 	}
 
-	public static void testAddClassName_Rollback(HttpPrincipal httpPrincipal,
-		java.lang.String classNameValue)
-		throws com.liferay.portal.kernel.exception.SystemException {
+	public static String getVersion(HttpPrincipal httpPrincipal) {
 		try {
-			MethodKey methodKey = new MethodKey(PortalServiceUtil.class,
-					"testAddClassName_Rollback",
-					_testAddClassName_RollbackParameterTypes2);
+			MethodKey methodKey = new MethodKey(
+				PortalServiceUtil.class, "getVersion",
+				_getVersionParameterTypes2);
 
-			MethodHandler methodHandler = new MethodHandler(methodKey,
-					classNameValue);
+			MethodHandler methodHandler = new MethodHandler(methodKey);
+
+			Object returnObj = null;
+
+			try {
+				returnObj = TunnelUtil.invoke(httpPrincipal, methodHandler);
+			}
+			catch (Exception exception) {
+				throw new com.liferay.portal.kernel.exception.SystemException(
+					exception);
+			}
+
+			return (String)returnObj;
+		}
+		catch (com.liferay.portal.kernel.exception.SystemException
+					systemException) {
+
+			_log.error(systemException, systemException);
+
+			throw systemException;
+		}
+	}
+
+	public static void testAddClassName_Rollback(
+		HttpPrincipal httpPrincipal, String classNameValue) {
+
+		try {
+			MethodKey methodKey = new MethodKey(
+				PortalServiceUtil.class, "testAddClassName_Rollback",
+				_testAddClassName_RollbackParameterTypes3);
+
+			MethodHandler methodHandler = new MethodHandler(
+				methodKey, classNameValue);
 
 			try {
 				TunnelUtil.invoke(httpPrincipal, methodHandler);
 			}
-			catch (Exception e) {
-				if (e instanceof com.liferay.portal.kernel.exception.SystemException) {
-					throw (com.liferay.portal.kernel.exception.SystemException)e;
-				}
-
-				throw new com.liferay.portal.kernel.exception.SystemException(e);
+			catch (Exception exception) {
+				throw new com.liferay.portal.kernel.exception.SystemException(
+					exception);
 			}
 		}
-		catch (com.liferay.portal.kernel.exception.SystemException se) {
-			_log.error(se, se);
+		catch (com.liferay.portal.kernel.exception.SystemException
+					systemException) {
 
-			throw se;
+			_log.error(systemException, systemException);
+
+			throw systemException;
 		}
 	}
 
-	public static void testAddClassName_Success(HttpPrincipal httpPrincipal,
-		java.lang.String classNameValue)
-		throws com.liferay.portal.kernel.exception.SystemException {
-		try {
-			MethodKey methodKey = new MethodKey(PortalServiceUtil.class,
-					"testAddClassName_Success",
-					_testAddClassName_SuccessParameterTypes3);
+	public static void testAddClassName_Success(
+		HttpPrincipal httpPrincipal, String classNameValue) {
 
-			MethodHandler methodHandler = new MethodHandler(methodKey,
-					classNameValue);
+		try {
+			MethodKey methodKey = new MethodKey(
+				PortalServiceUtil.class, "testAddClassName_Success",
+				_testAddClassName_SuccessParameterTypes4);
+
+			MethodHandler methodHandler = new MethodHandler(
+				methodKey, classNameValue);
 
 			try {
 				TunnelUtil.invoke(httpPrincipal, methodHandler);
 			}
-			catch (Exception e) {
-				if (e instanceof com.liferay.portal.kernel.exception.SystemException) {
-					throw (com.liferay.portal.kernel.exception.SystemException)e;
-				}
-
-				throw new com.liferay.portal.kernel.exception.SystemException(e);
+			catch (Exception exception) {
+				throw new com.liferay.portal.kernel.exception.SystemException(
+					exception);
 			}
 		}
-		catch (com.liferay.portal.kernel.exception.SystemException se) {
-			_log.error(se, se);
+		catch (com.liferay.portal.kernel.exception.SystemException
+					systemException) {
 
-			throw se;
+			_log.error(systemException, systemException);
+
+			throw systemException;
 		}
 	}
 
-	public static void testAddClassNameAndTestTransactionPortletBar_PortalRollback(
-		HttpPrincipal httpPrincipal, java.lang.String transactionPortletBarText)
-		throws com.liferay.portal.kernel.exception.SystemException {
-		try {
-			MethodKey methodKey = new MethodKey(PortalServiceUtil.class,
-					"testAddClassNameAndTestTransactionPortletBar_PortalRollback",
-					_testAddClassNameAndTestTransactionPortletBar_PortalRollbackParameterTypes4);
+	public static void
+		testAddClassNameAndTestTransactionPortletBar_PortalRollback(
+			HttpPrincipal httpPrincipal, String transactionPortletBarText) {
 
-			MethodHandler methodHandler = new MethodHandler(methodKey,
-					transactionPortletBarText);
+		try {
+			MethodKey methodKey = new MethodKey(
+				PortalServiceUtil.class,
+				"testAddClassNameAndTestTransactionPortletBar_PortalRollback",
+				_testAddClassNameAndTestTransactionPortletBar_PortalRollbackParameterTypes5);
+
+			MethodHandler methodHandler = new MethodHandler(
+				methodKey, transactionPortletBarText);
 
 			try {
 				TunnelUtil.invoke(httpPrincipal, methodHandler);
 			}
-			catch (Exception e) {
-				if (e instanceof com.liferay.portal.kernel.exception.SystemException) {
-					throw (com.liferay.portal.kernel.exception.SystemException)e;
-				}
-
-				throw new com.liferay.portal.kernel.exception.SystemException(e);
+			catch (Exception exception) {
+				throw new com.liferay.portal.kernel.exception.SystemException(
+					exception);
 			}
 		}
-		catch (com.liferay.portal.kernel.exception.SystemException se) {
-			_log.error(se, se);
+		catch (com.liferay.portal.kernel.exception.SystemException
+					systemException) {
 
-			throw se;
+			_log.error(systemException, systemException);
+
+			throw systemException;
 		}
 	}
 
-	public static void testAddClassNameAndTestTransactionPortletBar_PortletRollback(
-		HttpPrincipal httpPrincipal, java.lang.String transactionPortletBarText)
-		throws com.liferay.portal.kernel.exception.SystemException {
-		try {
-			MethodKey methodKey = new MethodKey(PortalServiceUtil.class,
-					"testAddClassNameAndTestTransactionPortletBar_PortletRollback",
-					_testAddClassNameAndTestTransactionPortletBar_PortletRollbackParameterTypes5);
+	public static void
+		testAddClassNameAndTestTransactionPortletBar_PortletRollback(
+			HttpPrincipal httpPrincipal, String transactionPortletBarText) {
 
-			MethodHandler methodHandler = new MethodHandler(methodKey,
-					transactionPortletBarText);
+		try {
+			MethodKey methodKey = new MethodKey(
+				PortalServiceUtil.class,
+				"testAddClassNameAndTestTransactionPortletBar_PortletRollback",
+				_testAddClassNameAndTestTransactionPortletBar_PortletRollbackParameterTypes6);
+
+			MethodHandler methodHandler = new MethodHandler(
+				methodKey, transactionPortletBarText);
 
 			try {
 				TunnelUtil.invoke(httpPrincipal, methodHandler);
 			}
-			catch (Exception e) {
-				if (e instanceof com.liferay.portal.kernel.exception.SystemException) {
-					throw (com.liferay.portal.kernel.exception.SystemException)e;
-				}
-
-				throw new com.liferay.portal.kernel.exception.SystemException(e);
+			catch (Exception exception) {
+				throw new com.liferay.portal.kernel.exception.SystemException(
+					exception);
 			}
 		}
-		catch (com.liferay.portal.kernel.exception.SystemException se) {
-			_log.error(se, se);
+		catch (com.liferay.portal.kernel.exception.SystemException
+					systemException) {
 
-			throw se;
+			_log.error(systemException, systemException);
+
+			throw systemException;
 		}
 	}
 
 	public static void testAddClassNameAndTestTransactionPortletBar_Success(
-		HttpPrincipal httpPrincipal, java.lang.String transactionPortletBarText)
-		throws com.liferay.portal.kernel.exception.SystemException {
-		try {
-			MethodKey methodKey = new MethodKey(PortalServiceUtil.class,
-					"testAddClassNameAndTestTransactionPortletBar_Success",
-					_testAddClassNameAndTestTransactionPortletBar_SuccessParameterTypes6);
+		HttpPrincipal httpPrincipal, String transactionPortletBarText) {
 
-			MethodHandler methodHandler = new MethodHandler(methodKey,
-					transactionPortletBarText);
+		try {
+			MethodKey methodKey = new MethodKey(
+				PortalServiceUtil.class,
+				"testAddClassNameAndTestTransactionPortletBar_Success",
+				_testAddClassNameAndTestTransactionPortletBar_SuccessParameterTypes7);
+
+			MethodHandler methodHandler = new MethodHandler(
+				methodKey, transactionPortletBarText);
 
 			try {
 				TunnelUtil.invoke(httpPrincipal, methodHandler);
 			}
-			catch (Exception e) {
-				if (e instanceof com.liferay.portal.kernel.exception.SystemException) {
-					throw (com.liferay.portal.kernel.exception.SystemException)e;
-				}
-
-				throw new com.liferay.portal.kernel.exception.SystemException(e);
+			catch (Exception exception) {
+				throw new com.liferay.portal.kernel.exception.SystemException(
+					exception);
 			}
 		}
-		catch (com.liferay.portal.kernel.exception.SystemException se) {
-			_log.error(se, se);
+		catch (com.liferay.portal.kernel.exception.SystemException
+					systemException) {
 
-			throw se;
+			_log.error(systemException, systemException);
+
+			throw systemException;
 		}
 	}
 
 	public static void testAutoSyncHibernateSessionStateOnTxCreation(
-		HttpPrincipal httpPrincipal)
-		throws com.liferay.portal.kernel.exception.SystemException {
+		HttpPrincipal httpPrincipal) {
+
 		try {
-			MethodKey methodKey = new MethodKey(PortalServiceUtil.class,
-					"testAutoSyncHibernateSessionStateOnTxCreation",
-					_testAutoSyncHibernateSessionStateOnTxCreationParameterTypes7);
+			MethodKey methodKey = new MethodKey(
+				PortalServiceUtil.class,
+				"testAutoSyncHibernateSessionStateOnTxCreation",
+				_testAutoSyncHibernateSessionStateOnTxCreationParameterTypes8);
 
 			MethodHandler methodHandler = new MethodHandler(methodKey);
 
 			try {
 				TunnelUtil.invoke(httpPrincipal, methodHandler);
 			}
-			catch (Exception e) {
-				if (e instanceof com.liferay.portal.kernel.exception.SystemException) {
-					throw (com.liferay.portal.kernel.exception.SystemException)e;
-				}
-
-				throw new com.liferay.portal.kernel.exception.SystemException(e);
+			catch (Exception exception) {
+				throw new com.liferay.portal.kernel.exception.SystemException(
+					exception);
 			}
 		}
-		catch (com.liferay.portal.kernel.exception.SystemException se) {
-			_log.error(se, se);
+		catch (com.liferay.portal.kernel.exception.SystemException
+					systemException) {
 
-			throw se;
+			_log.error(systemException, systemException);
+
+			throw systemException;
 		}
 	}
 
 	public static void testDeleteClassName(HttpPrincipal httpPrincipal)
-		throws com.liferay.portal.kernel.exception.PortalException,
-			com.liferay.portal.kernel.exception.SystemException {
+		throws com.liferay.portal.kernel.exception.PortalException {
+
 		try {
-			MethodKey methodKey = new MethodKey(PortalServiceUtil.class,
-					"testDeleteClassName", _testDeleteClassNameParameterTypes8);
+			MethodKey methodKey = new MethodKey(
+				PortalServiceUtil.class, "testDeleteClassName",
+				_testDeleteClassNameParameterTypes9);
 
 			MethodHandler methodHandler = new MethodHandler(methodKey);
 
 			try {
 				TunnelUtil.invoke(httpPrincipal, methodHandler);
 			}
-			catch (Exception e) {
-				if (e instanceof com.liferay.portal.kernel.exception.PortalException) {
-					throw (com.liferay.portal.kernel.exception.PortalException)e;
+			catch (Exception exception) {
+				if (exception instanceof
+						com.liferay.portal.kernel.exception.PortalException) {
+
+					throw (com.liferay.portal.kernel.exception.PortalException)
+						exception;
 				}
 
-				if (e instanceof com.liferay.portal.kernel.exception.SystemException) {
-					throw (com.liferay.portal.kernel.exception.SystemException)e;
-				}
-
-				throw new com.liferay.portal.kernel.exception.SystemException(e);
+				throw new com.liferay.portal.kernel.exception.SystemException(
+					exception);
 			}
 		}
-		catch (com.liferay.portal.kernel.exception.SystemException se) {
-			_log.error(se, se);
+		catch (com.liferay.portal.kernel.exception.SystemException
+					systemException) {
 
-			throw se;
+			_log.error(systemException, systemException);
+
+			throw systemException;
 		}
 	}
 
-	public static int testGetBuildNumber(HttpPrincipal httpPrincipal)
-		throws com.liferay.portal.kernel.exception.SystemException {
+	public static int testGetBuildNumber(HttpPrincipal httpPrincipal) {
 		try {
-			MethodKey methodKey = new MethodKey(PortalServiceUtil.class,
-					"testGetBuildNumber", _testGetBuildNumberParameterTypes9);
+			MethodKey methodKey = new MethodKey(
+				PortalServiceUtil.class, "testGetBuildNumber",
+				_testGetBuildNumberParameterTypes10);
 
 			MethodHandler methodHandler = new MethodHandler(methodKey);
 
@@ -325,46 +358,52 @@ public class PortalServiceHttp {
 			try {
 				returnObj = TunnelUtil.invoke(httpPrincipal, methodHandler);
 			}
-			catch (Exception e) {
-				throw new com.liferay.portal.kernel.exception.SystemException(e);
+			catch (Exception exception) {
+				throw new com.liferay.portal.kernel.exception.SystemException(
+					exception);
 			}
 
 			return ((Integer)returnObj).intValue();
 		}
-		catch (com.liferay.portal.kernel.exception.SystemException se) {
-			_log.error(se, se);
+		catch (com.liferay.portal.kernel.exception.SystemException
+					systemException) {
 
-			throw se;
+			_log.error(systemException, systemException);
+
+			throw systemException;
 		}
 	}
 
-	public static void testGetUserId(HttpPrincipal httpPrincipal)
-		throws com.liferay.portal.kernel.exception.SystemException {
+	public static void testGetUserId(HttpPrincipal httpPrincipal) {
 		try {
-			MethodKey methodKey = new MethodKey(PortalServiceUtil.class,
-					"testGetUserId", _testGetUserIdParameterTypes10);
+			MethodKey methodKey = new MethodKey(
+				PortalServiceUtil.class, "testGetUserId",
+				_testGetUserIdParameterTypes11);
 
 			MethodHandler methodHandler = new MethodHandler(methodKey);
 
 			try {
 				TunnelUtil.invoke(httpPrincipal, methodHandler);
 			}
-			catch (Exception e) {
-				throw new com.liferay.portal.kernel.exception.SystemException(e);
+			catch (Exception exception) {
+				throw new com.liferay.portal.kernel.exception.SystemException(
+					exception);
 			}
 		}
-		catch (com.liferay.portal.kernel.exception.SystemException se) {
-			_log.error(se, se);
+		catch (com.liferay.portal.kernel.exception.SystemException
+					systemException) {
 
-			throw se;
+			_log.error(systemException, systemException);
+
+			throw systemException;
 		}
 	}
 
-	public static boolean testHasClassName(HttpPrincipal httpPrincipal)
-		throws com.liferay.portal.kernel.exception.SystemException {
+	public static boolean testHasClassName(HttpPrincipal httpPrincipal) {
 		try {
-			MethodKey methodKey = new MethodKey(PortalServiceUtil.class,
-					"testHasClassName", _testHasClassNameParameterTypes11);
+			MethodKey methodKey = new MethodKey(
+				PortalServiceUtil.class, "testHasClassName",
+				_testHasClassNameParameterTypes12);
 
 			MethodHandler methodHandler = new MethodHandler(methodKey);
 
@@ -373,54 +412,52 @@ public class PortalServiceHttp {
 			try {
 				returnObj = TunnelUtil.invoke(httpPrincipal, methodHandler);
 			}
-			catch (Exception e) {
-				if (e instanceof com.liferay.portal.kernel.exception.SystemException) {
-					throw (com.liferay.portal.kernel.exception.SystemException)e;
-				}
-
-				throw new com.liferay.portal.kernel.exception.SystemException(e);
+			catch (Exception exception) {
+				throw new com.liferay.portal.kernel.exception.SystemException(
+					exception);
 			}
 
 			return ((Boolean)returnObj).booleanValue();
 		}
-		catch (com.liferay.portal.kernel.exception.SystemException se) {
-			_log.error(se, se);
+		catch (com.liferay.portal.kernel.exception.SystemException
+					systemException) {
 
-			throw se;
+			_log.error(systemException, systemException);
+
+			throw systemException;
 		}
 	}
 
 	private static Log _log = LogFactoryUtil.getLog(PortalServiceHttp.class);
-	private static final Class<?>[] _getAutoDeployDirectoryParameterTypes0 = new Class[] {
-			
-		};
-	private static final Class<?>[] _getBuildNumberParameterTypes1 = new Class[] {
-			
-		};
-	private static final Class<?>[] _testAddClassName_RollbackParameterTypes2 = new Class[] {
-			java.lang.String.class
-		};
-	private static final Class<?>[] _testAddClassName_SuccessParameterTypes3 = new Class[] {
-			java.lang.String.class
-		};
-	private static final Class<?>[] _testAddClassNameAndTestTransactionPortletBar_PortalRollbackParameterTypes4 =
-		new Class[] { java.lang.String.class };
-	private static final Class<?>[] _testAddClassNameAndTestTransactionPortletBar_PortletRollbackParameterTypes5 =
-		new Class[] { java.lang.String.class };
-	private static final Class<?>[] _testAddClassNameAndTestTransactionPortletBar_SuccessParameterTypes6 =
-		new Class[] { java.lang.String.class };
-	private static final Class<?>[] _testAutoSyncHibernateSessionStateOnTxCreationParameterTypes7 =
-		new Class[] {  };
-	private static final Class<?>[] _testDeleteClassNameParameterTypes8 = new Class[] {
-			
-		};
-	private static final Class<?>[] _testGetBuildNumberParameterTypes9 = new Class[] {
-			
-		};
-	private static final Class<?>[] _testGetUserIdParameterTypes10 = new Class[] {
-			
-		};
-	private static final Class<?>[] _testHasClassNameParameterTypes11 = new Class[] {
-			
-		};
+
+	private static final Class<?>[] _getAutoDeployDirectoryParameterTypes0 =
+		new Class[] {};
+	private static final Class<?>[] _getBuildNumberParameterTypes1 =
+		new Class[] {};
+	private static final Class<?>[] _getVersionParameterTypes2 = new Class[] {};
+	private static final Class<?>[] _testAddClassName_RollbackParameterTypes3 =
+		new Class[] {String.class};
+	private static final Class<?>[] _testAddClassName_SuccessParameterTypes4 =
+		new Class[] {String.class};
+	private static final Class<?>[]
+		_testAddClassNameAndTestTransactionPortletBar_PortalRollbackParameterTypes5 =
+			new Class[] {String.class};
+	private static final Class<?>[]
+		_testAddClassNameAndTestTransactionPortletBar_PortletRollbackParameterTypes6 =
+			new Class[] {String.class};
+	private static final Class<?>[]
+		_testAddClassNameAndTestTransactionPortletBar_SuccessParameterTypes7 =
+			new Class[] {String.class};
+	private static final Class<?>[]
+		_testAutoSyncHibernateSessionStateOnTxCreationParameterTypes8 =
+			new Class[] {};
+	private static final Class<?>[] _testDeleteClassNameParameterTypes9 =
+		new Class[] {};
+	private static final Class<?>[] _testGetBuildNumberParameterTypes10 =
+		new Class[] {};
+	private static final Class<?>[] _testGetUserIdParameterTypes11 =
+		new Class[] {};
+	private static final Class<?>[] _testHasClassNameParameterTypes12 =
+		new Class[] {};
+
 }

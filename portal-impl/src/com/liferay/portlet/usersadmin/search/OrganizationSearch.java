@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -17,17 +17,19 @@ package com.liferay.portlet.usersadmin.search;
 import com.liferay.portal.kernel.dao.search.SearchContainer;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
+import com.liferay.portal.kernel.model.Organization;
+import com.liferay.portal.kernel.model.User;
+import com.liferay.portal.kernel.portlet.PortalPreferences;
+import com.liferay.portal.kernel.portlet.PortletPreferencesFactoryUtil;
+import com.liferay.portal.kernel.portlet.PortletProvider;
+import com.liferay.portal.kernel.portlet.PortletProviderUtil;
+import com.liferay.portal.kernel.util.HashMapBuilder;
 import com.liferay.portal.kernel.util.OrderByComparator;
 import com.liferay.portal.kernel.util.ParamUtil;
 import com.liferay.portal.kernel.util.Validator;
-import com.liferay.portal.model.Organization;
-import com.liferay.portal.util.PortletKeys;
-import com.liferay.portlet.PortalPreferences;
-import com.liferay.portlet.PortletPreferencesFactoryUtil;
-import com.liferay.portlet.usersadmin.util.UsersAdminUtil;
+import com.liferay.users.admin.kernel.util.UsersAdminUtil;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -39,23 +41,24 @@ import javax.portlet.PortletURL;
  */
 public class OrganizationSearch extends SearchContainer<Organization> {
 
-	static List<String> headerNames = new ArrayList<String>();
-	static Map<String, String> orderableHeaders = new HashMap<String, String>();
-
-	static {
-		headerNames.add("name");
-		headerNames.add("parent-organization");
-		headerNames.add("type");
-		headerNames.add("city");
-		headerNames.add("region");
-		headerNames.add("country");
-
-		orderableHeaders.put("name", "name");
-		orderableHeaders.put("type", "type");
-	}
-
 	public static final String EMPTY_RESULTS_MESSAGE =
 		"no-organizations-were-found";
+
+	public static List<String> headerNames = new ArrayList<String>() {
+		{
+			add("name");
+			add("parent-organization");
+			add("type");
+			add("city");
+			add("region");
+			add("country");
+		}
+	};
+	public static Map<String, String> orderableHeaders = HashMapBuilder.put(
+		"name", "name"
+	).put(
+		"type", "type"
+	).build();
 
 	public OrganizationSearch(
 		PortletRequest portletRequest, PortletURL iteratorURL) {
@@ -91,12 +94,17 @@ public class OrganizationSearch extends SearchContainer<Organization> {
 		iteratorURL.setParameter(
 			OrganizationDisplayTerms.STREET, displayTerms.getStreet());
 		iteratorURL.setParameter(
+			OrganizationDisplayTerms.TYPE, displayTerms.getType());
+		iteratorURL.setParameter(
 			OrganizationDisplayTerms.ZIP, displayTerms.getZip());
 
 		try {
 			PortalPreferences preferences =
 				PortletPreferencesFactoryUtil.getPortalPreferences(
 					portletRequest);
+
+			String portletId = PortletProviderUtil.getPortletId(
+				User.class.getName(), PortletProvider.Action.VIEW);
 
 			String orderByCol = ParamUtil.getString(
 				portletRequest, "orderByCol");
@@ -107,22 +115,18 @@ public class OrganizationSearch extends SearchContainer<Organization> {
 				Validator.isNotNull(orderByType)) {
 
 				preferences.setValue(
-					PortletKeys.USERS_ADMIN, "organizations-order-by-col",
-					orderByCol);
+					portletId, "organizations-order-by-col", orderByCol);
 				preferences.setValue(
-					PortletKeys.USERS_ADMIN, "organizations-order-by-type",
-					orderByType);
+					portletId, "organizations-order-by-type", orderByType);
 			}
 			else {
 				orderByCol = preferences.getValue(
-					PortletKeys.USERS_ADMIN, "organizations-order-by-col",
-					"name");
+					portletId, "organizations-order-by-col", "name");
 				orderByType = preferences.getValue(
-					PortletKeys.USERS_ADMIN, "organizations-order-by-type",
-					"asc");
+					portletId, "organizations-order-by-type", "asc");
 			}
 
-			OrderByComparator orderByComparator =
+			OrderByComparator<Organization> orderByComparator =
 				UsersAdminUtil.getOrganizationOrderByComparator(
 					orderByCol, orderByType);
 
@@ -131,11 +135,12 @@ public class OrganizationSearch extends SearchContainer<Organization> {
 			setOrderByType(orderByType);
 			setOrderByComparator(orderByComparator);
 		}
-		catch (Exception e) {
-			_log.error(e);
+		catch (Exception exception) {
+			_log.error("Unable to initialize organization search", exception);
 		}
 	}
 
-	private static Log _log = LogFactoryUtil.getLog(OrganizationSearch.class);
+	private static final Log _log = LogFactoryUtil.getLog(
+		OrganizationSearch.class);
 
 }

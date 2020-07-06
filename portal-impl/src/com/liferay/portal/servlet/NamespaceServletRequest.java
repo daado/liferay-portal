@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -40,34 +40,39 @@ import javax.servlet.http.HttpServletRequest;
  */
 public class NamespaceServletRequest extends DynamicServletRequest {
 
-	static Set<String> reservedAttrs = new HashSet<String>();
-
-	static {
-		reservedAttrs.add(JavaConstants.JAVAX_PORTLET_CONFIG);
-		reservedAttrs.add(JavaConstants.JAVAX_PORTLET_PORTLET);
-		reservedAttrs.add(JavaConstants.JAVAX_PORTLET_REQUEST);
-		reservedAttrs.add(JavaConstants.JAVAX_PORTLET_RESPONSE);
-		reservedAttrs.add(JavaConstants.JAVAX_SERVLET_INCLUDE_CONTEXT_PATH);
-		reservedAttrs.add(JavaConstants.JAVAX_SERVLET_INCLUDE_PATH_INFO);
-		reservedAttrs.add(JavaConstants.JAVAX_SERVLET_INCLUDE_QUERY_STRING);
-		reservedAttrs.add(JavaConstants.JAVAX_SERVLET_INCLUDE_REQUEST_URI);
-		reservedAttrs.add(JavaConstants.JAVAX_SERVLET_INCLUDE_SERVLET_PATH);
-		reservedAttrs.add(MimeResponse.MARKUP_HEAD_ELEMENT);
-		reservedAttrs.add(PortletRequest.LIFECYCLE_PHASE);
-	}
+	public static Set<String> reservedAttrs = new HashSet<String>() {
+		{
+			add(JavaConstants.JAVAX_PORTLET_CONFIG);
+			add(JavaConstants.JAVAX_PORTLET_PORTLET);
+			add(JavaConstants.JAVAX_PORTLET_REQUEST);
+			add(JavaConstants.JAVAX_PORTLET_RESPONSE);
+			add(JavaConstants.JAVAX_SERVLET_FORWARD_CONTEXT_PATH);
+			add(JavaConstants.JAVAX_SERVLET_FORWARD_PATH_INFO);
+			add(JavaConstants.JAVAX_SERVLET_FORWARD_QUERY_STRING);
+			add(JavaConstants.JAVAX_SERVLET_FORWARD_REQUEST_URI);
+			add(JavaConstants.JAVAX_SERVLET_FORWARD_SERVLET_PATH);
+			add(JavaConstants.JAVAX_SERVLET_INCLUDE_CONTEXT_PATH);
+			add(JavaConstants.JAVAX_SERVLET_INCLUDE_PATH_INFO);
+			add(JavaConstants.JAVAX_SERVLET_INCLUDE_QUERY_STRING);
+			add(JavaConstants.JAVAX_SERVLET_INCLUDE_REQUEST_URI);
+			add(JavaConstants.JAVAX_SERVLET_INCLUDE_SERVLET_PATH);
+			add(MimeResponse.MARKUP_HEAD_ELEMENT);
+			add(PortletRequest.LIFECYCLE_PHASE);
+		}
+	};
 
 	public NamespaceServletRequest(
-		HttpServletRequest request, String attrNamespace,
+		HttpServletRequest httpServletRequest, String attrNamespace,
 		String paramNamespace) {
 
-		this(request, attrNamespace, paramNamespace, true);
+		this(httpServletRequest, attrNamespace, paramNamespace, true);
 	}
 
 	public NamespaceServletRequest(
-		HttpServletRequest request, String attrNamespace, String paramNamespace,
-		boolean inherit) {
+		HttpServletRequest httpServletRequest, String attrNamespace,
+		String paramNamespace, boolean inherit) {
 
-		super(request, inherit);
+		super(httpServletRequest, inherit);
 
 		_attrNamespace = attrNamespace;
 		_paramNamespace = paramNamespace;
@@ -86,12 +91,12 @@ public class NamespaceServletRequest extends DynamicServletRequest {
 
 	@Override
 	public Enumeration<String> getAttributeNames() {
-		List<String> names = new ArrayList<String>();
+		List<String> names = new ArrayList<>();
 
-		Enumeration<String> enu = super.getAttributeNames();
+		Enumeration<String> enumeration = super.getAttributeNames();
 
-		while (enu.hasMoreElements()) {
-			String name = enu.nextElement();
+		while (enumeration.hasMoreElements()) {
+			String name = enumeration.nextElement();
 
 			if (name.startsWith(_attrNamespace)) {
 				names.add(name.substring(_attrNamespace.length()));
@@ -150,6 +155,14 @@ public class NamespaceServletRequest extends DynamicServletRequest {
 		}
 	}
 
+	@Override
+	protected void injectInto(DynamicServletRequest dynamicServletRequest) {
+		dynamicServletRequest.setRequest(
+			new NamespaceServletRequest(
+				(HttpServletRequest)getRequest(), _attrNamespace,
+				_paramNamespace));
+	}
+
 	private boolean _isReservedParam(String name) {
 		if (reservedAttrs.contains(name)) {
 			return true;
@@ -166,7 +179,7 @@ public class NamespaceServletRequest extends DynamicServletRequest {
 		return false;
 	}
 
-	private String _attrNamespace;
-	private String _paramNamespace;
+	private final String _attrNamespace;
+	private final String _paramNamespace;
 
 }

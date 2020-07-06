@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -71,8 +71,8 @@ public class MulticastTransport extends Thread implements Transport {
 				_socket.leaveGroup(_address);
 				_address = null;
 			}
-			catch (IOException ioe) {
-				_log.error("Unable to leave group", ioe);
+			catch (IOException ioException) {
+				_log.error("Unable to leave group", ioException);
 			}
 		}
 
@@ -96,14 +96,22 @@ public class MulticastTransport extends Thread implements Transport {
 				_handler.process(_inboundPacket);
 			}
 		}
-		catch (IOException ioe) {
-			_log.error("Unable to process ", ioe);
+		catch (IOException ioException) {
+			if (!_connected) {
+				if (_log.isDebugEnabled()) {
+					_log.debug("Unable to disconnect", ioException);
+				}
+
+				return;
+			}
+
+			_log.error("Unable to process ", ioException);
 
 			_socket.disconnect();
 
 			_connected = false;
 
-			_handler.errorReceived(ioe);
+			_handler.errorReceived(ioException);
 		}
 	}
 
@@ -120,19 +128,19 @@ public class MulticastTransport extends Thread implements Transport {
 		sendMessage(message.getBytes());
 	}
 
-	private static Log _log = LogFactory.getLog(MulticastTransport.class);
+	private static final Log _log = LogFactory.getLog(MulticastTransport.class);
 
 	private InetAddress _address;
 	private boolean _connected;
-	private DatagramHandler _handler;
-	private String _host;
-	private byte[] _inboundBuffer = new byte[4096];
-	private DatagramPacket _inboundPacket = new DatagramPacket(
+	private final DatagramHandler _handler;
+	private final String _host;
+	private final byte[] _inboundBuffer = new byte[4096];
+	private final DatagramPacket _inboundPacket = new DatagramPacket(
 		_inboundBuffer, _inboundBuffer.length);
-	private byte[] _outboundBuffer = new byte[4096];
-	private DatagramPacket _outboundPacket = new DatagramPacket(
+	private final byte[] _outboundBuffer = new byte[4096];
+	private final DatagramPacket _outboundPacket = new DatagramPacket(
 		_outboundBuffer, _outboundBuffer.length);
-	private int _port;
+	private final int _port;
 	private MulticastSocket _socket;
 
 }

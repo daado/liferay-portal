@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,15 +14,14 @@
 
 package com.liferay.portal.webdav;
 
+import com.liferay.portal.kernel.security.permission.PermissionChecker;
 import com.liferay.portal.kernel.util.GetterUtil;
 import com.liferay.portal.kernel.util.HttpUtil;
-import com.liferay.portal.kernel.util.StringPool;
+import com.liferay.portal.kernel.util.PortalUtil;
 import com.liferay.portal.kernel.webdav.WebDAVException;
 import com.liferay.portal.kernel.webdav.WebDAVRequest;
 import com.liferay.portal.kernel.webdav.WebDAVStorage;
 import com.liferay.portal.kernel.webdav.WebDAVUtil;
-import com.liferay.portal.security.permission.PermissionChecker;
-import com.liferay.portal.util.PortalUtil;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -33,18 +32,20 @@ import javax.servlet.http.HttpServletResponse;
 public class WebDAVRequestImpl implements WebDAVRequest {
 
 	public WebDAVRequestImpl(
-			WebDAVStorage storage, HttpServletRequest request,
-			HttpServletResponse response, String userAgent,
+			WebDAVStorage storage, HttpServletRequest httpServletRequest,
+			HttpServletResponse httpServletResponse, String userAgent,
 			PermissionChecker permissionChecker)
 		throws WebDAVException {
 
 		_storage = storage;
-		_request = request;
-		_response = response;
+		_httpServletRequest = httpServletRequest;
+		_httpServletResponse = httpServletResponse;
 		_userAgent = userAgent;
-		_lockUuid = WebDAVUtil.getLockUuid(request);
 
-		String pathInfo = HttpUtil.fixPath(_request.getPathInfo(), false, true);
+		_lockUuid = WebDAVUtil.getLockUuid(httpServletRequest);
+
+		String pathInfo = HttpUtil.fixPath(
+			_httpServletRequest.getPathInfo(), false, true);
 
 		String strippedPathInfo = WebDAVUtil.stripManualCheckInRequiredPath(
 			pathInfo);
@@ -54,12 +55,17 @@ public class WebDAVRequestImpl implements WebDAVRequest {
 
 			_manualCheckInRequired = true;
 		}
+		else {
+			_manualCheckInRequired = false;
+		}
 
 		_path = WebDAVUtil.stripOfficeExtension(pathInfo);
 
-		_companyId = PortalUtil.getCompanyId(request);
+		_companyId = PortalUtil.getCompanyId(httpServletRequest);
+
 		_groupId = WebDAVUtil.getGroupId(_companyId, _path);
-		_userId = GetterUtil.getLong(_request.getRemoteUser());
+
+		_userId = GetterUtil.getLong(_httpServletRequest.getRemoteUser());
 		_permissionChecker = permissionChecker;
 	}
 
@@ -75,12 +81,12 @@ public class WebDAVRequestImpl implements WebDAVRequest {
 
 	@Override
 	public HttpServletRequest getHttpServletRequest() {
-		return _request;
+		return _httpServletRequest;
 	}
 
 	@Override
 	public HttpServletResponse getHttpServletResponse() {
-		return _response;
+		return _httpServletResponse;
 	}
 
 	@Override
@@ -120,16 +126,13 @@ public class WebDAVRequestImpl implements WebDAVRequest {
 
 	@Override
 	public boolean isAppleDoubleRequest() {
-		String[] pathArray = getPathArray();
-
-		String name = WebDAVUtil.getResourceName(pathArray);
+		String name = WebDAVUtil.getResourceName(getPathArray());
 
 		if (isMac() && name.startsWith(_APPLE_DOUBLE_PREFIX)) {
 			return true;
 		}
-		else {
-			return false;
-		}
+
+		return false;
 	}
 
 	@Override
@@ -155,16 +158,16 @@ public class WebDAVRequestImpl implements WebDAVRequest {
 
 	private static final String _APPLE_DOUBLE_PREFIX = "._";
 
-	private long _companyId;
-	private long _groupId;
-	private String _lockUuid;
-	private boolean _manualCheckInRequired;
-	private String _path = StringPool.BLANK;
-	private PermissionChecker _permissionChecker;
-	private HttpServletRequest _request;
-	private HttpServletResponse _response;
-	private WebDAVStorage _storage;
-	private String _userAgent;
-	private long _userId;
+	private final long _companyId;
+	private final long _groupId;
+	private final HttpServletRequest _httpServletRequest;
+	private final HttpServletResponse _httpServletResponse;
+	private final String _lockUuid;
+	private final boolean _manualCheckInRequired;
+	private final String _path;
+	private final PermissionChecker _permissionChecker;
+	private final WebDAVStorage _storage;
+	private final String _userAgent;
+	private final long _userId;
 
 }

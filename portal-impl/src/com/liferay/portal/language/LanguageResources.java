@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,16 +14,27 @@
 
 package com.liferay.portal.language;
 
+import com.liferay.petra.string.CharPool;
+import com.liferay.petra.string.StringBundler;
+import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.language.LanguageUtil;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
-import com.liferay.portal.kernel.util.CharPool;
+import com.liferay.portal.kernel.util.GetterUtil;
 import com.liferay.portal.kernel.util.LocaleUtil;
 import com.liferay.portal.kernel.util.PropertiesUtil;
-import com.liferay.portal.kernel.util.StringBundler;
-import com.liferay.portal.kernel.util.StringPool;
+import com.liferay.portal.kernel.util.ResourceBundleLoader;
+import com.liferay.portal.kernel.util.ResourceBundleLoaderUtil;
+import com.liferay.portal.kernel.util.ResourceBundleUtil;
 import com.liferay.portal.kernel.util.StringUtil;
+import com.liferay.portal.kernel.util.Validator;
 import com.liferay.portal.tools.LangBuilder;
+import com.liferay.registry.Filter;
+import com.liferay.registry.Registry;
+import com.liferay.registry.RegistryUtil;
+import com.liferay.registry.ServiceReference;
+import com.liferay.registry.ServiceTracker;
+import com.liferay.registry.ServiceTrackerCustomizer;
 
 import java.io.InputStream;
 
@@ -35,12 +46,25 @@ import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Properties;
+import java.util.ResourceBundle;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * @author Shuyang Zhou
+ * @author Kamesh Sampath
  */
 public class LanguageResources {
+
+	public static ResourceBundleLoader RESOURCE_BUNDLE_LOADER =
+		new ResourceBundleLoader() {
+
+			@Override
+			public ResourceBundle loadResourceBundle(Locale locale) {
+				return LanguageResources.getResourceBundle(locale);
+			}
+
+		};
 
 	public static String fixValue(String value) {
 		if (value.endsWith(LangBuilder.AUTOMATIC_COPY)) {
@@ -61,6 +85,7 @@ public class LanguageResources {
 
 		for (Map.Entry<Object, Object> entry : properties.entrySet()) {
 			String key = (String)entry.getKey();
+
 			String value = (String)entry.getValue();
 
 			value = fixValue(value);
@@ -85,12 +110,60 @@ public class LanguageResources {
 		if (value == null) {
 			return getMessage(getSuperLocale(locale), key);
 		}
-		else {
-			return value;
-		}
+
+		return value;
+	}
+
+	public static ResourceBundle getResourceBundle(Locale locale) {
+		return new LanguageResourcesBundle(locale);
 	}
 
 	public static Locale getSuperLocale(Locale locale) {
+		Locale superLocale = _superLocales.get(locale);
+
+		if (superLocale != null) {
+			if (superLocale == _nullLocale) {
+				return null;
+			}
+
+			return superLocale;
+		}
+
+		superLocale = _getSuperLocale(locale);
+
+		if (superLocale == null) {
+			_superLocales.put(locale, _nullLocale);
+		}
+		else {
+			_superLocales.put(locale, superLocale);
+		}
+
+		return superLocale;
+	}
+
+	public void afterPropertiesSet() {
+		Registry registry = RegistryUtil.getRegistry();
+
+		Filter languageResourceFilter = registry.getFilter(
+			"(&(!(javax.portlet.name=*))(language.id=*)(objectClass=" +
+				ResourceBundle.class.getName() + "))");
+
+		_serviceTracker = registry.trackServices(
+			languageResourceFilter,
+			new LanguageResourceServiceTrackerCustomizer());
+
+		_serviceTracker.open();
+
+		ResourceBundleLoaderUtil.setPortalResourceBundleLoader(
+			RESOURCE_BUNDLE_LOADER);
+	}
+
+	public void setConfig(String config) {
+		_configNames = StringUtil.split(
+			StringUtil.replace(config, CharPool.PERIOD, CharPool.SLASH));
+	}
+
+	private static Locale _getSuperLocale(Locale locale) {
 		String variant = locale.getVariant();
 
 		if (variant.length() > 0) {
@@ -103,7 +176,13 @@ public class LanguageResources {
 			Locale priorityLocale = LanguageUtil.getLocale(
 				locale.getLanguage());
 
-			if ((priorityLocale != null) && !locale.equals(priorityLocale)) {
+			if (priorityLocale != null) {
+				variant = priorityLocale.getVariant();
+			}
+
+			if ((priorityLocale != null) && !locale.equals(priorityLocale) &&
+				(variant.length() <= 0)) {
+
 				return new Locale(
 					priorityLocale.getLanguage(), priorityLocale.getCountry());
 			}
@@ -120,41 +199,13 @@ public class LanguageResources {
 		return null;
 	}
 
-	public static Map<String, String> putLanguageMap(
-		Locale locale, Map<String, String> languageMap) {
-
-		Map<String, String> oldLanguageMap = _languageMaps.get(locale);
-
-		if (oldLanguageMap == null) {
-			_loadLocale(locale);
-			oldLanguageMap = _languageMaps.get(locale);
-		}
-
-		Map<String, String> newLanguageMap = new HashMap<String, String>();
-
-		if (oldLanguageMap != null) {
-			newLanguageMap.putAll(oldLanguageMap);
-		}
-
-		newLanguageMap.putAll(languageMap);
-
-		_languageMaps.put(locale, newLanguageMap);
-
-		return oldLanguageMap;
-	}
-
-	public void setConfig(String config) {
-		_configNames = StringUtil.split(
-			config.replace(CharPool.PERIOD, CharPool.SLASH));
-	}
-
 	private static Map<String, String> _loadLocale(Locale locale) {
 		Map<String, String> languageMap = null;
 
 		if (_configNames.length > 0) {
 			String localeName = locale.toString();
 
-			languageMap = new HashMap<String, String>();
+			languageMap = new HashMap<>();
 
 			for (String name : _configNames) {
 				StringBundler sb = new StringBundler(4);
@@ -188,22 +239,21 @@ public class LanguageResources {
 		try {
 			ClassLoader classLoader = LanguageResources.class.getClassLoader();
 
-			Enumeration<URL> enu = classLoader.getResources(name);
+			Enumeration<URL> enumeration = classLoader.getResources(name);
 
-			if (_log.isDebugEnabled() && !enu.hasMoreElements()) {
+			if (_log.isDebugEnabled() && !enumeration.hasMoreElements()) {
 				_log.debug("No resources found for " + name);
 			}
 
-			while (enu.hasMoreElements()) {
-				URL url = enu.nextElement();
+			while (enumeration.hasMoreElements()) {
+				URL url = enumeration.nextElement();
 
 				if (_log.isInfoEnabled()) {
-					_log.info("Loading " + name + " from " + url);
+					_log.info(
+						StringBundler.concat("Loading ", name, " from ", url));
 				}
 
-				InputStream inputStream = url.openStream();
-
-				try {
+				try (InputStream inputStream = url.openStream()) {
 					Properties inputStreamProperties = PropertiesUtil.load(
 						inputStream, StringPool.UTF8);
 
@@ -211,29 +261,204 @@ public class LanguageResources {
 
 					if (_log.isInfoEnabled()) {
 						_log.info(
-							"Loading " + url + " with " +
-								inputStreamProperties.size() + " values");
+							StringBundler.concat(
+								"Loading ", url, " with ",
+								inputStreamProperties.size(), " values"));
 					}
-				}
-				finally {
-					inputStream.close();
 				}
 			}
 		}
-		catch (Exception e) {
+		catch (Exception exception) {
 			if (_log.isWarnEnabled()) {
-				_log.warn(e, e);
+				_log.warn(exception, exception);
 			}
 		}
 
 		return properties;
 	}
 
-	private static Log _log = LogFactoryUtil.getLog(LanguageResources.class);
+	private static Map<String, String> _putLanguageMap(
+		Locale locale, Map<String, String> languageMap) {
 
-	private static Locale _blankLocale = new Locale(StringPool.BLANK);
+		Map<String, String> oldLanguageMap = _languageMaps.get(locale);
+
+		if (oldLanguageMap == null) {
+			_loadLocale(locale);
+
+			oldLanguageMap = _languageMaps.get(locale);
+		}
+
+		Map<String, String> newLanguageMap = new HashMap<>();
+
+		if (oldLanguageMap != null) {
+			newLanguageMap.putAll(oldLanguageMap);
+		}
+
+		Map<String, String> diffLanguageMap = new HashMap<>();
+
+		for (Map.Entry<String, String> entry : languageMap.entrySet()) {
+			String key = entry.getKey();
+			String value = entry.getValue();
+
+			String oldValue = null;
+
+			if (value == null) {
+				oldValue = newLanguageMap.remove(key);
+			}
+			else {
+				oldValue = newLanguageMap.put(key, value);
+			}
+
+			diffLanguageMap.put(entry.getKey(), oldValue);
+		}
+
+		_languageMaps.put(locale, newLanguageMap);
+
+		return diffLanguageMap;
+	}
+
+	private static final Log _log = LogFactoryUtil.getLog(
+		LanguageResources.class);
+
+	private static final Locale _blankLocale = new Locale(StringPool.BLANK);
 	private static String[] _configNames;
-	private static Map<Locale, Map<String, String>> _languageMaps =
-		new ConcurrentHashMap<Locale, Map<String, String>>(64);
+	private static final Map<Locale, Map<String, String>> _languageMaps =
+		new ConcurrentHashMap<>(64);
+	private static final Locale _nullLocale = new Locale(StringPool.BLANK);
+	private static final Map<Locale, Locale> _superLocales =
+		new ConcurrentHashMap<>();
+
+	private ServiceTracker<ResourceBundle, ResourceBundle> _serviceTracker;
+
+	private static class LanguageResourcesBundle extends ResourceBundle {
+
+		@Override
+		public Enumeration<String> getKeys() {
+			Set<String> keySet = _languageMap.keySet();
+
+			if (parent == null) {
+				return Collections.enumeration(keySet);
+			}
+
+			return new ResourceBundleEnumeration(keySet, parent.getKeys());
+		}
+
+		@Override
+		public Locale getLocale() {
+			return _locale;
+		}
+
+		@Override
+		protected Object handleGetObject(String key) {
+			return _languageMap.get(key);
+		}
+
+		@Override
+		protected Set<String> handleKeySet() {
+			return _languageMap.keySet();
+		}
+
+		private LanguageResourcesBundle(Locale locale) {
+			_locale = locale;
+
+			Map<String, String> languageMap = _languageMaps.get(locale);
+
+			if (languageMap == null) {
+				languageMap = _loadLocale(locale);
+			}
+
+			_languageMap = languageMap;
+
+			Locale superLocale = getSuperLocale(locale);
+
+			if (superLocale != null) {
+				setParent(new LanguageResourcesBundle(superLocale));
+			}
+		}
+
+		private final Map<String, String> _languageMap;
+		private final Locale _locale;
+
+	}
+
+	private static class LanguageResourceServiceTrackerCustomizer
+		implements ServiceTrackerCustomizer<ResourceBundle, ResourceBundle> {
+
+		@Override
+		public ResourceBundle addingService(
+			ServiceReference<ResourceBundle> serviceReference) {
+
+			Registry registry = RegistryUtil.getRegistry();
+
+			ResourceBundle resourceBundle = registry.getService(
+				serviceReference);
+
+			String languageId = GetterUtil.getString(
+				serviceReference.getProperty("language.id"));
+			Map<String, String> languageMap = new HashMap<>();
+			Locale locale = null;
+
+			if (Validator.isNotNull(languageId)) {
+				locale = LocaleUtil.fromLanguageId(languageId, true);
+			}
+			else {
+				locale = new Locale(StringPool.BLANK);
+			}
+
+			Enumeration<String> enumeration = resourceBundle.getKeys();
+
+			while (enumeration.hasMoreElements()) {
+				String key = enumeration.nextElement();
+
+				String value = ResourceBundleUtil.getString(
+					resourceBundle, key);
+
+				languageMap.put(key, value);
+			}
+
+			Map<String, String> diffLanguageMap = _putLanguageMap(
+				locale, languageMap);
+
+			_diffLanguageMap.put(serviceReference, diffLanguageMap);
+
+			return resourceBundle;
+		}
+
+		@Override
+		public void modifiedService(
+			ServiceReference<ResourceBundle> serviceReference,
+			ResourceBundle resourceBundle) {
+		}
+
+		@Override
+		public void removedService(
+			ServiceReference<ResourceBundle> serviceReference,
+			ResourceBundle resourceBundle) {
+
+			Registry registry = RegistryUtil.getRegistry();
+
+			registry.ungetService(serviceReference);
+
+			String languageId = GetterUtil.getString(
+				serviceReference.getProperty("language.id"));
+			Locale locale = null;
+
+			if (Validator.isNotNull(languageId)) {
+				locale = LocaleUtil.fromLanguageId(languageId, true);
+			}
+			else {
+				locale = new Locale(StringPool.BLANK);
+			}
+
+			Map<String, String> languageMap = _diffLanguageMap.remove(
+				serviceReference);
+
+			_putLanguageMap(locale, languageMap);
+		}
+
+		private final Map<ServiceReference<?>, Map<String, String>>
+			_diffLanguageMap = new HashMap<>();
+
+	}
 
 }

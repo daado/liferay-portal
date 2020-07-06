@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,20 +14,18 @@
 
 package com.liferay.portal.service.http;
 
-import aQute.bnd.annotation.ProviderType;
-
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
-import com.liferay.portal.service.ThemeServiceUtil;
+import com.liferay.portal.kernel.service.ThemeServiceUtil;
 
 import java.rmi.RemoteException;
 
 /**
  * Provides the SOAP utility for the
- * {@link com.liferay.portal.service.ThemeServiceUtil} service utility. The
- * static methods of this class calls the same methods of the service utility.
- * However, the signatures are different because it is difficult for SOAP to
- * support certain types.
+ * <code>ThemeServiceUtil</code> service
+ * utility. The static methods of this class call the same methods of the
+ * service utility. However, the signatures are different because it is
+ * difficult for SOAP to support certain types.
  *
  * <p>
  * The benefits of using the SOAP utility is that it is cross platform
@@ -48,23 +46,24 @@ import java.rmi.RemoteException;
  *
  * @author Brian Wing Shun Chan
  * @see ThemeServiceHttp
- * @see com.liferay.portal.service.ThemeServiceUtil
  * @generated
  */
-@ProviderType
 public class ThemeServiceSoap {
-	public static java.lang.String getWARThemes() throws RemoteException {
+
+	public static String getWARThemes() throws RemoteException {
 		try {
-			com.liferay.portal.kernel.json.JSONArray returnValue = ThemeServiceUtil.getWARThemes();
+			com.liferay.portal.kernel.json.JSONArray returnValue =
+				ThemeServiceUtil.getWARThemes();
 
 			return returnValue.toString();
 		}
-		catch (Exception e) {
-			_log.error(e, e);
+		catch (Exception exception) {
+			_log.error(exception, exception);
 
-			throw new RemoteException(e.getMessage());
+			throw new RemoteException(exception.getMessage());
 		}
 	}
 
 	private static Log _log = LogFactoryUtil.getLog(ThemeServiceSoap.class);
+
 }

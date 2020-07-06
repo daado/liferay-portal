@@ -1,6 +1,6 @@
 <%--
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -16,6 +16,10 @@
 
 <%@ page session="false" %>
 
+<%
+pageContext.setAttribute(WebKeys.THEME_DEFINE_OBJECTS, Boolean.FALSE);
+%>
+
 <%@ include file="/html/common/referer_common.jsp" %>
 
 <script type="text/javascript">
@@ -29,8 +33,14 @@
 	%>
 
 	<c:if test="<%= logout && BrowserSnifferUtil.isIe(request) && PrefsPropsUtil.getBoolean(themeDisplay.getCompanyId(), PropsKeys.NTLM_AUTH_ENABLED, PropsValues.NTLM_AUTH_ENABLED) %>">
-		document.execCommand("ClearAuthenticationCache");
+		document.execCommand('ClearAuthenticationCache');
 	</c:if>
 
-	location.href = '<%= HtmlUtil.escapeJS(referer) %>';
+	<%
+	referer = HtmlUtil.escapeJSLink(referer);
+
+	referer = HtmlUtil.escapeJS(referer);
+	%>
+
+	location.href = '<%= referer %>';
 </script>

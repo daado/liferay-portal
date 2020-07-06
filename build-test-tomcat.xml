@@ -1,9 +1,17 @@
 <?xml version="1.0"?>
 
-<project name="portal-test-tomcat" basedir="." default="test" xmlns:antelope="antlib:ise.antelope.tasks">
+<project basedir="." default="test" name="portal-test-tomcat" xmlns:antelope="antlib:ise.antelope.tasks">
 	<import file="build-test.xml" />
 
 	<target name="run-selenium-tomcat">
+		<lstopwatch action="start" name="run.selenium.tomcat" />
+
+		<app-server-properties-update>
+			app.server.type=tomcat
+		</app-server-properties-update>
+
+		<set-tomcat-version-number liferay.portal.bundle="${liferay.portal.bundle}" />
+
 		<if>
 			<not>
 				<isset property="build.app.server" />
@@ -13,7 +21,7 @@
 			</then>
 		</if>
 
-		<antcall target="revert-test-properties" />
+		<antcall target="record-test-generated-properties" />
 
 		<if>
 			<isset property="vm.host" />
@@ -26,36 +34,33 @@
 			</then>
 		</if>
 
+		<antcall inheritAll="false" target="setup-testable-tomcat" />
+
 		<antcall target="prepare-virtual-host-name-properties" />
 
-		<antcall target="start-selenium" />
+		<if>
+			<isset property="test.base.dir.name" />
+			<then>
+				<antcall inheritAll="false" target="run-tomcat">
+					<param name="test.base.dir.name" value="${test.base.dir.name}" />
+					<param name="test.class" value="${test.class}" />
+				</antcall>
+			</then>
+			<else>
+				<antcall inheritAll="false" target="run-tomcat">
+					<param name="test.class" value="${test.class}" />
+				</antcall>
+			</else>
+		</if>
 
-		<antcall target="run-tomcat" inheritAll="false">
-			<param name="test.class" value="${test.name}" />
-		</antcall>
-
-		<antcall target="stop-selenium" />
+		<lstopwatch action="total" name="run.selenium.tomcat" />
 	</target>
 
 	<target name="run-tomcat">
-		<antcall target="clean-up-logs" />
+		<lstopwatch action="start" name="run.tomcat" />
 
-		<record action="start" name="log" />
+		<antcall target="run-simple-server" />
 
-		<antcall target="run-simple-server">
-			<param name="simple.server.dir" value="${app.server.tomcat.dir}" />
-			<param name="simple.server.bin.dir" value="${app.server.tomcat.bin.dir}" />
-			<param name="simple.server.deploy.dir" value="${app.server.tomcat.deploy.dir}" />
-			<param name="simple.server.lib.global.dir" value="${app.server.tomcat.lib.global.dir}" />
-			<param name="simple.server.portal.dir" value="${app.server.tomcat.portal.dir}" />
-			<param name="simple.server.start.executable" value="catalina${file.suffix.bat}" />
-			<param name="simple.server.start.executable.arg.line" value="run" />
-			<param name="simple.server.stop.executable" value="shutdown${file.suffix.bat}" />
-			<param name="simple.server.stop.executable.arg.line" value="" />
-		</antcall>
-
-		<record action="stop" name="log" />
-
-		<antcall target="evaluate-logs" />
+		<lstopwatch action="total" name="run.tomcat" />
 	</target>
 </project>

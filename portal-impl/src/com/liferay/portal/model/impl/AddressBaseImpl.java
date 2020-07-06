@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,9 +14,8 @@
 
 package com.liferay.portal.model.impl;
 
-import com.liferay.portal.kernel.exception.SystemException;
-import com.liferay.portal.model.Address;
-import com.liferay.portal.service.AddressLocalServiceUtil;
+import com.liferay.portal.kernel.model.Address;
+import com.liferay.portal.kernel.service.AddressLocalServiceUtil;
 
 /**
  * The extended model base implementation for the Address service. Represents a row in the &quot;Address&quot; database table, with each column mapped to a property of this class.
@@ -27,18 +26,19 @@ import com.liferay.portal.service.AddressLocalServiceUtil;
  *
  * @author Brian Wing Shun Chan
  * @see AddressImpl
- * @see com.liferay.portal.model.Address
+ * @see Address
  * @generated
  */
-public abstract class AddressBaseImpl extends AddressModelImpl
-	implements Address {
+public abstract class AddressBaseImpl
+	extends AddressModelImpl implements Address {
+
 	/*
 	 * NOTE FOR DEVELOPERS:
 	 *
-	 * Never modify or reference this class directly. All methods that expect a address model instance should use the {@link Address} interface instead.
+	 * Never modify or reference this class directly. All methods that expect a address model instance should use the <code>Address</code> interface instead.
 	 */
 	@Override
-	public void persist() throws SystemException {
+	public void persist() {
 		if (this.isNew()) {
 			AddressLocalServiceUtil.addAddress(this);
 		}
@@ -46,4 +46,5 @@ public abstract class AddressBaseImpl extends AddressModelImpl
 			AddressLocalServiceUtil.updateAddress(this);
 		}
 	}
+
 }

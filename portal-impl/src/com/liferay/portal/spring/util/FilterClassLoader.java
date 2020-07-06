@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,7 +14,7 @@
 
 package com.liferay.portal.spring.util;
 
-import com.liferay.portal.util.ClassLoaderUtil;
+import com.liferay.portal.kernel.util.PortalClassLoaderUtil;
 
 /**
  * @author Brian Wing Shun Chan
@@ -28,12 +28,11 @@ public class FilterClassLoader extends ClassLoader {
 	@Override
 	public Class<?> loadClass(String name) throws ClassNotFoundException {
 		if (name.startsWith("net.sf.ehcache.") ||
-			name.startsWith("org.aopalliance.") ||
 			name.startsWith("org.hibernate.") ||
 			name.startsWith("org.springframework.")) {
 
 			ClassLoader portalClassLoader =
-				ClassLoaderUtil.getPortalClassLoader();
+				PortalClassLoaderUtil.getClassLoader();
 
 			return portalClassLoader.loadClass(name);
 		}

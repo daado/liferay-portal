@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,15 +14,29 @@
 
 package com.liferay.portal.util;
 
-import com.liferay.portal.kernel.util.StringPool;
+import com.liferay.petra.nio.CharsetEncoderUtil;
+import com.liferay.petra.string.StringPool;
+import com.liferay.portal.kernel.util.HttpUtil;
+
+import java.net.URLEncoder;
+
+import java.nio.charset.CharsetEncoder;
 
 import org.junit.Assert;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 /**
  * @author Julio Camarero
  */
 public class FriendlyURLNormalizerImplTest {
+
+	@BeforeClass
+	public static void setUpClass() {
+		HttpUtil httpUtil = new HttpUtil();
+
+		httpUtil.setHttp(new HttpImpl());
+	}
 
 	@Test
 	public void testNormalizeBlank() {
@@ -34,6 +48,19 @@ public class FriendlyURLNormalizerImplTest {
 	@Test
 	public void testNormalizeNull() {
 		Assert.assertEquals(null, _friendlyURLNormalizerImpl.normalize(null));
+	}
+
+	@Test
+	public void testNormalizePercentageWithEncoding() throws Exception {
+		Assert.assertEquals(
+			StringPool.DASH,
+			_friendlyURLNormalizerImpl.normalizeWithEncoding("%"));
+		Assert.assertEquals(
+			"0-", _friendlyURLNormalizerImpl.normalizeWithEncoding("0%"));
+		Assert.assertEquals(
+			"company-grew-100-last-year",
+			_friendlyURLNormalizerImpl.normalizeWithEncoding(
+				"Company grew 100% last year"));
 	}
 
 	@Test
@@ -87,22 +114,82 @@ public class FriendlyURLNormalizerImplTest {
 			_friendlyURLNormalizerImpl.normalize(StringPool.SPACE));
 	}
 
-	@SuppressWarnings("deprecation")
 	@Test
-	public void testNormalizeWordReplacingChars() {
+	public void testNormalizeWithEncodingRemove() throws Exception {
 		Assert.assertEquals(
-			"s-nt-nc-ith-r-plac-chars",
-			_friendlyURLNormalizerImpl.normalize(
-				"sentence with replace chars", new char[] {'e', 'w'}));
+			StringPool.DASH,
+			_friendlyURLNormalizerImpl.normalizeWithEncoding("(-)"));
+		Assert.assertEquals(
+			StringPool.DASH,
+			_friendlyURLNormalizerImpl.normalizeWithEncoding("---"));
+		Assert.assertEquals(
+			StringPool.DASH,
+			_friendlyURLNormalizerImpl.normalizeWithPeriodsAndSlashes("/./."));
+		Assert.assertEquals(
+			"/./.", _friendlyURLNormalizerImpl.normalizeWithEncoding("/./."));
 	}
 
 	@Test
-	public void testNormalizeWordWithNonASCIICharacters() {
+	public void testNormalizeWithEncodingUnicode() throws Exception {
+		_testNormalizeWithEncodingUnicode("\u5F15");
+		_testNormalizeWithEncodingUnicode("テスト");
+		_testNormalizeWithEncodingUnicode("اختبار");
+		_testNormalizeWithEncodingUnicode("\uD801\uDC37");
+		_testNormalizeWithEncodingUnicode(
+			String.valueOf(Character.MAX_HIGH_SURROGATE));
+
+		String value = "テスト";
+
+		String encodedValue = URLEncoder.encode(value, StringPool.UTF8);
+
+		value = value + StringPool.SLASH + value;
+
+		encodedValue = encodedValue + StringPool.SLASH + encodedValue;
+
+		Assert.assertEquals(
+			encodedValue,
+			_friendlyURLNormalizerImpl.normalizeWithEncoding(value));
+	}
+
+	@Test
+	public void testNormalizeWithEncodingUnicodeMalformed() throws Exception {
+		CharsetEncoder charsetEncoder = CharsetEncoderUtil.getCharsetEncoder(
+			StringPool.UTF8);
+
+		String encodedReplacement = URLEncoder.encode(
+			new String(charsetEncoder.replacement(), StringPool.UTF8),
+			StringPool.UTF8);
+
+		Assert.assertEquals(
+			encodedReplacement + "a" + encodedReplacement,
+			_friendlyURLNormalizerImpl.normalizeWithEncoding("\uDBFFA\uDFFF"));
+		Assert.assertEquals(
+			encodedReplacement + StringPool.DASH + encodedReplacement,
+			_friendlyURLNormalizerImpl.normalizeWithEncoding("\uDBFF-\uDFFF"));
+
+		String value = "テスト";
+
+		String encodedValue = URLEncoder.encode(value, StringPool.UTF8);
+
+		Assert.assertEquals(
+			encodedReplacement + StringPool.DASH + encodedValue,
+			_friendlyURLNormalizerImpl.normalizeWithEncoding(
+				"\uDBFF-" + value));
+	}
+
+	@Test
+	public void testNormalizeWordWithNonasciiCharacters() {
 		Assert.assertEquals(
 			"wordnc", _friendlyURLNormalizerImpl.normalize("word\u00F1\u00C7"));
 	}
 
-	private FriendlyURLNormalizerImpl _friendlyURLNormalizerImpl =
+	private void _testNormalizeWithEncodingUnicode(String s) throws Exception {
+		Assert.assertEquals(
+			URLEncoder.encode(s, StringPool.UTF8),
+			_friendlyURLNormalizerImpl.normalizeWithEncoding(s));
+	}
+
+	private final FriendlyURLNormalizerImpl _friendlyURLNormalizerImpl =
 		new FriendlyURLNormalizerImpl();
 
 }

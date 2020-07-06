@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -30,8 +30,9 @@ public class BasicSpellCheckListener implements SpellCheckListener {
 
 	public BasicSpellCheckListener(String text) {
 		_text = text;
+
 		_textCharArray = text.toCharArray();
-		_invalidWords = new ArrayList<InvalidWord>();
+		_invalidWords = new ArrayList<>();
 	}
 
 	public List<InvalidWord> getInvalidWords() {
@@ -40,7 +41,7 @@ public class BasicSpellCheckListener implements SpellCheckListener {
 
 	@Override
 	public void spellingError(SpellCheckEvent event) {
-		List<String> suggestions = new ArrayList<String>();
+		List<String> suggestions = new ArrayList<>();
 
 		for (Word word : (List<Word>)event.getSuggestions()) {
 			suggestions.add(word.getWord());
@@ -49,17 +50,18 @@ public class BasicSpellCheckListener implements SpellCheckListener {
 		int pos = event.getWordContextPosition();
 
 		if (pos >= 0) {
+			String invalidWord = event.getInvalidWord();
+
 			if ((pos == 0) ||
 				((pos > 0) &&
 				 //(_text.charAt(pos - 1) != '<') &&
 				 (!_isInsideHtmlTag(pos)) &&
 				 (_text.charAt(pos - 1) != '&') &&
-				 (event.getInvalidWord().length() > 1))) {
+				 (invalidWord.length() > 1))) {
 
 				_invalidWords.add(
 					new InvalidWord(
-						event.getInvalidWord(), suggestions,
-						event.getWordContext(), pos));
+						invalidWord, suggestions, event.getWordContext(), pos));
 			}
 		}
 	}
@@ -94,8 +96,8 @@ public class BasicSpellCheckListener implements SpellCheckListener {
 		return insideHtmlTag;
 	}
 
-	private List<InvalidWord> _invalidWords;
-	private String _text;
-	private char[] _textCharArray;
+	private final List<InvalidWord> _invalidWords;
+	private final String _text;
+	private final char[] _textCharArray;
 
 }

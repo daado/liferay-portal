@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,10 +14,10 @@
 
 package com.liferay.portal.image;
 
+import com.liferay.petra.string.StringBundler;
+import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
-import com.liferay.portal.kernel.util.StringBundler;
-import com.liferay.portal.kernel.util.StringPool;
 
 import java.util.LinkedList;
 import java.util.List;
@@ -38,9 +38,9 @@ public class LiferayIdentifyCmd extends IdentifyCmd {
 
 		setGlobalSearchPath(globalSearchPath);
 
-		LinkedList<String> arguments = new LinkedList<String>();
+		LinkedList<String> arguments = new LinkedList<>();
 
-		arguments.addAll(_instance.getCommand());
+		arguments.addAll(_liferayIdentifyCmd.getCommand());
 		arguments.addAll(resourceLimits);
 		arguments.addAll(commandArguments);
 
@@ -58,8 +58,10 @@ public class LiferayIdentifyCmd extends IdentifyCmd {
 		return getProcessTask(arguments);
 	}
 
-	private static Log _log = LogFactoryUtil.getLog(LiferayIdentifyCmd.class);
+	private static final Log _log = LogFactoryUtil.getLog(
+		LiferayIdentifyCmd.class);
 
-	private static LiferayIdentifyCmd _instance = new LiferayIdentifyCmd();
+	private static final LiferayIdentifyCmd _liferayIdentifyCmd =
+		new LiferayIdentifyCmd();
 
 }

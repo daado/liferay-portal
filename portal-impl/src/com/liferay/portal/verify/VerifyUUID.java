@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,131 +14,136 @@
 
 package com.liferay.portal.verify;
 
+import com.liferay.petra.string.StringBundler;
+import com.liferay.portal.kernel.bean.PortalBeanLocatorUtil;
 import com.liferay.portal.kernel.dao.db.DB;
-import com.liferay.portal.kernel.dao.db.DBFactoryUtil;
+import com.liferay.portal.kernel.dao.db.DBManagerUtil;
+import com.liferay.portal.kernel.dao.jdbc.AutoBatchPreparedStatementUtil;
 import com.liferay.portal.kernel.dao.jdbc.DataAccess;
+import com.liferay.portal.kernel.util.LoggingTimer;
 import com.liferay.portal.kernel.uuid.PortalUUIDUtil;
+import com.liferay.portal.kernel.verify.model.VerifiableUUIDModel;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.Callable;
 
 /**
  * @author Brian Wing Shun Chan
  */
 public class VerifyUUID extends VerifyProcess {
 
-	public static void verifyModel(String modelName, String pkColumnName)
+	public static void verify(VerifiableUUIDModel... verifiableUUIDModels)
 		throws Exception {
 
-		Connection con = null;
-		PreparedStatement ps = null;
-		ResultSet rs = null;
+		VerifyUUID verifyUUID = new VerifyUUID();
 
-		try {
-			con = DataAccess.getUpgradeOptimizedConnection();
-
-			ps = con.prepareStatement(
-				"select " + pkColumnName + " from " + modelName +
-					" where uuid_ is null or uuid_ = ''");
-
-			rs = ps.executeQuery();
-
-			while (rs.next()) {
-				long pk = rs.getLong(pkColumnName);
-
-				verifyModel(modelName, pkColumnName, pk);
-			}
-		}
-		finally {
-			DataAccess.cleanUp(con, ps, rs);
-		}
-	}
-
-	protected static void verifyModel(
-			String modelName, String pkColumnName, long pk)
-		throws Exception {
-
-		String uuid = PortalUUIDUtil.generate();
-
-		DB db = DBFactoryUtil.getDB();
-
-		db.runSQL(
-			"update " + modelName + " set uuid_ = '" + uuid + "' where " +
-				pkColumnName + " = " + pk);
+		verifyUUID.doVerify(verifiableUUIDModels);
 	}
 
 	@Override
 	protected void doVerify() throws Exception {
-		for (String[] model : _MODELS) {
-			verifyModel(model[0], model[1]);
+		Map<String, VerifiableUUIDModel> verifiableUUIDModelsMap =
+			PortalBeanLocatorUtil.locate(VerifiableUUIDModel.class);
+
+		Collection<VerifiableUUIDModel> verifiableUUIDModels =
+			verifiableUUIDModelsMap.values();
+
+		doVerify(verifiableUUIDModels.toArray(new VerifiableUUIDModel[0]));
+	}
+
+	protected void doVerify(VerifiableUUIDModel... verifiableUUIDModels)
+		throws Exception {
+
+		List<VerifyUUIDCallable> verifyUUIDCallables = new ArrayList<>(
+			verifiableUUIDModels.length);
+
+		for (VerifiableUUIDModel verifiableUUIDModel : verifiableUUIDModels) {
+			VerifyUUIDCallable verifyUUIDCallable = new VerifyUUIDCallable(
+				verifiableUUIDModel);
+
+			verifyUUIDCallables.add(verifyUUIDCallable);
+		}
+
+		doVerify(verifyUUIDCallables);
+	}
+
+	protected void verifyUUID(VerifiableUUIDModel verifiableUUIDModel)
+		throws Exception {
+
+		DB db = DBManagerUtil.getDB();
+
+		if (db.isSupportsNewUuidFunction()) {
+			try (LoggingTimer loggingTimer = new LoggingTimer(
+					verifiableUUIDModel.getTableName());
+				Connection con = DataAccess.getConnection();
+				PreparedStatement ps = con.prepareStatement(
+					StringBundler.concat(
+						"update ", verifiableUUIDModel.getTableName(),
+						" set uuid_ = ", db.getNewUuidFunctionName(),
+						" where uuid_ is null or uuid_ = ''"))) {
+
+				ps.executeUpdate();
+
+				return;
+			}
+		}
+
+		StringBundler sb = new StringBundler(5);
+
+		sb.append("update ");
+		sb.append(verifiableUUIDModel.getTableName());
+		sb.append(" set uuid_ = ? where ");
+		sb.append(verifiableUUIDModel.getPrimaryKeyColumnName());
+		sb.append(" = ?");
+
+		try (LoggingTimer loggingTimer = new LoggingTimer(
+				verifiableUUIDModel.getTableName());
+			Connection con = DataAccess.getConnection();
+			PreparedStatement ps1 = con.prepareStatement(
+				StringBundler.concat(
+					"select ", verifiableUUIDModel.getPrimaryKeyColumnName(),
+					" from ", verifiableUUIDModel.getTableName(),
+					" where uuid_ is null or uuid_ = ''"));
+			ResultSet rs = ps1.executeQuery();
+			PreparedStatement ps2 = AutoBatchPreparedStatementUtil.autoBatch(
+				con.prepareStatement(sb.toString()))) {
+
+			while (rs.next()) {
+				long pk = rs.getLong(
+					verifiableUUIDModel.getPrimaryKeyColumnName());
+
+				ps2.setString(1, PortalUUIDUtil.generate());
+				ps2.setLong(2, pk);
+
+				ps2.addBatch();
+			}
+
+			ps2.executeBatch();
 		}
 	}
 
-	private static final String[][] _MODELS = new String[][] {
-		new String[] {
-			"Address", "addressId"
-		},
-		new String[] {
-			"DLFileVersion", "fileVersionId"
-		},
-		new String[] {
-			"EmailAddress", "emailAddressId"
-		},
-		new String[] {
-			"Group_", "groupId"
-		},
-		new String[] {
-			"JournalArticleResource", "resourcePrimKey"
-		},
-		new String[] {
-			"JournalFeed", "id_"
-		},
-		new String[] {
-			"Layout", "plid"
-		},
-		new String[] {
-			"LayoutPrototype", "layoutPrototypeId"
-		},
-		new String[] {
-			"LayoutSetPrototype", "layoutSetPrototypeId"
-		},
-		new String[] {
-			"MBBan", "banId"
-		},
-		new String[] {
-			"MBDiscussion", "discussionId"
-		},
-		new String[] {
-			"MBThread", "threadId"
-		},
-		new String[] {
-			"MBThreadFlag", "threadFlagId"
-		},
-		new String[] {
-			"Organization_", "organizationId"
-		},
-		new String[] {
-			"PasswordPolicy", "passwordPolicyId"
-		},
-		new String[] {
-			"Phone", "phoneId"
-		},
-		new String[] {
-			"PollsVote", "voteId"
-		},
-		new String[] {
-			"Role_", "roleId"
-		},
-		new String[] {
-			"UserGroup", "userGroupId"
-		},
-		new String[] {
-			"Website", "websiteId"
-		},
-		new String[] {
-			"WikiPageResource", "resourcePrimKey"
+	private class VerifyUUIDCallable implements Callable<Void> {
+
+		@Override
+		public Void call() throws Exception {
+			verifyUUID(_verifiableUUIDModel);
+
+			return null;
 		}
-	};
+
+		private VerifyUUIDCallable(VerifiableUUIDModel verifiableUUIDModel) {
+			_verifiableUUIDModel = verifiableUUIDModel;
+		}
+
+		private final VerifiableUUIDModel _verifiableUUIDModel;
+
+	}
 
 }

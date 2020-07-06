@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -29,13 +29,21 @@ import javax.servlet.http.HttpServletResponseWrapper;
  */
 public class GenericServletResponse extends HttpServletResponseWrapper {
 
-	public GenericServletResponse(HttpServletResponse response) {
-		super(response);
+	public GenericServletResponse(HttpServletResponse httpServletResponse) {
+		super(httpServletResponse);
 
-		_ubaos = new UnsyncByteArrayOutputStream();
+		_unsyncByteArrayOutputStream = new UnsyncByteArrayOutputStream();
 	}
 
 	public int getContentLength() {
+		if (_contentLength > Integer.MAX_VALUE) {
+			return -1;
+		}
+
+		return (int)_contentLength;
+	}
+
+	public long getContentLengthLong() {
 		return _contentLength;
 	}
 
@@ -45,12 +53,12 @@ public class GenericServletResponse extends HttpServletResponseWrapper {
 	}
 
 	public byte[] getData() {
-		return _ubaos.toByteArray();
+		return _unsyncByteArrayOutputStream.toByteArray();
 	}
 
 	@Override
 	public ServletOutputStream getOutputStream() {
-		return new ServletOutputStreamAdapter(_ubaos);
+		return new ServletOutputStreamAdapter(_unsyncByteArrayOutputStream);
 	}
 
 	@Override
@@ -67,14 +75,21 @@ public class GenericServletResponse extends HttpServletResponseWrapper {
 	}
 
 	@Override
-	public void setContentType(String type) {
-		super.setContentType(type);
+	public void setContentLengthLong(long length) {
+		super.setContentLengthLong(length);
 
-		_contentType = type;
+		_contentLength = length;
 	}
 
-	private int _contentLength;
+	@Override
+	public void setContentType(String contentType) {
+		super.setContentType(contentType);
+
+		_contentType = contentType;
+	}
+
+	private long _contentLength;
 	private String _contentType;
-	private UnsyncByteArrayOutputStream _ubaos;
+	private final UnsyncByteArrayOutputStream _unsyncByteArrayOutputStream;
 
 }

@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,9 +14,8 @@
 
 package com.liferay.portal.model.impl;
 
-import com.liferay.portal.kernel.exception.SystemException;
-import com.liferay.portal.model.UserGroupGroupRole;
-import com.liferay.portal.service.UserGroupGroupRoleLocalServiceUtil;
+import com.liferay.portal.kernel.model.UserGroupGroupRole;
+import com.liferay.portal.kernel.service.UserGroupGroupRoleLocalServiceUtil;
 
 /**
  * The extended model base implementation for the UserGroupGroupRole service. Represents a row in the &quot;UserGroupGroupRole&quot; database table, with each column mapped to a property of this class.
@@ -27,18 +26,19 @@ import com.liferay.portal.service.UserGroupGroupRoleLocalServiceUtil;
  *
  * @author Brian Wing Shun Chan
  * @see UserGroupGroupRoleImpl
- * @see com.liferay.portal.model.UserGroupGroupRole
+ * @see UserGroupGroupRole
  * @generated
  */
 public abstract class UserGroupGroupRoleBaseImpl
 	extends UserGroupGroupRoleModelImpl implements UserGroupGroupRole {
+
 	/*
 	 * NOTE FOR DEVELOPERS:
 	 *
-	 * Never modify or reference this class directly. All methods that expect a user group group role model instance should use the {@link UserGroupGroupRole} interface instead.
+	 * Never modify or reference this class directly. All methods that expect a user group group role model instance should use the <code>UserGroupGroupRole</code> interface instead.
 	 */
 	@Override
-	public void persist() throws SystemException {
+	public void persist() {
 		if (this.isNew()) {
 			UserGroupGroupRoleLocalServiceUtil.addUserGroupGroupRole(this);
 		}
@@ -46,4 +46,5 @@ public abstract class UserGroupGroupRoleBaseImpl
 			UserGroupGroupRoleLocalServiceUtil.updateUserGroupGroupRole(this);
 		}
 	}
+
 }

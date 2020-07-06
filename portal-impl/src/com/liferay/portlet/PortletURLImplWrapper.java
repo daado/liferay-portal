@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,17 +14,39 @@
 
 package com.liferay.portlet;
 
+import com.liferay.portal.kernel.portlet.LiferayPortletResponse;
+import com.liferay.portal.kernel.portlet.LiferayPortletURL;
+import com.liferay.portal.kernel.portlet.LiferayPortletURLWrapper;
+import com.liferay.portal.kernel.portlet.PortletURLFactoryUtil;
+import com.liferay.portlet.internal.PortletResponseImpl;
+
+import javax.portlet.PortletResponse;
+
 /**
  * @author Brian Wing Shun Chan
  */
-public class PortletURLImplWrapper extends PortletURLImpl {
+public class PortletURLImplWrapper extends LiferayPortletURLWrapper {
 
 	public PortletURLImplWrapper(
-		PortletResponseImpl portletResponseImpl, long plid, String lifecycle) {
+		PortletResponse portletResponse, long plid, String lifecycle) {
 
-		super(
+		super(_createLiferayPortletURL(portletResponse, lifecycle));
+
+		setPlid(plid);
+	}
+
+	private static LiferayPortletURL _createLiferayPortletURL(
+		PortletResponse portletResponse, String lifecycle) {
+
+		LiferayPortletResponse liferayPortletResponse =
+			LiferayPortletUtil.getLiferayPortletResponse(portletResponse);
+
+		PortletResponseImpl portletResponseImpl =
+			(PortletResponseImpl)liferayPortletResponse;
+
+		return PortletURLFactoryUtil.create(
 			portletResponseImpl.getPortletRequest(),
-			portletResponseImpl.getPortletName(), plid, lifecycle);
+			portletResponseImpl.getPortlet(), null, lifecycle);
 	}
 
 }

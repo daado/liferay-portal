@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,9 +14,13 @@
 
 package com.liferay.portal.jsonwebservice;
 
-import com.liferay.portal.kernel.util.StringBundler;
+import com.liferay.petra.string.StringBundler;
+import com.liferay.portal.kernel.service.ServiceContext;
+import com.liferay.portal.kernel.util.FileUtil;
 import com.liferay.portal.kernel.util.StringUtil;
-import com.liferay.portal.service.ServiceContext;
+
+import java.io.File;
+import java.io.IOException;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -29,6 +33,9 @@ import java.util.Map;
  * @author Igor Spasic
  */
 public class FooService {
+
+	public static void addFile(String fileName) {
+	}
 
 	public static BarData bar() {
 		return new BarData();
@@ -101,7 +108,7 @@ public class FooService {
 	}
 
 	public static List<FooData> getFooDatas() {
-		List<FooData> fooDataList = new ArrayList<FooData>();
+		List<FooData> fooDataList = new ArrayList<>();
 
 		fooDataList.add(getFooData(1));
 		fooDataList.add(getFooData(2));
@@ -134,16 +141,29 @@ public class FooService {
 		return "world";
 	}
 
+	public static String hello(int i1) {
+		return "hello:" + i1;
+	}
+
+	public static String hello(int i1, int i2, int i3) {
+		return StringBundler.concat("hello:", i1, ":", i2, ":", i3);
+	}
+
+	public static String hello(int i1, int i2, String s) {
+		return StringBundler.concat("hello:", i1, ":", i2, ">", s);
+	}
+
 	public static String helloWorld(Integer userId, String worldName) {
-		return "Welcome " + userId + " to " + worldName;
+		return StringBundler.concat("Welcome ", userId, " to ", worldName);
 	}
 
 	public static String hey(
 		Calendar calendar, long[] userIds, List<Locale> locales, Long[] ids) {
 
-		return calendar.get(Calendar.YEAR) + ", " + userIds[0] + '/' +
-			userIds.length + ", " + locales.get(0) + '/' + locales.size() +
-				", " + ids[0] + '/' + ids.length;
+		return StringBundler.concat(
+			calendar.get(Calendar.YEAR), ", ", userIds[0], "/", userIds.length,
+			", ", locales.get(0), "/", locales.size(), ", ", ids[0], "/",
+			ids.length);
 	}
 
 	public static String methodOne(long id, long nameId) {
@@ -163,7 +183,7 @@ public class FooService {
 			return "null!";
 		}
 
-		return '[' + name + '|' + number + ']';
+		return StringBundler.concat("[", name, "|", number, "]");
 	}
 
 	public static String nullReturn() {
@@ -171,7 +191,8 @@ public class FooService {
 	}
 
 	public static String search(String name, String... params) {
-		return "search " + name + '>' + StringUtil.merge(params);
+		return StringBundler.concat(
+			"search ", name, ">", StringUtil.merge(params));
 	}
 
 	public static String srvcctx(ServiceContext serviceContext) {
@@ -182,6 +203,20 @@ public class FooService {
 
 	public static ServiceContext srvcctx2(ServiceContext serviceContext) {
 		return serviceContext;
+	}
+
+	public static String uploadFiles(File firstFile, File[] otherFiles)
+		throws IOException {
+
+		StringBundler sb = new StringBundler(otherFiles.length + 1);
+
+		sb.append(FileUtil.read(firstFile));
+
+		for (File otherFile : otherFiles) {
+			sb.append(FileUtil.read(otherFile));
+		}
+
+		return sb.toString();
 	}
 
 	public static String use1(FooDataImpl fooData) {

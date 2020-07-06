@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,23 +14,28 @@
 
 package com.liferay.portal.layoutconfiguration.util.xml;
 
+import com.liferay.portal.kernel.layoutconfiguration.util.xml.RuntimeLogic;
+import com.liferay.portal.kernel.model.Portlet;
 import com.liferay.portal.kernel.portlet.PortletContainerUtil;
+import com.liferay.portal.kernel.portlet.PortletIdCodec;
 import com.liferay.portal.kernel.portlet.PortletLayoutListener;
 import com.liferay.portal.kernel.portlet.PortletParameterUtil;
+import com.liferay.portal.kernel.portlet.PortletPreferencesFactoryUtil;
+import com.liferay.portal.kernel.service.PortletLocalServiceUtil;
+import com.liferay.portal.kernel.service.PortletPreferencesLocalServiceUtil;
 import com.liferay.portal.kernel.servlet.BufferCacheServletResponse;
 import com.liferay.portal.kernel.servlet.DynamicServletRequest;
+import com.liferay.portal.kernel.theme.ThemeDisplay;
+import com.liferay.portal.kernel.util.PortletKeys;
 import com.liferay.portal.kernel.util.Validator;
+import com.liferay.portal.kernel.util.WebKeys;
 import com.liferay.portal.kernel.xml.Document;
 import com.liferay.portal.kernel.xml.Element;
 import com.liferay.portal.kernel.xml.SAXReaderUtil;
-import com.liferay.portal.model.Portlet;
-import com.liferay.portal.model.PortletConstants;
-import com.liferay.portal.service.PortletLocalServiceUtil;
-import com.liferay.portal.service.PortletPreferencesLocalServiceUtil;
-import com.liferay.portal.theme.ThemeDisplay;
-import com.liferay.portal.util.PortletKeys;
-import com.liferay.portal.util.WebKeys;
-import com.liferay.portlet.PortletPreferencesFactoryUtil;
+
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Set;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -48,10 +53,11 @@ public class PortletLogic extends RuntimeLogic {
 	public static final String OPEN_TAG = "<runtime-portlet";
 
 	public PortletLogic(
-		HttpServletRequest request, HttpServletResponse response) {
+		HttpServletRequest httpServletRequest,
+		HttpServletResponse httpServletResponse) {
 
-		_request = request;
-		_response = response;
+		_httpServletRequest = httpServletRequest;
+		_httpServletResponse = httpServletResponse;
 	}
 
 	@Override
@@ -75,25 +81,39 @@ public class PortletLogic extends RuntimeLogic {
 		String queryString = rootElement.attributeValue("queryString");
 
 		if (Validator.isNotNull(instanceId)) {
-			portletId = PortletConstants.assemblePortletId(
-				portletId, instanceId);
+			PortletIdCodec.validatePortletName(portletId);
+
+			portletId = PortletIdCodec.encode(portletId, instanceId);
 		}
 
 		BufferCacheServletResponse bufferCacheServletResponse =
-			new BufferCacheServletResponse(_response);
+			new BufferCacheServletResponse(_httpServletResponse);
 
 		queryString = PortletParameterUtil.addNamespace(portletId, queryString);
 
-		HttpServletRequest request = DynamicServletRequest.addQueryString(
-			_request, queryString);
+		Map<String, String[]> parameterMap =
+			_httpServletRequest.getParameterMap();
 
-		ThemeDisplay themeDisplay = (ThemeDisplay)request.getAttribute(
-			WebKeys.THEME_DISPLAY);
+		if (!portletId.equals(_httpServletRequest.getParameter("p_p_id"))) {
+			parameterMap = new HashMap<>(parameterMap);
+
+			Set<String> keySet = parameterMap.keySet();
+
+			keySet.removeIf(key -> key.startsWith("p_p_"));
+		}
+
+		HttpServletRequest httpServletRequest =
+			DynamicServletRequest.addQueryString(
+				_httpServletRequest, parameterMap, queryString, false);
+
+		ThemeDisplay themeDisplay =
+			(ThemeDisplay)httpServletRequest.getAttribute(
+				WebKeys.THEME_DISPLAY);
 
 		Portlet portlet = getPortlet(themeDisplay, portletId);
 
 		PortletContainerUtil.render(
-			request, bufferCacheServletResponse, portlet);
+			httpServletRequest, bufferCacheServletResponse, portlet);
 
 		return bufferCacheServletResponse.getString();
 	}
@@ -111,11 +131,14 @@ public class PortletLogic extends RuntimeLogic {
 		// See LayoutTypePortletImpl#getStaticPortlets for why we only clone
 		// non-instanceable portlets
 
-		if (PortletPreferencesLocalServiceUtil.getPortletPreferencesCount(
+		long count =
+			PortletPreferencesLocalServiceUtil.getPortletPreferencesCount(
 				PortletKeys.PREFS_OWNER_TYPE_LAYOUT, themeDisplay.getPlid(),
-				portletId) < 1) {
+				portletId);
 
-			PortletPreferencesFactoryUtil.getPortletSetup(_request, portletId);
+		if (count < 1) {
+			PortletPreferencesFactoryUtil.getPortletSetup(
+				_httpServletRequest, portletId);
 
 			PortletLayoutListener portletLayoutListener =
 				portlet.getPortletLayoutListenerInstance();
@@ -135,7 +158,7 @@ public class PortletLogic extends RuntimeLogic {
 		return portlet;
 	}
 
-	private HttpServletRequest _request;
-	private HttpServletResponse _response;
+	private final HttpServletRequest _httpServletRequest;
+	private final HttpServletResponse _httpServletResponse;
 
 }

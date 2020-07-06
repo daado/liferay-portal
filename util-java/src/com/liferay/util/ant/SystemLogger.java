@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,9 +14,9 @@
 
 package com.liferay.util.ant;
 
+import com.liferay.petra.string.StringBundler;
 import com.liferay.portal.kernel.io.unsync.UnsyncBufferedReader;
 import com.liferay.portal.kernel.io.unsync.UnsyncStringReader;
-import com.liferay.portal.kernel.util.StringBundler;
 
 import java.io.IOException;
 
@@ -40,10 +40,9 @@ public class SystemLogger extends DefaultLogger {
 
 		StringBundler sb = new StringBundler();
 
-		try {
-			UnsyncBufferedReader unsyncBufferedReader =
+		try (UnsyncBufferedReader unsyncBufferedReader =
 				new UnsyncBufferedReader(
-					new UnsyncStringReader(event.getMessage()));
+					new UnsyncStringReader(event.getMessage()))) {
 
 			String line = unsyncBufferedReader.readLine();
 
@@ -62,7 +61,7 @@ public class SystemLogger extends DefaultLogger {
 				line = unsyncBufferedReader.readLine();
 			}
 		}
-		catch (IOException ioe) {
+		catch (IOException ioException) {
 		}
 
 		String msg = sb.toString();

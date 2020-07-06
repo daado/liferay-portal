@@ -1,0 +1,109 @@
+@import 'atlas-variables';
+
+$control-menu-height: 56px;
+$tab-header-height: 38px;
+
+.global-apps-menu-modal {
+	.global-apps-menu-header {
+		.nav-link {
+			line-height: 1.6rem;
+
+			@include media-breakpoint-up(sm) {
+				line-height: 2.15rem;
+			}
+		}
+	}
+
+	.modal-full {
+		margin-top: 0;
+		width: 100%;
+
+		.modal-body {
+			padding: 0;
+		}
+
+		.modal-content {
+			border-radius: 0;
+			box-shadow: none;
+		}
+	}
+
+	.tab-pane {
+		max-height: calc(100vh - #{$control-menu-height + $tab-header-height});
+		overflow-y: auto;
+	}
+}
+
+.global-apps-nav {
+	margin: 0;
+	padding: 1rem;
+
+	@include media-breakpoint-up(sm) {
+		padding: 1.5rem 2.5rem 1.5rem 1.75rem;
+	}
+
+	.global-apps-nav-header {
+		color: $secondary;
+		font-size: 0.875rem;
+		font-weight: 700;
+		line-height: 3rem;
+		text-transform: uppercase;
+	}
+
+	.global-apps-nav-subheader {
+		color: $secondary;
+		font-size: 0.75rem;
+		font-weight: 600;
+		margin-bottom: 0.25rem;
+		text-transform: uppercase;
+	}
+
+	.global-apps-nav-item {
+		margin-bottom: 0.5rem;
+	}
+
+	.global-apps-nav-link {
+		color: $dark;
+		line-height: 1.5rem;
+
+		&.active {
+			font-weight: 600;
+		}
+	}
+
+	.global-apps-nav-columns {
+		column-count: 1;
+		orphans: 1;
+		widows: 1;
+
+		@include media-breakpoint-up(sm) {
+			column-count: 2;
+		}
+
+		@include media-breakpoint-up(md) {
+			column-count: 3;
+		}
+
+		@include media-breakpoint-up(lg) {
+			column-count: 4;
+		}
+
+		.col-md {
+			display: inline-block;
+		}
+	}
+}
+
+.global-apps-sites {
+	margin-bottom: 0;
+	width: 100%;
+
+	@include media-breakpoint-up(md) {
+		width: 270px;
+	}
+
+	> ul {
+		margin-bottom: 0;
+		padding: 0 1.5rem 1rem;
+	}
+}

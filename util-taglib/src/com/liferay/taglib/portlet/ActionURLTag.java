@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -16,63 +16,69 @@ package com.liferay.taglib.portlet;
 
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
+import com.liferay.portal.kernel.model.LayoutConstants;
+import com.liferay.portal.kernel.portlet.DummyPortletURL;
 import com.liferay.portal.kernel.portlet.LiferayPortletConfig;
 import com.liferay.portal.kernel.portlet.LiferayPortletResponse;
 import com.liferay.portal.kernel.portlet.LiferayPortletURL;
 import com.liferay.portal.kernel.portlet.PortletModeFactory;
+import com.liferay.portal.kernel.portlet.PortletPreferencesFactoryConstants;
+import com.liferay.portal.kernel.portlet.PortletQName;
 import com.liferay.portal.kernel.portlet.WindowStateFactory;
 import com.liferay.portal.kernel.util.JavaConstants;
-import com.liferay.portal.kernel.util.MapUtil;
 import com.liferay.portal.kernel.util.ParamUtil;
+import com.liferay.portal.kernel.util.PortalUtil;
 import com.liferay.portal.kernel.util.Validator;
-import com.liferay.portal.model.LayoutConstants;
-import com.liferay.portal.util.PortalUtil;
 import com.liferay.taglib.util.ParamAndPropertyAncestorTagImpl;
+import com.liferay.taglib.util.TypedParamAccessorTag;
 
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 import javax.portlet.ActionRequest;
+import javax.portlet.MimeResponse;
 import javax.portlet.PortletRequest;
 import javax.portlet.PortletResponse;
+import javax.portlet.PortletURL;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.jsp.JspException;
 import javax.servlet.jsp.JspWriter;
-import javax.servlet.jsp.PageContext;
 
 /**
  * @author Brian Wing Shun Chan
+ * @author Neil Griffin
  */
-public class ActionURLTag extends ParamAndPropertyAncestorTagImpl {
+public class ActionURLTag
+	extends ParamAndPropertyAncestorTagImpl implements TypedParamAccessorTag {
 
-	public static void doTag(
+	public static PortletURL doTag(
 			String lifecycle, String windowState, String portletMode,
-			String var, String varImpl, Boolean secure,
-			Boolean copyCurrentRenderParameters, Boolean escapeXml, String name,
-			String resourceID, String cacheability, long plid, long refererPlid,
+			Boolean secure, Boolean copyCurrentRenderParameters,
+			Boolean escapeXml, String name, String resourceID,
+			String cacheability, long plid, long refererPlid,
 			String portletName, Boolean anchor, Boolean encrypt,
 			long doAsGroupId, long doAsUserId, Boolean portletConfiguration,
 			Map<String, String[]> parameterMap,
-			Set<String> removedParameterNames, PageContext pageContext)
+			Set<String> removedParameterNames,
+			HttpServletRequest httpServletRequest)
 		throws Exception {
 
-		HttpServletRequest request =
-			(HttpServletRequest)pageContext.getRequest();
-
 		if (portletName == null) {
-			portletName = _getPortletName(request);
+			portletName = _getPortletName(httpServletRequest);
 		}
 
 		LiferayPortletURL liferayPortletURL = _getLiferayPortletURL(
-			request, plid, portletName, lifecycle);
+			httpServletRequest, plid, portletName, lifecycle,
+			copyCurrentRenderParameters);
 
 		if (liferayPortletURL == null) {
 			_log.error(
 				"Render response is null because this tag is not being " +
 					"called within the context of a portlet");
 
-			return;
+			return DummyPortletURL.getInstance();
 		}
 
 		if (Validator.isNotNull(windowState)) {
@@ -89,7 +95,8 @@ public class ActionURLTag extends ParamAndPropertyAncestorTagImpl {
 			liferayPortletURL.setSecure(secure.booleanValue());
 		}
 		else {
-			liferayPortletURL.setSecure(PortalUtil.isSecure(request));
+			liferayPortletURL.setSecure(
+				PortalUtil.isSecure(httpServletRequest));
 		}
 
 		if (copyCurrentRenderParameters != null) {
@@ -135,61 +142,110 @@ public class ActionURLTag extends ParamAndPropertyAncestorTagImpl {
 			liferayPortletURL.setDoAsUserId(doAsUserId);
 		}
 
+		String settingsScope = null;
+
 		if ((portletConfiguration != null) &&
 			portletConfiguration.booleanValue()) {
 
 			String returnToFullPageURL = ParamUtil.getString(
-				request, "returnToFullPageURL");
+				httpServletRequest, "returnToFullPageURL");
 			String portletResource = ParamUtil.getString(
-				request, "portletResource");
-			String previewWidth = ParamUtil.getString(request, "previewWidth");
+				httpServletRequest, "portletResource");
+			String previewWidth = ParamUtil.getString(
+				httpServletRequest, "previewWidth");
+			settingsScope = ParamUtil.getString(
+				httpServletRequest, "settingsScope",
+				PortletPreferencesFactoryConstants.
+					SETTINGS_SCOPE_PORTLET_INSTANCE);
+
+			if (Validator.isNull(name)) {
+				liferayPortletURL.setParameter(
+					ActionRequest.ACTION_NAME, "editConfiguration");
+			}
 
 			liferayPortletURL.setParameter(
-				"struts_action", "/portlet_configuration/edit_configuration");
+				"mvcPath", "/edit_configuration.jsp");
 			liferayPortletURL.setParameter(
 				"returnToFullPageURL", returnToFullPageURL);
+			liferayPortletURL.setParameter(
+				"portletConfiguration", Boolean.TRUE.toString());
 			liferayPortletURL.setParameter("portletResource", portletResource);
 			liferayPortletURL.setParameter("previewWidth", previewWidth);
 		}
 
 		if (parameterMap != null) {
-			MapUtil.merge(liferayPortletURL.getParameterMap(), parameterMap);
+			for (Map.Entry<String, String[]> entry : parameterMap.entrySet()) {
+				String key = entry.getKey();
 
-			liferayPortletURL.setParameters(parameterMap);
+				if (key.startsWith(_ACTION_PARAMETER_NAMESPACE)) {
+					key = key.substring(_ACTION_PARAMETER_NAMESPACE.length());
+
+					String portletNamespace = PortalUtil.getPortletNamespace(
+						portletName);
+
+					if (!key.startsWith(portletNamespace)) {
+						key = portletNamespace.concat(key);
+					}
+				}
+
+				liferayPortletURL.setParameter(key, entry.getValue(), false);
+			}
+		}
+
+		if ((settingsScope != null) &&
+			((parameterMap == null) ||
+			 !parameterMap.containsKey("settingsScope"))) {
+
+			liferayPortletURL.setParameter("settingsScope", settingsScope);
 		}
 
 		liferayPortletURL.setRemovedParameterNames(removedParameterNames);
 
-		String portletURLToString = liferayPortletURL.toString();
+		return liferayPortletURL;
+	}
 
-		if (Validator.isNotNull(var)) {
-			pageContext.setAttribute(var, portletURLToString);
+	@Override
+	public void addParam(String name, String type, String value) {
+		if (Validator.isNotNull(name)) {
+			if (Objects.equals(type, "action")) {
+				name = _ACTION_PARAMETER_NAMESPACE.concat(name);
+			}
+			else if (Objects.equals(type, "render")) {
+				name = PortletQName.PRIVATE_RENDER_PARAMETER_NAMESPACE.concat(
+					name);
+			}
 		}
-		else if (Validator.isNotNull(varImpl)) {
-			pageContext.setAttribute(varImpl, liferayPortletURL);
-		}
-		else {
-			JspWriter jspWriter = pageContext.getOut();
 
-			jspWriter.write(portletURLToString);
-		}
+		super.addParam(name, value);
 	}
 
 	@Override
 	public int doEndTag() throws JspException {
 		try {
-			doTag(
-				getLifecycle(), _windowState, _portletMode, _var, _varImpl,
-				_secure, _copyCurrentRenderParameters, _escapeXml, _name,
-				_resourceID, _cacheability, _plid, _refererPlid, _portletName,
-				_anchor, _encrypt, _doAsGroupId, _doAsUserId,
-				_portletConfiguration, getParams(), getRemovedParameterNames(),
-				pageContext);
+			PortletURL portletURL = doTag(
+				getLifecycle(), _windowState, _portletMode, _secure,
+				_copyCurrentRenderParameters, _escapeXml, _name, _resourceID,
+				_cacheability, _plid, _refererPlid, _portletName, _anchor,
+				_encrypt, _doAsGroupId, _doAsUserId, _portletConfiguration,
+				getParams(), getRemovedParameterNames(),
+				(HttpServletRequest)pageContext.getRequest());
+
+			if (Validator.isNotNull(_var)) {
+				pageContext.setAttribute(_var, portletURL.toString());
+			}
+			else if (Validator.isNotNull(_varImpl)) {
+				pageContext.setAttribute(_varImpl, portletURL);
+			}
+			else {
+				JspWriter jspWriter = pageContext.getOut();
+
+				jspWriter.write(portletURL.toString());
+			}
 
 			return EVAL_PAGE;
 		}
-		catch (Exception e) {
-			throw new JspException(e);
+		catch (Exception exception) {
+			throw new JspException(exception);
 		}
 		finally {
 			clearParams();
@@ -216,8 +272,11 @@ public class ActionURLTag extends ParamAndPropertyAncestorTagImpl {
 		_cacheability = cacheability;
 	}
 
+	@Override
 	public void setCopyCurrentRenderParameters(
 		boolean copyCurrentRenderParameters) {
+
+		super.setCopyCurrentRenderParameters(copyCurrentRenderParameters);
 
 		_copyCurrentRenderParameters = Boolean.valueOf(
 			copyCurrentRenderParameters);
@@ -284,42 +343,57 @@ public class ActionURLTag extends ParamAndPropertyAncestorTagImpl {
 	}
 
 	private static LiferayPortletURL _getLiferayPortletURL(
-		HttpServletRequest request, long plid, String portletName,
-		String lifecycle) {
+		HttpServletRequest httpServletRequest, long plid, String portletName,
+		String lifecycle, Boolean copyCurrentRenderParameters) {
 
-		PortletRequest portletRequest = (PortletRequest)request.getAttribute(
-			JavaConstants.JAVAX_PORTLET_REQUEST);
+		PortletRequest portletRequest =
+			(PortletRequest)httpServletRequest.getAttribute(
+				JavaConstants.JAVAX_PORTLET_REQUEST);
 
 		if (portletRequest == null) {
 			return null;
 		}
 
-		PortletResponse portletResponse = (PortletResponse)request.getAttribute(
-			JavaConstants.JAVAX_PORTLET_RESPONSE);
+		PortletResponse portletResponse =
+			(PortletResponse)httpServletRequest.getAttribute(
+				JavaConstants.JAVAX_PORTLET_RESPONSE);
 
 		LiferayPortletResponse liferayPortletResponse =
 			PortalUtil.getLiferayPortletResponse(portletResponse);
+
+		if (((copyCurrentRenderParameters != null) &&
+			 copyCurrentRenderParameters) ||
+			lifecycle.equals(PortletRequest.RESOURCE_PHASE)) {
+
+			return liferayPortletResponse.createLiferayPortletURL(
+				plid, portletName, lifecycle, MimeResponse.Copy.ALL);
+		}
 
 		return liferayPortletResponse.createLiferayPortletURL(
 			plid, portletName, lifecycle);
 	}
 
-	private static String _getPortletName(HttpServletRequest request) {
-		PortletRequest portletRequest = (PortletRequest)request.getAttribute(
-			JavaConstants.JAVAX_PORTLET_REQUEST);
+	private static String _getPortletName(
+		HttpServletRequest httpServletRequest) {
+
+		PortletRequest portletRequest =
+			(PortletRequest)httpServletRequest.getAttribute(
+				JavaConstants.JAVAX_PORTLET_REQUEST);
 
 		if (portletRequest == null) {
 			return null;
 		}
 
 		LiferayPortletConfig liferayPortletConfig =
-			(LiferayPortletConfig)request.getAttribute(
+			(LiferayPortletConfig)httpServletRequest.getAttribute(
 				JavaConstants.JAVAX_PORTLET_CONFIG);
 
 		return liferayPortletConfig.getPortletId();
 	}
 
-	private static Log _log = LogFactoryUtil.getLog(ActionURLTag.class);
+	private static final String _ACTION_PARAMETER_NAMESPACE = "p_action_p_";
+
+	private static final Log _log = LogFactoryUtil.getLog(ActionURLTag.class);
 
 	private Boolean _anchor;
 	private String _cacheability;

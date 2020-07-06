@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -65,8 +65,8 @@ public class OAuthManagerImpl implements OAuthManager {
 					(org.scribe.model.Token)requestToken.getWrappedToken(),
 					(org.scribe.model.Verifier)verifier.getWrappedVerifier()));
 		}
-		catch (Exception e) {
-			throw new OAuthException(e);
+		catch (Exception exception) {
+			throw new OAuthException(exception);
 		}
 	}
 
@@ -75,8 +75,8 @@ public class OAuthManagerImpl implements OAuthManager {
 		try {
 			return new TokenImpl(_oAuthService.getRequestToken());
 		}
-		catch (Exception e) {
-			throw new OAuthException(e);
+		catch (Exception exception) {
+			throw new OAuthException(exception);
 		}
 	}
 
@@ -85,8 +85,8 @@ public class OAuthManagerImpl implements OAuthManager {
 		try {
 			return _oAuthService.getVersion();
 		}
-		catch (Exception e) {
-			throw new OAuthException(e);
+		catch (Exception exception) {
+			throw new OAuthException(exception);
 		}
 	}
 
@@ -100,11 +100,11 @@ public class OAuthManagerImpl implements OAuthManager {
 				(org.scribe.model.OAuthRequest)
 					oAuthRequest.getWrappedOAuthRequest());
 		}
-		catch (Exception e) {
-			throw new OAuthException(e);
+		catch (Exception exception) {
+			throw new OAuthException(exception);
 		}
 	}
 
-	private OAuthService _oAuthService;
+	private final OAuthService _oAuthService;
 
 }

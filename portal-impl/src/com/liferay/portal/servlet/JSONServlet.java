@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -17,11 +17,10 @@ package com.liferay.portal.servlet;
 import com.liferay.portal.action.JSONServiceAction;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
+import com.liferay.portal.kernel.security.access.control.AccessControlThreadLocal;
 import com.liferay.portal.kernel.servlet.PluginContextListener;
 import com.liferay.portal.kernel.servlet.ServletResponseUtil;
-import com.liferay.portal.security.ac.AccessControlThreadLocal;
 import com.liferay.portal.struts.JSONAction;
-import com.liferay.portal.util.ClassLoaderUtil;
 
 import java.io.IOException;
 
@@ -38,7 +37,9 @@ import javax.servlet.http.HttpServletResponse;
 public class JSONServlet extends HttpServlet {
 
 	@Override
-	public void init(ServletConfig servletConfig) {
+	public void init(ServletConfig servletConfig) throws ServletException {
+		super.init(servletConfig);
+
 		ServletContext servletContext = servletConfig.getServletContext();
 
 		_pluginClassLoader = (ClassLoader)servletContext.getAttribute(
@@ -49,7 +50,8 @@ public class JSONServlet extends HttpServlet {
 
 	@Override
 	public void service(
-			HttpServletRequest request, HttpServletResponse response)
+			HttpServletRequest httpServletRequest,
+			HttpServletResponse httpServletResponse)
 		throws IOException, ServletException {
 
 		boolean remoteAccess = AccessControlThreadLocal.isRemoteAccess();
@@ -58,32 +60,36 @@ public class JSONServlet extends HttpServlet {
 			AccessControlThreadLocal.setRemoteAccess(true);
 
 			if (_pluginClassLoader == null) {
-				_jsonAction.execute(null, null, request, response);
+				_jsonAction.execute(
+					null, httpServletRequest, httpServletResponse);
 			}
 			else {
+				Thread currentThread = Thread.currentThread();
+
 				ClassLoader contextClassLoader =
-					ClassLoaderUtil.getContextClassLoader();
+					currentThread.getContextClassLoader();
 
 				try {
-					ClassLoaderUtil.setContextClassLoader(_pluginClassLoader);
+					currentThread.setContextClassLoader(_pluginClassLoader);
 
-					_jsonAction.execute(null, null, request, response);
+					_jsonAction.execute(
+						null, httpServletRequest, httpServletResponse);
 				}
 				finally {
-					ClassLoaderUtil.setContextClassLoader(contextClassLoader);
+					currentThread.setContextClassLoader(contextClassLoader);
 				}
 			}
 		}
-		catch (IOException ioe) {
-			if (!ServletResponseUtil.isClientAbortException(ioe)) {
-				throw ioe;
+		catch (IOException ioException) {
+			if (!ServletResponseUtil.isClientAbortException(ioException)) {
+				throw ioException;
 			}
 		}
-		catch (SecurityException se) {
-			throw new ServletException(se);
+		catch (SecurityException securityException) {
+			throw new ServletException(securityException);
 		}
-		catch (Exception e) {
-			_log.error(e, e);
+		catch (Exception exception) {
+			_log.error(exception, exception);
 		}
 		finally {
 			AccessControlThreadLocal.setRemoteAccess(remoteAccess);
@@ -98,7 +104,7 @@ public class JSONServlet extends HttpServlet {
 		return jsonAction;
 	}
 
-	private static Log _log = LogFactoryUtil.getLog(JSONServlet.class);
+	private static final Log _log = LogFactoryUtil.getLog(JSONServlet.class);
 
 	private JSONAction _jsonAction;
 	private ClassLoader _pluginClassLoader;

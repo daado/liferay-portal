@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,6 +14,13 @@
 
 package com.liferay.portal.upgrade.util;
 
+import com.liferay.petra.string.StringBundler;
+import com.liferay.petra.string.StringPool;
+import com.liferay.portal.dao.jdbc.postgresql.PostgreSQLJDBCUtil;
+import com.liferay.portal.kernel.dao.db.DB;
+import com.liferay.portal.kernel.dao.db.DBManagerUtil;
+import com.liferay.portal.kernel.dao.db.DBType;
+import com.liferay.portal.kernel.dao.jdbc.AutoBatchPreparedStatementUtil;
 import com.liferay.portal.kernel.dao.jdbc.DataAccess;
 import com.liferay.portal.kernel.io.unsync.UnsyncBufferedReader;
 import com.liferay.portal.kernel.io.unsync.UnsyncBufferedWriter;
@@ -21,23 +28,27 @@ import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
 import com.liferay.portal.kernel.upgrade.StagnantRowException;
 import com.liferay.portal.kernel.upgrade.UpgradeException;
+import com.liferay.portal.kernel.util.Base64;
 import com.liferay.portal.kernel.util.DateUtil;
 import com.liferay.portal.kernel.util.FileUtil;
 import com.liferay.portal.kernel.util.GetterUtil;
-import com.liferay.portal.kernel.util.StringBundler;
-import com.liferay.portal.kernel.util.StringPool;
 import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.util.SystemProperties;
 import com.liferay.portal.kernel.util.Validator;
 import com.liferay.portal.kernel.uuid.PortalUUIDUtil;
-import com.liferay.portal.util.PropsUtil;
 
 import java.io.FileReader;
 import java.io.FileWriter;
+import java.io.Reader;
+
+import java.math.BigDecimal;
+
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 
 import java.sql.Clob;
 import java.sql.Connection;
-import java.sql.DatabaseMetaData;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -72,8 +83,12 @@ public class Table {
 
 		if (value == null) {
 			throw new UpgradeException(
-				"Nulls should never be inserted into the database. " +
-					"Attempted to append column to " + sb.toString() + ".");
+				StringBundler.concat(
+					"Nulls should never be inserted into the database. ",
+					"Attempted to append column to ", sb.toString(), "."));
+		}
+		else if (value instanceof byte[]) {
+			sb.append(Base64.encode((byte[])value));
 		}
 		else if (value instanceof Clob || value instanceof String) {
 			value = StringUtil.replace(
@@ -107,7 +122,7 @@ public class Table {
 		try {
 			value = getValue(rs, name, type);
 		}
-		catch (SQLException sqle) {
+		catch (SQLException sqlException) {
 			if (name.equals("uuid_")) {
 				sb.append(PortalUUIDUtil.generate());
 			}
@@ -124,45 +139,35 @@ public class Table {
 		appendColumn(sb, value, last);
 	}
 
-	public String generateTempFile() throws Exception {
-		Connection con = DataAccess.getUpgradeOptimizedConnection();
-
-		try {
-			return generateTempFile(con);
-		}
-		finally {
-			DataAccess.cleanUp(con);
+	public void generateTempFile() throws Exception {
+		try (Connection con = DataAccess.getConnection()) {
+			generateTempFile(con);
 		}
 	}
 
-	public String generateTempFile(Connection con) throws Exception {
-		PreparedStatement ps = null;
-		ResultSet rs = null;
-
+	public void generateTempFile(Connection con) throws Exception {
 		boolean empty = true;
 
-		String tempFileName =
-			SystemProperties.get(SystemProperties.TMP_DIR) + "/temp-db-" +
-				_tableName + "-" + System.currentTimeMillis();
+		Path tempFilePath = Files.createTempFile(
+			Paths.get(SystemProperties.get(SystemProperties.TMP_DIR)),
+			"temp-db-" + _tableName + "-", null);
 
-		StopWatch stopWatch = null;
+		String tempFileName = tempFilePath.toString();
+
+		StopWatch stopWatch = new StopWatch();
+
+		stopWatch.start();
 
 		if (_log.isInfoEnabled()) {
-			stopWatch = new StopWatch();
-
-			stopWatch.start();
-
 			_log.info(
-				"Starting backup of " + _tableName + " to " + tempFileName);
+				StringBundler.concat(
+					"Starting backup of ", _tableName, " to ", tempFileName));
 		}
 
-		UnsyncBufferedWriter unsyncBufferedWriter = new UnsyncBufferedWriter(
-			new FileWriter(tempFileName));
-
-		try {
-			ps = getSelectPreparedStatement(con);
-
-			rs = ps.executeQuery();
+		try (UnsyncBufferedWriter unsyncBufferedWriter =
+				new UnsyncBufferedWriter(new FileWriter(tempFileName));
+			PreparedStatement ps = getSelectPreparedStatement(con);
+			ResultSet rs = ps.executeQuery()) {
 
 			while (rs.next()) {
 				String data = null;
@@ -176,39 +181,36 @@ public class Table {
 
 					empty = false;
 				}
-				catch (StagnantRowException sre) {
+				catch (StagnantRowException stagnantRowException) {
 					if (_log.isWarnEnabled()) {
 						_log.warn(
-							"Skipping stagnant data in " + _tableName + ": " +
-								sre.getMessage());
+							StringBundler.concat(
+								"Skipping stagnant data in ", _tableName, ": ",
+								stagnantRowException.getMessage()));
 					}
 				}
 			}
 
 			if (_log.isInfoEnabled()) {
 				_log.info(
-					"Finished backup of " + _tableName + " to " +
-						tempFileName + " in " + stopWatch.getTime() + " ms");
+					StringBundler.concat(
+						"Finished backup of ", _tableName, " to ", tempFileName,
+						" in ", stopWatch.getTime(), " ms"));
 			}
 		}
-		catch (Exception e) {
+		catch (Exception exception) {
 			FileUtil.delete(tempFileName);
 
-			throw e;
-		}
-		finally {
-			DataAccess.cleanUp(null, ps, rs);
-
-			unsyncBufferedWriter.close();
+			throw exception;
 		}
 
 		if (!empty) {
-			return tempFileName;
+			_tempFileName = tempFileName;
+
+			return;
 		}
 
 		FileUtil.delete(tempFileName);
-
-		return null;
 	}
 
 	public Object[][] getColumns() {
@@ -288,11 +290,10 @@ public class Table {
 
 			int y = createSQL.indexOf(" ", x);
 
-			return createSQL.substring(x, y).trim();
+			return StringUtil.trim(createSQL.substring(x, y));
 		}
-		else {
-			return _tableName;
-		}
+
+		return _tableName;
 	}
 
 	public int[] getOrder() {
@@ -324,13 +325,16 @@ public class Table {
 
 			return "select * from " + _tableName;
 		}
-		else {
-			return _selectSQL;
-		}
+
+		return _selectSQL;
 	}
 
 	public String getTableName() {
 		return _tableName;
+	}
+
+	public String getTempFileName() {
+		return _tempFileName;
 	}
 
 	public long getTotalRows() {
@@ -348,12 +352,30 @@ public class Table {
 			try {
 				value = GetterUtil.getLong(rs.getLong(name));
 			}
-			catch (SQLException sqle) {
+			catch (SQLException sqlException) {
 				value = GetterUtil.getLong(rs.getString(name));
 			}
 		}
 		else if (t == Types.BIT) {
 			value = GetterUtil.getBoolean(rs.getBoolean(name));
+		}
+		else if ((t == Types.BLOB) || (t == Types.LONGVARBINARY)) {
+			DB db = DBManagerUtil.getDB();
+
+			DBType dbType = db.getDBType();
+
+			if (dbType.equals(DBType.POSTGRESQL) &&
+				PostgreSQLJDBCUtil.isPGStatement(rs.getStatement())) {
+
+				value = PostgreSQLJDBCUtil.getLargeObject(rs, name);
+			}
+			else {
+				value = rs.getBytes(name);
+			}
+
+			if (value == null) {
+				value = new byte[0];
+			}
 		}
 		else if (t == Types.BOOLEAN) {
 			value = GetterUtil.getBoolean(rs.getBoolean(name));
@@ -366,31 +388,45 @@ public class Table {
 					value = StringPool.BLANK;
 				}
 				else {
-					UnsyncBufferedReader unsyncBufferedReader =
-						new UnsyncBufferedReader(clob.getCharacterStream());
+					try (Reader reader = clob.getCharacterStream();
+						UnsyncBufferedReader unsyncBufferedReader =
+							new UnsyncBufferedReader(reader)) {
 
-					StringBundler sb = new StringBundler();
+						StringBundler sb = new StringBundler();
 
-					String line = null;
+						String line = null;
 
-					while ((line = unsyncBufferedReader.readLine()) != null) {
-						if (sb.length() != 0) {
-							sb.append(_SAFE_TABLE_NEWLINE_CHARACTER);
+						while ((line = unsyncBufferedReader.readLine()) !=
+									null) {
+
+							if (sb.length() != 0) {
+								sb.append(_SAFE_TABLE_NEWLINE_CHARACTER);
+							}
+
+							sb.append(line);
 						}
 
-						sb.append(line);
+						value = sb.toString();
 					}
-
-					value = sb.toString();
 				}
 			}
-			catch (Exception e) {
+			catch (Exception exception) {
 
 				// If the database doesn't allow CLOB types for the column
 				// value, then try retrieving it as a String
 
 				value = GetterUtil.getString(rs.getString(name));
 			}
+		}
+		else if (t == Types.DECIMAL) {
+			try {
+				value = rs.getBigDecimal(name);
+			}
+			catch (SQLException sqlException) {
+				value = rs.getString(name);
+			}
+
+			value = GetterUtil.get(value, BigDecimal.ZERO);
 		}
 		else if (t == Types.DOUBLE) {
 			value = GetterUtil.getDouble(rs.getDouble(name));
@@ -400,6 +436,9 @@ public class Table {
 		}
 		else if (t == Types.INTEGER) {
 			value = GetterUtil.getInteger(rs.getInt(name));
+		}
+		else if (t == Types.LONGVARCHAR) {
+			value = GetterUtil.getString(rs.getString(name));
 		}
 		else if (t == Types.NUMERIC) {
 			value = GetterUtil.getLong(rs.getLong(name));
@@ -411,12 +450,15 @@ public class Table {
 			try {
 				value = rs.getTimestamp(name);
 			}
-			catch (Exception e) {
+			catch (Exception exception) {
 			}
 
 			if (value == null) {
 				value = StringPool.NULL;
 			}
+		}
+		else if (t == Types.TINYINT) {
+			value = GetterUtil.getShort(rs.getShort(name));
 		}
 		else if (t == Types.VARCHAR) {
 			value = GetterUtil.getString(rs.getString(name));
@@ -429,39 +471,23 @@ public class Table {
 		return value;
 	}
 
-	public void populateTable(String tempFileName) throws Exception {
-		Connection con = DataAccess.getUpgradeOptimizedConnection();
-
-		try {
-			populateTable(tempFileName, con);
-		}
-		finally {
-			DataAccess.cleanUp(con);
+	public void populateTable() throws Exception {
+		try (Connection con = DataAccess.getConnection()) {
+			populateTable(con);
 		}
 	}
 
-	public void populateTable(String tempFileName, Connection con)
-		throws Exception {
+	public void populateTable(Connection con) throws Exception {
+		if (_tempFileName == null) {
+			return;
+		}
 
-		PreparedStatement ps = null;
+		try (PreparedStatement ps = AutoBatchPreparedStatementUtil.autoBatch(
+				con.prepareStatement(getInsertSQL()));
+			UnsyncBufferedReader unsyncBufferedReader =
+				new UnsyncBufferedReader(new FileReader(_tempFileName))) {
 
-		String insertSQL = getInsertSQL();
-
-		UnsyncBufferedReader unsyncBufferedReader = new UnsyncBufferedReader(
-			new FileReader(tempFileName));
-
-		String line = null;
-
-		try {
-			DatabaseMetaData databaseMetaData = con.getMetaData();
-
-			if (!databaseMetaData.supportsBatchUpdates()) {
-				if (_log.isDebugEnabled()) {
-					_log.debug("Database does not support batch updates");
-				}
-			}
-
-			int count = 0;
+			String line = null;
 
 			while ((line = unsyncBufferedReader.readLine()) != null) {
 				String[] values = StringUtil.split(line);
@@ -470,12 +496,9 @@ public class Table {
 
 				if (values.length != columns.length) {
 					throw new UpgradeException(
-						"Column lengths differ between temp file and schema. " +
-							"Attempted to insert row " + line + ".");
-				}
-
-				if (count == 0) {
-					ps = con.prepareStatement(insertSQL);
+						StringBundler.concat(
+							"Column lengths differ between temp file and ",
+							"schema. Attempted to insert row ", line, "."));
 				}
 
 				int[] order = getOrder();
@@ -486,33 +509,10 @@ public class Table {
 					setColumn(ps, i, (Integer)columns[pos][1], values[pos]);
 				}
 
-				if (databaseMetaData.supportsBatchUpdates()) {
-					ps.addBatch();
-
-					if (count == _BATCH_SIZE) {
-						populateTableRows(ps, true);
-
-						count = 0;
-					}
-					else {
-						count++;
-					}
-				}
-				else {
-					populateTableRows(ps, false);
-				}
+				ps.addBatch();
 			}
 
-			if (databaseMetaData.supportsBatchUpdates()) {
-				if (count != 0) {
-					populateTableRows(ps, true);
-				}
-			}
-		}
-		finally {
-			DataAccess.cleanUp(null, ps);
-
-			unsyncBufferedReader.close();
+			ps.executeBatch();
 		}
 
 		if (_log.isDebugEnabled()) {
@@ -548,14 +548,29 @@ public class Table {
 		if (t == Types.BIGINT) {
 			ps.setLong(paramIndex, GetterUtil.getLong(value));
 		}
+		else if ((t == Types.BLOB) || (t == Types.LONGVARBINARY)) {
+			if (PostgreSQLJDBCUtil.isPGStatement(ps)) {
+				PostgreSQLJDBCUtil.setLargeObject(
+					ps, paramIndex, Base64.decode(value));
+			}
+			else {
+				ps.setBytes(paramIndex, Base64.decode(value));
+			}
+		}
 		else if (t == Types.BOOLEAN) {
 			ps.setBoolean(paramIndex, GetterUtil.getBoolean(value));
 		}
-		else if ((t == Types.CLOB) || (t == Types.VARCHAR)) {
+		else if ((t == Types.CLOB) || (t == Types.LONGVARCHAR) ||
+				 (t == Types.VARCHAR)) {
+
 			value = StringUtil.replace(
 				value, _SAFE_TABLE_CHARS[1], _SAFE_TABLE_CHARS[0]);
 
 			ps.setString(paramIndex, value);
+		}
+		else if (t == Types.DECIMAL) {
+			ps.setBigDecimal(
+				paramIndex, (BigDecimal)GetterUtil.get(value, BigDecimal.ZERO));
 		}
 		else if (t == Types.DOUBLE) {
 			ps.setDouble(paramIndex, GetterUtil.getDouble(value));
@@ -576,9 +591,13 @@ public class Table {
 			else {
 				DateFormat df = DateUtil.getISOFormat();
 
-				ps.setTimestamp(
-					paramIndex, new Timestamp(df.parse(value).getTime()));
+				Date date = df.parse(value);
+
+				ps.setTimestamp(paramIndex, new Timestamp(date.getTime()));
 			}
+		}
+		else if (t == Types.TINYINT) {
+			ps.setShort(paramIndex, GetterUtil.getShort(value));
 		}
 		else {
 			throw new UpgradeException(
@@ -621,8 +640,36 @@ public class Table {
 		_selectSQL = selectSQL;
 	}
 
-	private static final int _BATCH_SIZE = GetterUtil.getInteger(
-		PropsUtil.get("hibernate.jdbc.batch_size"));
+	public void updateColumnValue(
+		String columnName, String oldValue, String newValue) {
+
+		StringBundler sb = new StringBundler(7);
+
+		sb.append("update ");
+		sb.append(_tableName);
+		sb.append(" set ");
+		sb.append(columnName);
+		sb.append(" = ? where ");
+		sb.append(columnName);
+		sb.append(" = ?");
+
+		String sql = sb.toString();
+
+		try (Connection con = DataAccess.getConnection();
+			PreparedStatement ps = con.prepareStatement(sql)) {
+
+			ps.setString(1, newValue);
+			ps.setString(2, oldValue);
+
+			ps.executeUpdate();
+		}
+		catch (SQLException sqlException) {
+			_log.error(sqlException, sqlException);
+
+			throw new RuntimeException(
+				"Unable to execute " + sql, sqlException);
+		}
+	}
 
 	private static final String[][] _SAFE_TABLE_CHARS = {
 		{StringPool.COMMA, StringPool.NEW_LINE, StringPool.RETURN},
@@ -642,13 +689,14 @@ public class Table {
 	private static final String _SAFE_TABLE_RETURN_CHARACTER =
 		"_SAFE_TABLE_RETURN_CHARACTER_";
 
-	private static Log _log = LogFactoryUtil.getLog(Table.class);
+	private static final Log _log = LogFactoryUtil.getLog(Table.class);
 
 	private Object[][] _columns;
 	private String _createSQL;
 	private int[] _order;
 	private String _selectSQL;
-	private String _tableName;
+	private final String _tableName;
+	private String _tempFileName;
 	private long _totalRows;
 
 }

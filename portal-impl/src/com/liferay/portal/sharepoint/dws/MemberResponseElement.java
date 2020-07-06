@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,8 +14,8 @@
 
 package com.liferay.portal.sharepoint.dws;
 
+import com.liferay.portal.kernel.model.User;
 import com.liferay.portal.kernel.xml.Element;
-import com.liferay.portal.model.User;
 
 /**
  * @author Bruno Farache
@@ -40,22 +40,39 @@ public class MemberResponseElement implements ResponseElement {
 			user = "Member";
 		}
 
-		Element el = rootEl.addElement(user);
+		Element userEl = rootEl.addElement(user);
 
-		el.addElement("ID").setText(_id);
-		el.addElement("Name").setText(_name);
-		el.addElement("LoginName").setText(_loginName);
-		el.addElement("Email").setText(_email);
-		el.addElement("IsDomainGroup").setText(String.valueOf(_domainGroup));
-		el.addElement("IsSiteAdmin").setText(String.valueOf(_siteAdmin));
+		Element idEl = userEl.addElement("ID");
+
+		idEl.setText(_id);
+
+		Element nameEl = userEl.addElement("Name");
+
+		nameEl.setText(_name);
+
+		Element loginNameEl = userEl.addElement("LoginName");
+
+		loginNameEl.setText(_loginName);
+
+		Element emailEl = userEl.addElement("Email");
+
+		emailEl.setText(_email);
+
+		Element isDomainGroupEl = userEl.addElement("IsDomainGroup");
+
+		isDomainGroupEl.setText(String.valueOf(_domainGroup));
+
+		Element isSiteAdminEl = userEl.addElement("IsSiteAdmin");
+
+		isSiteAdminEl.setText(String.valueOf(_siteAdmin));
 	}
 
-	private boolean _domainGroup;
-	private String _email;
-	private String _id;
-	private String _loginName;
-	private boolean _member;
-	private String _name;
-	private boolean _siteAdmin;
+	private final boolean _domainGroup;
+	private final String _email;
+	private final String _id;
+	private final String _loginName;
+	private final boolean _member;
+	private final String _name;
+	private final boolean _siteAdmin;
 
 }

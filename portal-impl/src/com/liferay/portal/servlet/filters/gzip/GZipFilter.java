@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -34,24 +34,23 @@ import javax.servlet.http.HttpServletResponse;
 public class GZipFilter extends BasePortalFilter {
 
 	public static final String SKIP_FILTER =
-		GZipFilter.class.getName() + "SKIP_FILTER";
+		GZipFilter.class.getName() + "#SKIP_FILTER";
 
 	public GZipFilter() {
 
-		// The compression filter will work on JBoss, Jetty, JOnAS, OC4J, and
-		// Tomcat, but may break on other servers
+		// The compression filter will work on JBoss, Tomcat, WebLogic,
+		// and WebSphere, but may break on other servers
 
-		if (super.isFilterEnabled()) {
-			if (ServerDetector.isJBoss() || ServerDetector.isJetty() ||
-				ServerDetector.isJOnAS() || ServerDetector.isOC4J() ||
-				ServerDetector.isTomcat()) {
+		boolean filterEnabled = false;
 
-				_filterEnabled = true;
-			}
-			else {
-				_filterEnabled = false;
-			}
+		if (super.isFilterEnabled() &&
+			(ServerDetector.isJBoss() || ServerDetector.isTomcat() ||
+			 ServerDetector.isWebLogic() || ServerDetector.isWebSphere())) {
+
+			filterEnabled = true;
 		}
+
+		_filterEnabled = filterEnabled;
 	}
 
 	@Override
@@ -61,74 +60,73 @@ public class GZipFilter extends BasePortalFilter {
 
 	@Override
 	public boolean isFilterEnabled(
-		HttpServletRequest request, HttpServletResponse response) {
+		HttpServletRequest httpServletRequest,
+		HttpServletResponse httpServletResponse) {
 
-		if (isCompress(request) && !isInclude(request) &&
-			BrowserSnifferUtil.acceptsGzip(request) &&
-			!isAlreadyFiltered(request)) {
+		if (isCompress(httpServletRequest) && !isInclude(httpServletRequest) &&
+			BrowserSnifferUtil.acceptsGzip(httpServletRequest) &&
+			!isAlreadyFiltered(httpServletRequest)) {
 
 			return true;
 		}
-		else {
-			return false;
-		}
+
+		return false;
 	}
 
-	protected boolean isAlreadyFiltered(HttpServletRequest request) {
-		if (request.getAttribute(SKIP_FILTER) != null) {
+	protected boolean isAlreadyFiltered(HttpServletRequest httpServletRequest) {
+		if (httpServletRequest.getAttribute(SKIP_FILTER) != null) {
 			return true;
 		}
-		else {
-			return false;
-		}
+
+		return false;
 	}
 
-	protected boolean isCompress(HttpServletRequest request) {
-		if (ParamUtil.getBoolean(request, _COMPRESS, true)) {
+	protected boolean isCompress(HttpServletRequest httpServletRequest) {
+		if (ParamUtil.getBoolean(httpServletRequest, _COMPRESS, true)) {
 			return true;
 		}
-		else {
-			return false;
-		}
+
+		return false;
 	}
 
-	protected boolean isInclude(HttpServletRequest request) {
-		String uri = (String)request.getAttribute(
+	protected boolean isInclude(HttpServletRequest httpServletRequest) {
+		String uri = (String)httpServletRequest.getAttribute(
 			JavaConstants.JAVAX_SERVLET_INCLUDE_REQUEST_URI);
 
 		if (uri == null) {
 			return false;
 		}
-		else {
-			return true;
-		}
+
+		return true;
 	}
 
 	@Override
 	protected void processFilter(
-			HttpServletRequest request, HttpServletResponse response,
-			FilterChain filterChain)
+			HttpServletRequest httpServletRequest,
+			HttpServletResponse httpServletResponse, FilterChain filterChain)
 		throws Exception {
 
 		if (_log.isDebugEnabled()) {
-			String completeURL = HttpUtil.getCompleteURL(request);
+			String completeURL = HttpUtil.getCompleteURL(httpServletRequest);
 
 			_log.debug("Compressing " + completeURL);
 		}
 
-		request.setAttribute(SKIP_FILTER, Boolean.TRUE);
+		httpServletRequest.setAttribute(SKIP_FILTER, Boolean.TRUE);
 
-		GZipResponse gZipResponse = new GZipResponse(request, response);
+		GZipResponse gZipResponse = new GZipResponse(httpServletResponse);
 
-		processFilter(GZipFilter.class, request, gZipResponse, filterChain);
+		processFilter(
+			GZipFilter.class.getName(), httpServletRequest, gZipResponse,
+			filterChain);
 
 		gZipResponse.finishResponse();
 	}
 
 	private static final String _COMPRESS = "compress";
 
-	private static Log _log = LogFactoryUtil.getLog(GZipFilter.class);
+	private static final Log _log = LogFactoryUtil.getLog(GZipFilter.class);
 
-	private boolean _filterEnabled;
+	private final boolean _filterEnabled;
 
 }

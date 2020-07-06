@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -25,6 +25,22 @@ import javax.servlet.http.HttpServletRequest;
  */
 public class UploadProgressTag extends IncludeTag {
 
+	public int getHeight() {
+		return _height;
+	}
+
+	public String getId() {
+		return _id;
+	}
+
+	public String getMessage() {
+		return _message;
+	}
+
+	public Integer getUpdatePeriod() {
+		return _updatePeriod;
+	}
+
 	public void setHeight(int height) {
 		_height = height;
 	}
@@ -37,20 +53,17 @@ public class UploadProgressTag extends IncludeTag {
 		_message = message;
 	}
 
-	public void setRedirect(String redirect) {
-		_redirect = redirect;
-	}
-
 	public void setUpdatePeriod(Integer updatePeriod) {
 		_updatePeriod = updatePeriod;
 	}
 
 	@Override
 	protected void cleanUp() {
+		super.cleanUp();
+
 		_height = 25;
 		_id = null;
 		_message = null;
-		_redirect = null;
 		_updatePeriod = 1000;
 	}
 
@@ -60,20 +73,20 @@ public class UploadProgressTag extends IncludeTag {
 	}
 
 	@Override
-	protected void setAttributes(HttpServletRequest request) {
-		request.setAttribute("liferay-ui:progress:id", _id);
-		request.setAttribute("liferay-ui:progress:height", _height);
-		request.setAttribute("liferay-ui:progress:message", _message);
-		request.setAttribute("liferay-ui:progress:redirect", _redirect);
-		request.setAttribute("liferay-ui:progress:updatePeriod", _updatePeriod);
+	protected void setAttributes(HttpServletRequest httpServletRequest) {
+		httpServletRequest.setAttribute("liferay-ui:progress:height", _height);
+		httpServletRequest.setAttribute("liferay-ui:progress:id", _id);
+		httpServletRequest.setAttribute(
+			"liferay-ui:progress:message", _message);
+		httpServletRequest.setAttribute(
+			"liferay-ui:progress:updatePeriod", _updatePeriod);
 	}
 
 	private static final String _PAGE = "/html/taglib/ui/progress/page.jsp";
 
-	private Integer _height;
+	private Integer _height = 25;
 	private String _id;
 	private String _message;
-	private String _redirect;
-	private Integer _updatePeriod;
+	private Integer _updatePeriod = 1000;
 
 }

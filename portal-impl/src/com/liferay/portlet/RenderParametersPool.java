@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,7 +14,8 @@
 
 package com.liferay.portlet;
 
-import com.liferay.portal.util.WebKeys;
+import com.liferay.portal.kernel.servlet.PortalSessionContext;
+import com.liferay.portal.kernel.util.WebKeys;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -28,78 +29,120 @@ import javax.servlet.http.HttpSession;
  */
 public class RenderParametersPool {
 
-	public static void clear(HttpServletRequest request, long plid) {
-		Map<String, Map<String, String[]>> plidPool = get(request, plid);
-
-		plidPool.clear();
-	}
-
-	public static void clear(
-		HttpServletRequest request, long plid, String portletId) {
-
-		Map<String, String[]> params = get(request, plid, portletId);
-
-		params.clear();
-	}
-
-	public static Map<String, Map<String, String[]>> get(
-		HttpServletRequest request, long plid) {
-
-		HttpSession session = request.getSession();
+	public static Map<String, Map<String, String[]>> clear(
+		HttpServletRequest httpServletRequest, long plid) {
 
 		if (plid <= 0) {
-			return new ConcurrentHashMap<String, Map<String, String[]>>();
+			return null;
 		}
 
 		Map<Long, Map<String, Map<String, String[]>>> pool =
-			_getRenderParametersPool(session);
+			_getRenderParametersPool(httpServletRequest, false);
 
-		Map<String, Map<String, String[]>> plidPool = pool.get(plid);
-
-		if (plidPool == null) {
-			plidPool = new ConcurrentHashMap<String, Map<String, String[]>>();
-
-			pool.put(plid, plidPool);
+		if (pool == null) {
+			return null;
 		}
 
-		return plidPool;
+		return pool.remove(plid);
+	}
+
+	public static Map<String, String[]> clear(
+		HttpServletRequest httpServletRequest, long plid, String portletId) {
+
+		Map<String, Map<String, String[]>> plidPool = get(
+			httpServletRequest, plid);
+
+		if (plidPool == null) {
+			return null;
+		}
+
+		return plidPool.remove(portletId);
+	}
+
+	public static Map<String, Map<String, String[]>> get(
+		HttpServletRequest httpServletRequest, long plid) {
+
+		if (plid <= 0) {
+			return null;
+		}
+
+		Map<Long, Map<String, Map<String, String[]>>> pool =
+			_getRenderParametersPool(httpServletRequest, false);
+
+		if (pool == null) {
+			return null;
+		}
+
+		return pool.get(plid);
 	}
 
 	public static Map<String, String[]> get(
-		HttpServletRequest request, long plid, String portletId) {
+		HttpServletRequest httpServletRequest, long plid, String portletId) {
 
-		Map<String, Map<String, String[]>> plidPool = get(request, plid);
+		Map<String, Map<String, String[]>> plidPool = get(
+			httpServletRequest, plid);
 
-		Map<String, String[]> params = plidPool.get(portletId);
-
-		if (params == null) {
-			params = new HashMap<String, String[]>();
-
-			plidPool.put(portletId, params);
+		if (plidPool == null) {
+			return null;
 		}
 
-		return params;
+		return plidPool.get(portletId);
+	}
+
+	public static Map<String, Map<String, String[]>> getOrCreate(
+		HttpServletRequest httpServletRequest, long plid) {
+
+		if (plid <= 0) {
+			return new ConcurrentHashMap<>();
+		}
+
+		Map<Long, Map<String, Map<String, String[]>>> pool =
+			_getRenderParametersPool(httpServletRequest, true);
+
+		return pool.computeIfAbsent(plid, key -> new ConcurrentHashMap<>());
+	}
+
+	public static Map<String, String[]> getOrCreate(
+		HttpServletRequest httpServletRequest, long plid, String portletId) {
+
+		Map<String, Map<String, String[]>> plidPool = getOrCreate(
+			httpServletRequest, plid);
+
+		return plidPool.computeIfAbsent(portletId, key -> new HashMap<>());
 	}
 
 	public static void put(
-		HttpServletRequest request, long plid, String portletId,
+		HttpServletRequest httpServletRequest, long plid, String portletId,
 		Map<String, String[]> params) {
 
-		Map<String, Map<String, String[]>> plidPool = get(request, plid);
+		if (params.isEmpty()) {
+			return;
+		}
+
+		Map<String, Map<String, String[]>> plidPool = getOrCreate(
+			httpServletRequest, plid);
 
 		plidPool.put(portletId, params);
 	}
 
 	private static Map<Long, Map<String, Map<String, String[]>>>
-		_getRenderParametersPool(HttpSession session) {
+		_getRenderParametersPool(
+			HttpServletRequest httpServletRequest, boolean createIfAbsent) {
+
+		HttpSession session = httpServletRequest.getSession();
+
+		HttpSession portalSession = PortalSessionContext.get(session.getId());
+
+		if (portalSession != null) {
+			session = portalSession;
+		}
 
 		Map<Long, Map<String, Map<String, String[]>>> renderParametersPool =
 			(Map<Long, Map<String, Map<String, String[]>>>)session.getAttribute(
 				WebKeys.PORTLET_RENDER_PARAMETERS);
 
-		if (renderParametersPool == null) {
-			renderParametersPool = new ConcurrentHashMap
-				<Long, Map<String, Map<String, String[]>>>();
+		if (createIfAbsent && (renderParametersPool == null)) {
+			renderParametersPool = new ConcurrentHashMap<>();
 
 			session.setAttribute(
 				WebKeys.PORTLET_RENDER_PARAMETERS, renderParametersPool);

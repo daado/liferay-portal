@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,16 +14,16 @@
 
 package com.liferay.portal.webdav;
 
-import com.liferay.portal.kernel.util.StringPool;
+import com.liferay.petra.string.StringPool;
+import com.liferay.portal.kernel.model.Group;
+import com.liferay.portal.kernel.model.User;
+import com.liferay.portal.kernel.service.UserLocalServiceUtil;
 import com.liferay.portal.kernel.webdav.BaseResourceImpl;
 import com.liferay.portal.kernel.webdav.BaseWebDAVStorageImpl;
 import com.liferay.portal.kernel.webdav.Resource;
 import com.liferay.portal.kernel.webdav.WebDAVException;
 import com.liferay.portal.kernel.webdav.WebDAVRequest;
 import com.liferay.portal.kernel.webdav.WebDAVUtil;
-import com.liferay.portal.model.Group;
-import com.liferay.portal.model.User;
-import com.liferay.portal.service.UserLocalServiceUtil;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -45,12 +45,10 @@ public class CompanyWebDAVStorageImpl extends BaseWebDAVStorageImpl {
 		throws WebDAVException {
 
 		try {
-			long userId = webDAVRequest.getUserId();
-
-			return getResources(userId);
+			return getResources(webDAVRequest.getUserId());
 		}
-		catch (Exception e) {
-			throw new WebDAVException(e);
+		catch (Exception exception) {
+			throw new WebDAVException(exception);
 		}
 	}
 
@@ -59,7 +57,7 @@ public class CompanyWebDAVStorageImpl extends BaseWebDAVStorageImpl {
 
 		List<Group> groups = WebDAVUtil.getGroups(user);
 
-		List<Resource> resources = new ArrayList<Resource>(groups.size());
+		List<Resource> resources = new ArrayList<>(groups.size());
 
 		for (Group group : groups) {
 			String parentPath = getRootPath();

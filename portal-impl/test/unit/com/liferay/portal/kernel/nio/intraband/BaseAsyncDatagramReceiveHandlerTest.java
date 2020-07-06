@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,69 +14,81 @@
 
 package com.liferay.portal.kernel.nio.intraband;
 
-import com.liferay.portal.kernel.test.CodeCoverageAssertor;
+import com.liferay.petra.executor.PortalExecutorManager;
+import com.liferay.portal.kernel.test.CaptureHandler;
 import com.liferay.portal.kernel.test.JDKLoggerTestUtil;
-import com.liferay.portal.test.AdviseWith;
-import com.liferay.portal.test.AspectJMockingNewClassLoaderJUnitTestRunner;
+import com.liferay.portal.kernel.test.rule.CodeCoverageAssertor;
+import com.liferay.portal.kernel.util.ProxyUtil;
+import com.liferay.registry.BasicRegistryImpl;
+import com.liferay.registry.Registry;
+import com.liferay.registry.RegistryUtil;
 
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.LogRecord;
 
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.ClassRule;
+import org.junit.Rule;
 import org.junit.Test;
-import org.junit.runner.RunWith;
 
 /**
  * @author Shuyang Zhou
  */
-@RunWith(AspectJMockingNewClassLoaderJUnitTestRunner.class)
 public class BaseAsyncDatagramReceiveHandlerTest {
 
 	@ClassRule
-	public static CodeCoverageAssertor codeCoverageAssertor =
-		new CodeCoverageAssertor();
+	@Rule
+	public static final CodeCoverageAssertor codeCoverageAssertor =
+		CodeCoverageAssertor.INSTANCE;
 
-	@AdviseWith(adviceClasses = {PortalExecutorManagerUtilAdvice.class})
-	@Test
-	public void testErrorDispatch() {
-		List<LogRecord> logRecords = JDKLoggerTestUtil.configureJDKLogger(
-			BaseAsyncDatagramReceiveHandler.class.getName(), Level.SEVERE);
+	@Before
+	public void setUp() {
+		RegistryUtil.setRegistry(new BasicRegistryImpl());
 
-		ErrorAsyncDatagramReceiveHandler errorAsyncDatagramReceiveHandler =
-			new ErrorAsyncDatagramReceiveHandler();
+		Registry registry = RegistryUtil.getRegistry();
 
-		errorAsyncDatagramReceiveHandler.receive(null, null);
-
-		Assert.assertEquals(1, logRecords.size());
-
-		LogRecord logRecord = logRecords.get(0);
-
-		Assert.assertEquals("Unable to dispatch", logRecord.getMessage());
-
-		Throwable throwable = logRecord.getThrown();
-
-		Assert.assertEquals(Exception.class, throwable.getClass());
-
-		logRecords = JDKLoggerTestUtil.configureJDKLogger(
-			BaseAsyncDatagramReceiveHandler.class.getName(), Level.OFF);
-
-		errorAsyncDatagramReceiveHandler =
-			new ErrorAsyncDatagramReceiveHandler();
-
-		errorAsyncDatagramReceiveHandler.receive(null, null);
-
-		Assert.assertTrue(logRecords.isEmpty());
+		registry.registerService(
+			PortalExecutorManager.class,
+			(PortalExecutorManager)ProxyUtil.newProxyInstance(
+				BaseAsyncDatagramReceiveHandlerTest.class.getClassLoader(),
+				new Class<?>[] {PortalExecutorManager.class},
+				new PortalExecutorManagerInvocationHandler()));
 	}
 
-	@AdviseWith(adviceClasses = {PortalExecutorManagerUtilAdvice.class})
+	@Test
+	public void testErrorDispatch() {
+		try (CaptureHandler captureHandler =
+				JDKLoggerTestUtil.configureJDKLogger(
+					BaseAsyncDatagramReceiveHandler.class.getName(),
+					Level.SEVERE)) {
+
+			List<LogRecord> logRecords = captureHandler.getLogRecords();
+
+			ErrorAsyncDatagramReceiveHandler errorAsyncDatagramReceiveHandler =
+				new ErrorAsyncDatagramReceiveHandler();
+
+			errorAsyncDatagramReceiveHandler.receive(null, null);
+
+			Assert.assertEquals(logRecords.toString(), 1, logRecords.size());
+
+			LogRecord logRecord = logRecords.get(0);
+
+			Assert.assertEquals("Unable to dispatch", logRecord.getMessage());
+
+			Throwable throwable = logRecord.getThrown();
+
+			Assert.assertEquals(Exception.class, throwable.getClass());
+		}
+	}
+
 	@Test
 	public void testNormalDispatch() {
 		DummyAsyncDatagramReceiveHandler dummyAsyncDatagramReceiveHandler =
 			new DummyAsyncDatagramReceiveHandler();
 
-		dummyAsyncDatagramReceiveHandler.doReceive(null, null);
+		dummyAsyncDatagramReceiveHandler.receive(null, null);
 
 		Assert.assertTrue(dummyAsyncDatagramReceiveHandler._received);
 	}

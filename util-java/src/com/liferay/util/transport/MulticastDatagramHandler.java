@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,9 +14,9 @@
 
 package com.liferay.util.transport;
 
+import com.liferay.petra.string.StringBundler;
 import com.liferay.portal.kernel.io.unsync.UnsyncByteArrayInputStream;
 import com.liferay.portal.kernel.io.unsync.UnsyncByteArrayOutputStream;
-import com.liferay.portal.kernel.util.StringBundler;
 
 import java.io.InputStream;
 
@@ -51,8 +51,8 @@ public class MulticastDatagramHandler implements DatagramHandler {
 			try {
 				bytes = getUnzippedBytes(bytes);
 			}
-			catch (Exception e) {
-				_log.error(e, e);
+			catch (Exception exception) {
+				_log.error(exception, exception);
 			}
 		}
 
@@ -72,43 +72,43 @@ public class MulticastDatagramHandler implements DatagramHandler {
 		sb.append(new String(bytes));
 
 		if (_log.isInfoEnabled()) {
-			_log.info(sb);
+			_log.info(sb.toString());
 		}
 	}
 
 	protected byte[] getUnzippedBytes(byte[] bytes) throws Exception {
-		InputStream is = new GZIPInputStream(
-			new UnsyncByteArrayInputStream(bytes));
-		UnsyncByteArrayOutputStream ubaos = new UnsyncByteArrayOutputStream(
-			bytes.length);
+		UnsyncByteArrayOutputStream unsyncByteArrayOutputStream =
+			new UnsyncByteArrayOutputStream(bytes.length);
 
-		byte[] buffer = new byte[1500];
+		try (InputStream is = new GZIPInputStream(
+				new UnsyncByteArrayInputStream(bytes))) {
 
-		int c = 0;
+			byte[] buffer = new byte[1500];
+			int c = 0;
 
-		while (true) {
-			if (c == -1) {
-				break;
-			}
+			while (true) {
+				if (c == -1) {
+					break;
+				}
 
-			c = is.read(buffer, 0, 1500);
+				c = is.read(buffer, 0, 1500);
 
-			if (c != -1) {
-				ubaos.write(buffer, 0, c);
+				if (c != -1) {
+					unsyncByteArrayOutputStream.write(buffer, 0, c);
+				}
 			}
 		}
 
-		is.close();
+		unsyncByteArrayOutputStream.flush();
+		unsyncByteArrayOutputStream.close();
 
-		ubaos.flush();
-		ubaos.close();
-
-		return ubaos.toByteArray();
+		return unsyncByteArrayOutputStream.toByteArray();
 	}
 
-	private static Log _log = LogFactory.getLog(MulticastDatagramHandler.class);
+	private static final Log _log = LogFactory.getLog(
+		MulticastDatagramHandler.class);
 
-	private boolean _gzipData;
-	private boolean _shortData;
+	private final boolean _gzipData;
+	private final boolean _shortData;
 
 }

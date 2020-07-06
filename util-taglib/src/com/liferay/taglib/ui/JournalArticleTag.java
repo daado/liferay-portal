@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,6 +14,7 @@
 
 package com.liferay.taglib.ui;
 
+import com.liferay.portal.kernel.portlet.PortletRequestModel;
 import com.liferay.taglib.util.IncludeTag;
 
 import javax.servlet.http.HttpServletRequest;
@@ -35,12 +36,22 @@ public class JournalArticleTag extends IncludeTag {
 		_articleResourcePrimKey = articleResourcePrimKey;
 	}
 
+	public void setDDMTemplateKey(String ddmTemplateKey) {
+		_ddmTemplateKey = ddmTemplateKey;
+	}
+
 	public void setGroupId(long groupId) {
 		_groupId = groupId;
 	}
 
 	public void setLanguageId(String languageId) {
 		_languageId = languageId;
+	}
+
+	public void setPortletRequestModel(
+		PortletRequestModel portletRequestModel) {
+
+		_portletRequestModel = portletRequestModel;
 	}
 
 	public void setShowAvailableLocales(boolean showAvailableLocales) {
@@ -51,25 +62,19 @@ public class JournalArticleTag extends IncludeTag {
 		_showTitle = showTitle;
 	}
 
-	public void setTemplateId(String templateId) {
-		_templateId = templateId;
-	}
-
-	public void setXmlRequest(String xmlRequest) {
-		_xmlRequest = xmlRequest;
-	}
-
 	@Override
 	protected void cleanUp() {
+		super.cleanUp();
+
 		_articleId = null;
 		_articlePage = 1;
 		_articleResourcePrimKey = 0;
+		_ddmTemplateKey = null;
 		_groupId = 0;
 		_languageId = null;
+		_portletRequestModel = null;
 		_showAvailableLocales = false;
 		_showTitle = false;
-		_templateId = null;
-		_xmlRequest = null;
 	}
 
 	@Override
@@ -78,28 +83,29 @@ public class JournalArticleTag extends IncludeTag {
 	}
 
 	@Override
-	protected void setAttributes(HttpServletRequest request) {
-		request.setAttribute(
+	protected void setAttributes(HttpServletRequest httpServletRequest) {
+		httpServletRequest.setAttribute(
 			"liferay-ui:journal-article:articleId", _articleId);
-		request.setAttribute(
+		httpServletRequest.setAttribute(
 			"liferay-ui:journal-article:articlePage",
 			String.valueOf(_articlePage));
-		request.setAttribute(
+		httpServletRequest.setAttribute(
 			"liferay-ui:journal-article:articleResourcePrimKey",
 			String.valueOf(_articleResourcePrimKey));
-		request.setAttribute(
+		httpServletRequest.setAttribute(
+			"liferay-ui:journal-article:ddmTemplateKey", _ddmTemplateKey);
+		httpServletRequest.setAttribute(
 			"liferay-ui:journal-article:groupId", String.valueOf(_groupId));
-		request.setAttribute(
+		httpServletRequest.setAttribute(
 			"liferay-ui:journal-article:languageId", _languageId);
-		request.setAttribute(
+		httpServletRequest.setAttribute(
+			"liferay-ui:journal-article:portletRequestModel",
+			_portletRequestModel);
+		httpServletRequest.setAttribute(
 			"liferay-ui:journal-article:showAvailableLocales",
 			String.valueOf(_showAvailableLocales));
-		request.setAttribute(
+		httpServletRequest.setAttribute(
 			"liferay-ui:journal-article:showTitle", String.valueOf(_showTitle));
-		request.setAttribute(
-			"liferay-ui:journal-article:templateId", _templateId);
-		request.setAttribute(
-			"liferay-ui:journal-article:xmlRequest", _xmlRequest);
 	}
 
 	private static final String _PAGE =
@@ -108,11 +114,11 @@ public class JournalArticleTag extends IncludeTag {
 	private String _articleId;
 	private int _articlePage = 1;
 	private long _articleResourcePrimKey;
+	private String _ddmTemplateKey;
 	private long _groupId;
 	private String _languageId;
+	private PortletRequestModel _portletRequestModel;
 	private boolean _showAvailableLocales;
 	private boolean _showTitle;
-	private String _templateId;
-	private String _xmlRequest;
 
 }

@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,33 +14,35 @@
 
 package com.liferay.portlet.announcements.service.base;
 
+import com.liferay.announcements.kernel.model.AnnouncementsDelivery;
+import com.liferay.announcements.kernel.service.AnnouncementsDeliveryLocalService;
+import com.liferay.announcements.kernel.service.persistence.AnnouncementsDeliveryPersistence;
+import com.liferay.petra.sql.dsl.query.DSLQuery;
 import com.liferay.portal.kernel.bean.BeanReference;
-import com.liferay.portal.kernel.bean.IdentifiableBean;
 import com.liferay.portal.kernel.dao.db.DB;
-import com.liferay.portal.kernel.dao.db.DBFactoryUtil;
+import com.liferay.portal.kernel.dao.db.DBManagerUtil;
 import com.liferay.portal.kernel.dao.jdbc.SqlUpdate;
 import com.liferay.portal.kernel.dao.jdbc.SqlUpdateFactoryUtil;
+import com.liferay.portal.kernel.dao.orm.ActionableDynamicQuery;
+import com.liferay.portal.kernel.dao.orm.DefaultActionableDynamicQuery;
 import com.liferay.portal.kernel.dao.orm.DynamicQuery;
 import com.liferay.portal.kernel.dao.orm.DynamicQueryFactoryUtil;
+import com.liferay.portal.kernel.dao.orm.IndexableActionableDynamicQuery;
 import com.liferay.portal.kernel.dao.orm.Projection;
 import com.liferay.portal.kernel.exception.PortalException;
 import com.liferay.portal.kernel.exception.SystemException;
+import com.liferay.portal.kernel.model.PersistedModel;
+import com.liferay.portal.kernel.module.framework.service.IdentifiableOSGiService;
 import com.liferay.portal.kernel.search.Indexable;
 import com.liferay.portal.kernel.search.IndexableType;
+import com.liferay.portal.kernel.service.BaseLocalServiceImpl;
+import com.liferay.portal.kernel.service.PersistedModelLocalServiceRegistry;
+import com.liferay.portal.kernel.service.persistence.BasePersistence;
+import com.liferay.portal.kernel.service.persistence.UserFinder;
+import com.liferay.portal.kernel.service.persistence.UserPersistence;
+import com.liferay.portal.kernel.transaction.Transactional;
 import com.liferay.portal.kernel.util.OrderByComparator;
-import com.liferay.portal.model.PersistedModel;
-import com.liferay.portal.service.BaseLocalServiceImpl;
-import com.liferay.portal.service.PersistedModelLocalServiceRegistry;
-import com.liferay.portal.service.persistence.UserFinder;
-import com.liferay.portal.service.persistence.UserPersistence;
-import com.liferay.portal.util.PortalUtil;
-
-import com.liferay.portlet.announcements.model.AnnouncementsDelivery;
-import com.liferay.portlet.announcements.service.AnnouncementsDeliveryLocalService;
-import com.liferay.portlet.announcements.service.persistence.AnnouncementsDeliveryPersistence;
-import com.liferay.portlet.announcements.service.persistence.AnnouncementsEntryFinder;
-import com.liferay.portlet.announcements.service.persistence.AnnouncementsEntryPersistence;
-import com.liferay.portlet.announcements.service.persistence.AnnouncementsFlagPersistence;
+import com.liferay.portal.kernel.util.PortalUtil;
 
 import java.io.Serializable;
 
@@ -57,16 +59,16 @@ import javax.sql.DataSource;
  *
  * @author Brian Wing Shun Chan
  * @see com.liferay.portlet.announcements.service.impl.AnnouncementsDeliveryLocalServiceImpl
- * @see com.liferay.portlet.announcements.service.AnnouncementsDeliveryLocalServiceUtil
  * @generated
  */
 public abstract class AnnouncementsDeliveryLocalServiceBaseImpl
-	extends BaseLocalServiceImpl implements AnnouncementsDeliveryLocalService,
-		IdentifiableBean {
+	extends BaseLocalServiceImpl
+	implements AnnouncementsDeliveryLocalService, IdentifiableOSGiService {
+
 	/*
 	 * NOTE FOR DEVELOPERS:
 	 *
-	 * Never modify or reference this class directly. Always use {@link com.liferay.portlet.announcements.service.AnnouncementsDeliveryLocalServiceUtil} to access the announcements delivery local service.
+	 * Never modify or reference this class directly. Use <code>AnnouncementsDeliveryLocalService</code> via injection or a <code>org.osgi.util.tracker.ServiceTracker</code> or use <code>com.liferay.announcements.kernel.service.AnnouncementsDeliveryLocalServiceUtil</code>.
 	 */
 
 	/**
@@ -74,12 +76,12 @@ public abstract class AnnouncementsDeliveryLocalServiceBaseImpl
 	 *
 	 * @param announcementsDelivery the announcements delivery
 	 * @return the announcements delivery that was added
-	 * @throws SystemException if a system exception occurred
 	 */
 	@Indexable(type = IndexableType.REINDEX)
 	@Override
 	public AnnouncementsDelivery addAnnouncementsDelivery(
-		AnnouncementsDelivery announcementsDelivery) throws SystemException {
+		AnnouncementsDelivery announcementsDelivery) {
+
 		announcementsDelivery.setNew(true);
 
 		return announcementsDeliveryPersistence.update(announcementsDelivery);
@@ -92,6 +94,7 @@ public abstract class AnnouncementsDeliveryLocalServiceBaseImpl
 	 * @return the new announcements delivery
 	 */
 	@Override
+	@Transactional(enabled = false)
 	public AnnouncementsDelivery createAnnouncementsDelivery(long deliveryId) {
 		return announcementsDeliveryPersistence.create(deliveryId);
 	}
@@ -102,12 +105,12 @@ public abstract class AnnouncementsDeliveryLocalServiceBaseImpl
 	 * @param deliveryId the primary key of the announcements delivery
 	 * @return the announcements delivery that was removed
 	 * @throws PortalException if a announcements delivery with the primary key could not be found
-	 * @throws SystemException if a system exception occurred
 	 */
 	@Indexable(type = IndexableType.DELETE)
 	@Override
 	public AnnouncementsDelivery deleteAnnouncementsDelivery(long deliveryId)
-		throws PortalException, SystemException {
+		throws PortalException {
+
 		return announcementsDeliveryPersistence.remove(deliveryId);
 	}
 
@@ -116,21 +119,26 @@ public abstract class AnnouncementsDeliveryLocalServiceBaseImpl
 	 *
 	 * @param announcementsDelivery the announcements delivery
 	 * @return the announcements delivery that was removed
-	 * @throws SystemException if a system exception occurred
 	 */
 	@Indexable(type = IndexableType.DELETE)
 	@Override
 	public AnnouncementsDelivery deleteAnnouncementsDelivery(
-		AnnouncementsDelivery announcementsDelivery) throws SystemException {
+		AnnouncementsDelivery announcementsDelivery) {
+
 		return announcementsDeliveryPersistence.remove(announcementsDelivery);
+	}
+
+	@Override
+	public <T> T dslQuery(DSLQuery dslQuery) {
+		return announcementsDeliveryPersistence.dslQuery(dslQuery);
 	}
 
 	@Override
 	public DynamicQuery dynamicQuery() {
 		Class<?> clazz = getClass();
 
-		return DynamicQueryFactoryUtil.forClass(AnnouncementsDelivery.class,
-			clazz.getClassLoader());
+		return DynamicQueryFactoryUtil.forClass(
+			AnnouncementsDelivery.class, clazz.getClassLoader());
 	}
 
 	/**
@@ -138,41 +146,38 @@ public abstract class AnnouncementsDeliveryLocalServiceBaseImpl
 	 *
 	 * @param dynamicQuery the dynamic query
 	 * @return the matching rows
-	 * @throws SystemException if a system exception occurred
 	 */
 	@Override
-	@SuppressWarnings("rawtypes")
-	public List dynamicQuery(DynamicQuery dynamicQuery)
-		throws SystemException {
-		return announcementsDeliveryPersistence.findWithDynamicQuery(dynamicQuery);
+	public <T> List<T> dynamicQuery(DynamicQuery dynamicQuery) {
+		return announcementsDeliveryPersistence.findWithDynamicQuery(
+			dynamicQuery);
 	}
 
 	/**
 	 * Performs a dynamic query on the database and returns a range of the matching rows.
 	 *
 	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to {@link com.liferay.portal.kernel.dao.orm.QueryUtil#ALL_POS} will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent and pagination is required (<code>start</code> and <code>end</code> are not {@link com.liferay.portal.kernel.dao.orm.QueryUtil#ALL_POS}), then the query will include the default ORDER BY logic from {@link com.liferay.portlet.announcements.model.impl.AnnouncementsDeliveryModelImpl}. If both <code>orderByComparator</code> and pagination are absent, for performance reasons, the query will not have an ORDER BY clause and the returned result set will be sorted on by the primary key in an ascending order.
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>com.liferay.portal.kernel.dao.orm.QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>com.liferay.portlet.announcements.model.impl.AnnouncementsDeliveryModelImpl</code>.
 	 * </p>
 	 *
 	 * @param dynamicQuery the dynamic query
 	 * @param start the lower bound of the range of model instances
 	 * @param end the upper bound of the range of model instances (not inclusive)
 	 * @return the range of matching rows
-	 * @throws SystemException if a system exception occurred
 	 */
 	@Override
-	@SuppressWarnings("rawtypes")
-	public List dynamicQuery(DynamicQuery dynamicQuery, int start, int end)
-		throws SystemException {
-		return announcementsDeliveryPersistence.findWithDynamicQuery(dynamicQuery,
-			start, end);
+	public <T> List<T> dynamicQuery(
+		DynamicQuery dynamicQuery, int start, int end) {
+
+		return announcementsDeliveryPersistence.findWithDynamicQuery(
+			dynamicQuery, start, end);
 	}
 
 	/**
 	 * Performs a dynamic query on the database and returns an ordered range of the matching rows.
 	 *
 	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to {@link com.liferay.portal.kernel.dao.orm.QueryUtil#ALL_POS} will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent and pagination is required (<code>start</code> and <code>end</code> are not {@link com.liferay.portal.kernel.dao.orm.QueryUtil#ALL_POS}), then the query will include the default ORDER BY logic from {@link com.liferay.portlet.announcements.model.impl.AnnouncementsDeliveryModelImpl}. If both <code>orderByComparator</code> and pagination are absent, for performance reasons, the query will not have an ORDER BY clause and the returned result set will be sorted on by the primary key in an ascending order.
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>com.liferay.portal.kernel.dao.orm.QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>com.liferay.portlet.announcements.model.impl.AnnouncementsDeliveryModelImpl</code>.
 	 * </p>
 	 *
 	 * @param dynamicQuery the dynamic query
@@ -180,47 +185,45 @@ public abstract class AnnouncementsDeliveryLocalServiceBaseImpl
 	 * @param end the upper bound of the range of model instances (not inclusive)
 	 * @param orderByComparator the comparator to order the results by (optionally <code>null</code>)
 	 * @return the ordered range of matching rows
-	 * @throws SystemException if a system exception occurred
 	 */
 	@Override
-	@SuppressWarnings("rawtypes")
-	public List dynamicQuery(DynamicQuery dynamicQuery, int start, int end,
-		OrderByComparator orderByComparator) throws SystemException {
-		return announcementsDeliveryPersistence.findWithDynamicQuery(dynamicQuery,
-			start, end, orderByComparator);
+	public <T> List<T> dynamicQuery(
+		DynamicQuery dynamicQuery, int start, int end,
+		OrderByComparator<T> orderByComparator) {
+
+		return announcementsDeliveryPersistence.findWithDynamicQuery(
+			dynamicQuery, start, end, orderByComparator);
 	}
 
 	/**
-	 * Returns the number of rows that match the dynamic query.
+	 * Returns the number of rows matching the dynamic query.
 	 *
 	 * @param dynamicQuery the dynamic query
-	 * @return the number of rows that match the dynamic query
-	 * @throws SystemException if a system exception occurred
+	 * @return the number of rows matching the dynamic query
 	 */
 	@Override
-	public long dynamicQueryCount(DynamicQuery dynamicQuery)
-		throws SystemException {
-		return announcementsDeliveryPersistence.countWithDynamicQuery(dynamicQuery);
+	public long dynamicQueryCount(DynamicQuery dynamicQuery) {
+		return announcementsDeliveryPersistence.countWithDynamicQuery(
+			dynamicQuery);
 	}
 
 	/**
-	 * Returns the number of rows that match the dynamic query.
+	 * Returns the number of rows matching the dynamic query.
 	 *
 	 * @param dynamicQuery the dynamic query
 	 * @param projection the projection to apply to the query
-	 * @return the number of rows that match the dynamic query
-	 * @throws SystemException if a system exception occurred
+	 * @return the number of rows matching the dynamic query
 	 */
 	@Override
-	public long dynamicQueryCount(DynamicQuery dynamicQuery,
-		Projection projection) throws SystemException {
-		return announcementsDeliveryPersistence.countWithDynamicQuery(dynamicQuery,
-			projection);
+	public long dynamicQueryCount(
+		DynamicQuery dynamicQuery, Projection projection) {
+
+		return announcementsDeliveryPersistence.countWithDynamicQuery(
+			dynamicQuery, projection);
 	}
 
 	@Override
-	public AnnouncementsDelivery fetchAnnouncementsDelivery(long deliveryId)
-		throws SystemException {
+	public AnnouncementsDelivery fetchAnnouncementsDelivery(long deliveryId) {
 		return announcementsDeliveryPersistence.fetchByPrimaryKey(deliveryId);
 	}
 
@@ -230,17 +233,90 @@ public abstract class AnnouncementsDeliveryLocalServiceBaseImpl
 	 * @param deliveryId the primary key of the announcements delivery
 	 * @return the announcements delivery
 	 * @throws PortalException if a announcements delivery with the primary key could not be found
-	 * @throws SystemException if a system exception occurred
 	 */
 	@Override
 	public AnnouncementsDelivery getAnnouncementsDelivery(long deliveryId)
-		throws PortalException, SystemException {
+		throws PortalException {
+
 		return announcementsDeliveryPersistence.findByPrimaryKey(deliveryId);
 	}
 
 	@Override
+	public ActionableDynamicQuery getActionableDynamicQuery() {
+		ActionableDynamicQuery actionableDynamicQuery =
+			new DefaultActionableDynamicQuery();
+
+		actionableDynamicQuery.setBaseLocalService(
+			announcementsDeliveryLocalService);
+		actionableDynamicQuery.setClassLoader(getClassLoader());
+		actionableDynamicQuery.setModelClass(AnnouncementsDelivery.class);
+
+		actionableDynamicQuery.setPrimaryKeyPropertyName("deliveryId");
+
+		return actionableDynamicQuery;
+	}
+
+	@Override
+	public IndexableActionableDynamicQuery
+		getIndexableActionableDynamicQuery() {
+
+		IndexableActionableDynamicQuery indexableActionableDynamicQuery =
+			new IndexableActionableDynamicQuery();
+
+		indexableActionableDynamicQuery.setBaseLocalService(
+			announcementsDeliveryLocalService);
+		indexableActionableDynamicQuery.setClassLoader(getClassLoader());
+		indexableActionableDynamicQuery.setModelClass(
+			AnnouncementsDelivery.class);
+
+		indexableActionableDynamicQuery.setPrimaryKeyPropertyName("deliveryId");
+
+		return indexableActionableDynamicQuery;
+	}
+
+	protected void initActionableDynamicQuery(
+		ActionableDynamicQuery actionableDynamicQuery) {
+
+		actionableDynamicQuery.setBaseLocalService(
+			announcementsDeliveryLocalService);
+		actionableDynamicQuery.setClassLoader(getClassLoader());
+		actionableDynamicQuery.setModelClass(AnnouncementsDelivery.class);
+
+		actionableDynamicQuery.setPrimaryKeyPropertyName("deliveryId");
+	}
+
+	/**
+	 * @throws PortalException
+	 */
+	public PersistedModel createPersistedModel(Serializable primaryKeyObj)
+		throws PortalException {
+
+		return announcementsDeliveryPersistence.create(
+			((Long)primaryKeyObj).longValue());
+	}
+
+	/**
+	 * @throws PortalException
+	 */
+	@Override
+	public PersistedModel deletePersistedModel(PersistedModel persistedModel)
+		throws PortalException {
+
+		return announcementsDeliveryLocalService.deleteAnnouncementsDelivery(
+			(AnnouncementsDelivery)persistedModel);
+	}
+
+	public BasePersistence<AnnouncementsDelivery> getBasePersistence() {
+		return announcementsDeliveryPersistence;
+	}
+
+	/**
+	 * @throws PortalException
+	 */
+	@Override
 	public PersistedModel getPersistedModel(Serializable primaryKeyObj)
-		throws PortalException, SystemException {
+		throws PortalException {
+
 		return announcementsDeliveryPersistence.findByPrimaryKey(primaryKeyObj);
 	}
 
@@ -248,17 +324,17 @@ public abstract class AnnouncementsDeliveryLocalServiceBaseImpl
 	 * Returns a range of all the announcements deliveries.
 	 *
 	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to {@link com.liferay.portal.kernel.dao.orm.QueryUtil#ALL_POS} will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent and pagination is required (<code>start</code> and <code>end</code> are not {@link com.liferay.portal.kernel.dao.orm.QueryUtil#ALL_POS}), then the query will include the default ORDER BY logic from {@link com.liferay.portlet.announcements.model.impl.AnnouncementsDeliveryModelImpl}. If both <code>orderByComparator</code> and pagination are absent, for performance reasons, the query will not have an ORDER BY clause and the returned result set will be sorted on by the primary key in an ascending order.
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>com.liferay.portal.kernel.dao.orm.QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>com.liferay.portlet.announcements.model.impl.AnnouncementsDeliveryModelImpl</code>.
 	 * </p>
 	 *
 	 * @param start the lower bound of the range of announcements deliveries
 	 * @param end the upper bound of the range of announcements deliveries (not inclusive)
 	 * @return the range of announcements deliveries
-	 * @throws SystemException if a system exception occurred
 	 */
 	@Override
-	public List<AnnouncementsDelivery> getAnnouncementsDeliveries(int start,
-		int end) throws SystemException {
+	public List<AnnouncementsDelivery> getAnnouncementsDeliveries(
+		int start, int end) {
+
 		return announcementsDeliveryPersistence.findAll(start, end);
 	}
 
@@ -266,10 +342,9 @@ public abstract class AnnouncementsDeliveryLocalServiceBaseImpl
 	 * Returns the number of announcements deliveries.
 	 *
 	 * @return the number of announcements deliveries
-	 * @throws SystemException if a system exception occurred
 	 */
 	@Override
-	public int getAnnouncementsDeliveriesCount() throws SystemException {
+	public int getAnnouncementsDeliveriesCount() {
 		return announcementsDeliveryPersistence.countAll();
 	}
 
@@ -278,12 +353,12 @@ public abstract class AnnouncementsDeliveryLocalServiceBaseImpl
 	 *
 	 * @param announcementsDelivery the announcements delivery
 	 * @return the announcements delivery that was updated
-	 * @throws SystemException if a system exception occurred
 	 */
 	@Indexable(type = IndexableType.REINDEX)
 	@Override
 	public AnnouncementsDelivery updateAnnouncementsDelivery(
-		AnnouncementsDelivery announcementsDelivery) throws SystemException {
+		AnnouncementsDelivery announcementsDelivery) {
+
 		return announcementsDeliveryPersistence.update(announcementsDelivery);
 	}
 
@@ -292,7 +367,9 @@ public abstract class AnnouncementsDeliveryLocalServiceBaseImpl
 	 *
 	 * @return the announcements delivery local service
 	 */
-	public com.liferay.portlet.announcements.service.AnnouncementsDeliveryLocalService getAnnouncementsDeliveryLocalService() {
+	public AnnouncementsDeliveryLocalService
+		getAnnouncementsDeliveryLocalService() {
+
 		return announcementsDeliveryLocalService;
 	}
 
@@ -302,27 +379,10 @@ public abstract class AnnouncementsDeliveryLocalServiceBaseImpl
 	 * @param announcementsDeliveryLocalService the announcements delivery local service
 	 */
 	public void setAnnouncementsDeliveryLocalService(
-		com.liferay.portlet.announcements.service.AnnouncementsDeliveryLocalService announcementsDeliveryLocalService) {
-		this.announcementsDeliveryLocalService = announcementsDeliveryLocalService;
-	}
+		AnnouncementsDeliveryLocalService announcementsDeliveryLocalService) {
 
-	/**
-	 * Returns the announcements delivery remote service.
-	 *
-	 * @return the announcements delivery remote service
-	 */
-	public com.liferay.portlet.announcements.service.AnnouncementsDeliveryService getAnnouncementsDeliveryService() {
-		return announcementsDeliveryService;
-	}
-
-	/**
-	 * Sets the announcements delivery remote service.
-	 *
-	 * @param announcementsDeliveryService the announcements delivery remote service
-	 */
-	public void setAnnouncementsDeliveryService(
-		com.liferay.portlet.announcements.service.AnnouncementsDeliveryService announcementsDeliveryService) {
-		this.announcementsDeliveryService = announcementsDeliveryService;
+		this.announcementsDeliveryLocalService =
+			announcementsDeliveryLocalService;
 	}
 
 	/**
@@ -330,7 +390,9 @@ public abstract class AnnouncementsDeliveryLocalServiceBaseImpl
 	 *
 	 * @return the announcements delivery persistence
 	 */
-	public AnnouncementsDeliveryPersistence getAnnouncementsDeliveryPersistence() {
+	public AnnouncementsDeliveryPersistence
+		getAnnouncementsDeliveryPersistence() {
+
 		return announcementsDeliveryPersistence;
 	}
 
@@ -341,140 +403,9 @@ public abstract class AnnouncementsDeliveryLocalServiceBaseImpl
 	 */
 	public void setAnnouncementsDeliveryPersistence(
 		AnnouncementsDeliveryPersistence announcementsDeliveryPersistence) {
-		this.announcementsDeliveryPersistence = announcementsDeliveryPersistence;
-	}
 
-	/**
-	 * Returns the announcements entry local service.
-	 *
-	 * @return the announcements entry local service
-	 */
-	public com.liferay.portlet.announcements.service.AnnouncementsEntryLocalService getAnnouncementsEntryLocalService() {
-		return announcementsEntryLocalService;
-	}
-
-	/**
-	 * Sets the announcements entry local service.
-	 *
-	 * @param announcementsEntryLocalService the announcements entry local service
-	 */
-	public void setAnnouncementsEntryLocalService(
-		com.liferay.portlet.announcements.service.AnnouncementsEntryLocalService announcementsEntryLocalService) {
-		this.announcementsEntryLocalService = announcementsEntryLocalService;
-	}
-
-	/**
-	 * Returns the announcements entry remote service.
-	 *
-	 * @return the announcements entry remote service
-	 */
-	public com.liferay.portlet.announcements.service.AnnouncementsEntryService getAnnouncementsEntryService() {
-		return announcementsEntryService;
-	}
-
-	/**
-	 * Sets the announcements entry remote service.
-	 *
-	 * @param announcementsEntryService the announcements entry remote service
-	 */
-	public void setAnnouncementsEntryService(
-		com.liferay.portlet.announcements.service.AnnouncementsEntryService announcementsEntryService) {
-		this.announcementsEntryService = announcementsEntryService;
-	}
-
-	/**
-	 * Returns the announcements entry persistence.
-	 *
-	 * @return the announcements entry persistence
-	 */
-	public AnnouncementsEntryPersistence getAnnouncementsEntryPersistence() {
-		return announcementsEntryPersistence;
-	}
-
-	/**
-	 * Sets the announcements entry persistence.
-	 *
-	 * @param announcementsEntryPersistence the announcements entry persistence
-	 */
-	public void setAnnouncementsEntryPersistence(
-		AnnouncementsEntryPersistence announcementsEntryPersistence) {
-		this.announcementsEntryPersistence = announcementsEntryPersistence;
-	}
-
-	/**
-	 * Returns the announcements entry finder.
-	 *
-	 * @return the announcements entry finder
-	 */
-	public AnnouncementsEntryFinder getAnnouncementsEntryFinder() {
-		return announcementsEntryFinder;
-	}
-
-	/**
-	 * Sets the announcements entry finder.
-	 *
-	 * @param announcementsEntryFinder the announcements entry finder
-	 */
-	public void setAnnouncementsEntryFinder(
-		AnnouncementsEntryFinder announcementsEntryFinder) {
-		this.announcementsEntryFinder = announcementsEntryFinder;
-	}
-
-	/**
-	 * Returns the announcements flag local service.
-	 *
-	 * @return the announcements flag local service
-	 */
-	public com.liferay.portlet.announcements.service.AnnouncementsFlagLocalService getAnnouncementsFlagLocalService() {
-		return announcementsFlagLocalService;
-	}
-
-	/**
-	 * Sets the announcements flag local service.
-	 *
-	 * @param announcementsFlagLocalService the announcements flag local service
-	 */
-	public void setAnnouncementsFlagLocalService(
-		com.liferay.portlet.announcements.service.AnnouncementsFlagLocalService announcementsFlagLocalService) {
-		this.announcementsFlagLocalService = announcementsFlagLocalService;
-	}
-
-	/**
-	 * Returns the announcements flag remote service.
-	 *
-	 * @return the announcements flag remote service
-	 */
-	public com.liferay.portlet.announcements.service.AnnouncementsFlagService getAnnouncementsFlagService() {
-		return announcementsFlagService;
-	}
-
-	/**
-	 * Sets the announcements flag remote service.
-	 *
-	 * @param announcementsFlagService the announcements flag remote service
-	 */
-	public void setAnnouncementsFlagService(
-		com.liferay.portlet.announcements.service.AnnouncementsFlagService announcementsFlagService) {
-		this.announcementsFlagService = announcementsFlagService;
-	}
-
-	/**
-	 * Returns the announcements flag persistence.
-	 *
-	 * @return the announcements flag persistence
-	 */
-	public AnnouncementsFlagPersistence getAnnouncementsFlagPersistence() {
-		return announcementsFlagPersistence;
-	}
-
-	/**
-	 * Sets the announcements flag persistence.
-	 *
-	 * @param announcementsFlagPersistence the announcements flag persistence
-	 */
-	public void setAnnouncementsFlagPersistence(
-		AnnouncementsFlagPersistence announcementsFlagPersistence) {
-		this.announcementsFlagPersistence = announcementsFlagPersistence;
+		this.announcementsDeliveryPersistence =
+			announcementsDeliveryPersistence;
 	}
 
 	/**
@@ -482,7 +413,9 @@ public abstract class AnnouncementsDeliveryLocalServiceBaseImpl
 	 *
 	 * @return the counter local service
 	 */
-	public com.liferay.counter.service.CounterLocalService getCounterLocalService() {
+	public com.liferay.counter.kernel.service.CounterLocalService
+		getCounterLocalService() {
+
 		return counterLocalService;
 	}
 
@@ -492,27 +425,10 @@ public abstract class AnnouncementsDeliveryLocalServiceBaseImpl
 	 * @param counterLocalService the counter local service
 	 */
 	public void setCounterLocalService(
-		com.liferay.counter.service.CounterLocalService counterLocalService) {
+		com.liferay.counter.kernel.service.CounterLocalService
+			counterLocalService) {
+
 		this.counterLocalService = counterLocalService;
-	}
-
-	/**
-	 * Returns the resource local service.
-	 *
-	 * @return the resource local service
-	 */
-	public com.liferay.portal.service.ResourceLocalService getResourceLocalService() {
-		return resourceLocalService;
-	}
-
-	/**
-	 * Sets the resource local service.
-	 *
-	 * @param resourceLocalService the resource local service
-	 */
-	public void setResourceLocalService(
-		com.liferay.portal.service.ResourceLocalService resourceLocalService) {
-		this.resourceLocalService = resourceLocalService;
 	}
 
 	/**
@@ -520,7 +436,9 @@ public abstract class AnnouncementsDeliveryLocalServiceBaseImpl
 	 *
 	 * @return the user local service
 	 */
-	public com.liferay.portal.service.UserLocalService getUserLocalService() {
+	public com.liferay.portal.kernel.service.UserLocalService
+		getUserLocalService() {
+
 		return userLocalService;
 	}
 
@@ -530,27 +448,9 @@ public abstract class AnnouncementsDeliveryLocalServiceBaseImpl
 	 * @param userLocalService the user local service
 	 */
 	public void setUserLocalService(
-		com.liferay.portal.service.UserLocalService userLocalService) {
+		com.liferay.portal.kernel.service.UserLocalService userLocalService) {
+
 		this.userLocalService = userLocalService;
-	}
-
-	/**
-	 * Returns the user remote service.
-	 *
-	 * @return the user remote service
-	 */
-	public com.liferay.portal.service.UserService getUserService() {
-		return userService;
-	}
-
-	/**
-	 * Sets the user remote service.
-	 *
-	 * @param userService the user remote service
-	 */
-	public void setUserService(
-		com.liferay.portal.service.UserService userService) {
-		this.userService = userService;
 	}
 
 	/**
@@ -590,33 +490,24 @@ public abstract class AnnouncementsDeliveryLocalServiceBaseImpl
 	}
 
 	public void afterPropertiesSet() {
-		persistedModelLocalServiceRegistry.register("com.liferay.portlet.announcements.model.AnnouncementsDelivery",
+		persistedModelLocalServiceRegistry.register(
+			"com.liferay.announcements.kernel.model.AnnouncementsDelivery",
 			announcementsDeliveryLocalService);
 	}
 
 	public void destroy() {
 		persistedModelLocalServiceRegistry.unregister(
-			"com.liferay.portlet.announcements.model.AnnouncementsDelivery");
+			"com.liferay.announcements.kernel.model.AnnouncementsDelivery");
 	}
 
 	/**
-	 * Returns the Spring bean ID for this bean.
+	 * Returns the OSGi service identifier.
 	 *
-	 * @return the Spring bean ID for this bean
+	 * @return the OSGi service identifier
 	 */
 	@Override
-	public String getBeanIdentifier() {
-		return _beanIdentifier;
-	}
-
-	/**
-	 * Sets the Spring bean ID for this bean.
-	 *
-	 * @param beanIdentifier the Spring bean ID for this bean
-	 */
-	@Override
-	public void setBeanIdentifier(String beanIdentifier) {
-		_beanIdentifier = beanIdentifier;
+	public String getOSGiServiceIdentifier() {
+		return AnnouncementsDeliveryLocalService.class.getName();
 	}
 
 	protected Class<?> getModelClass() {
@@ -632,58 +523,53 @@ public abstract class AnnouncementsDeliveryLocalServiceBaseImpl
 	 *
 	 * @param sql the sql query
 	 */
-	protected void runSQL(String sql) throws SystemException {
+	protected void runSQL(String sql) {
 		try {
-			DataSource dataSource = announcementsDeliveryPersistence.getDataSource();
+			DataSource dataSource =
+				announcementsDeliveryPersistence.getDataSource();
 
-			DB db = DBFactoryUtil.getDB();
+			DB db = DBManagerUtil.getDB();
 
 			sql = db.buildSQL(sql);
 			sql = PortalUtil.transformSQL(sql);
 
-			SqlUpdate sqlUpdate = SqlUpdateFactoryUtil.getSqlUpdate(dataSource,
-					sql, new int[0]);
+			SqlUpdate sqlUpdate = SqlUpdateFactoryUtil.getSqlUpdate(
+				dataSource, sql);
 
 			sqlUpdate.update();
 		}
-		catch (Exception e) {
-			throw new SystemException(e);
+		catch (Exception exception) {
+			throw new SystemException(exception);
 		}
 	}
 
-	@BeanReference(type = com.liferay.portlet.announcements.service.AnnouncementsDeliveryLocalService.class)
-	protected com.liferay.portlet.announcements.service.AnnouncementsDeliveryLocalService announcementsDeliveryLocalService;
-	@BeanReference(type = com.liferay.portlet.announcements.service.AnnouncementsDeliveryService.class)
-	protected com.liferay.portlet.announcements.service.AnnouncementsDeliveryService announcementsDeliveryService;
+	@BeanReference(type = AnnouncementsDeliveryLocalService.class)
+	protected AnnouncementsDeliveryLocalService
+		announcementsDeliveryLocalService;
+
 	@BeanReference(type = AnnouncementsDeliveryPersistence.class)
 	protected AnnouncementsDeliveryPersistence announcementsDeliveryPersistence;
-	@BeanReference(type = com.liferay.portlet.announcements.service.AnnouncementsEntryLocalService.class)
-	protected com.liferay.portlet.announcements.service.AnnouncementsEntryLocalService announcementsEntryLocalService;
-	@BeanReference(type = com.liferay.portlet.announcements.service.AnnouncementsEntryService.class)
-	protected com.liferay.portlet.announcements.service.AnnouncementsEntryService announcementsEntryService;
-	@BeanReference(type = AnnouncementsEntryPersistence.class)
-	protected AnnouncementsEntryPersistence announcementsEntryPersistence;
-	@BeanReference(type = AnnouncementsEntryFinder.class)
-	protected AnnouncementsEntryFinder announcementsEntryFinder;
-	@BeanReference(type = com.liferay.portlet.announcements.service.AnnouncementsFlagLocalService.class)
-	protected com.liferay.portlet.announcements.service.AnnouncementsFlagLocalService announcementsFlagLocalService;
-	@BeanReference(type = com.liferay.portlet.announcements.service.AnnouncementsFlagService.class)
-	protected com.liferay.portlet.announcements.service.AnnouncementsFlagService announcementsFlagService;
-	@BeanReference(type = AnnouncementsFlagPersistence.class)
-	protected AnnouncementsFlagPersistence announcementsFlagPersistence;
-	@BeanReference(type = com.liferay.counter.service.CounterLocalService.class)
-	protected com.liferay.counter.service.CounterLocalService counterLocalService;
-	@BeanReference(type = com.liferay.portal.service.ResourceLocalService.class)
-	protected com.liferay.portal.service.ResourceLocalService resourceLocalService;
-	@BeanReference(type = com.liferay.portal.service.UserLocalService.class)
-	protected com.liferay.portal.service.UserLocalService userLocalService;
-	@BeanReference(type = com.liferay.portal.service.UserService.class)
-	protected com.liferay.portal.service.UserService userService;
+
+	@BeanReference(
+		type = com.liferay.counter.kernel.service.CounterLocalService.class
+	)
+	protected com.liferay.counter.kernel.service.CounterLocalService
+		counterLocalService;
+
+	@BeanReference(
+		type = com.liferay.portal.kernel.service.UserLocalService.class
+	)
+	protected com.liferay.portal.kernel.service.UserLocalService
+		userLocalService;
+
 	@BeanReference(type = UserPersistence.class)
 	protected UserPersistence userPersistence;
+
 	@BeanReference(type = UserFinder.class)
 	protected UserFinder userFinder;
+
 	@BeanReference(type = PersistedModelLocalServiceRegistry.class)
-	protected PersistedModelLocalServiceRegistry persistedModelLocalServiceRegistry;
-	private String _beanIdentifier;
+	protected PersistedModelLocalServiceRegistry
+		persistedModelLocalServiceRegistry;
+
 }

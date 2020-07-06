@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,7 +14,10 @@
 
 package com.liferay.portal.security.auth;
 
-import com.liferay.portal.service.UserLocalServiceUtil;
+import com.liferay.portal.kernel.security.auth.AuthException;
+import com.liferay.portal.kernel.security.auth.AuthFailure;
+import com.liferay.portal.kernel.service.UserLocalServiceUtil;
+import com.liferay.portal.kernel.spring.osgi.OSGiBeanProperties;
 
 import java.util.Map;
 
@@ -22,6 +25,7 @@ import java.util.Map;
  * @author Brian Wing Shun Chan
  * @author Scott Lee
  */
+@OSGiBeanProperties(property = "key=auth.max.failures")
 public class LoginMaxFailures implements AuthFailure {
 
 	@Override
@@ -34,8 +38,8 @@ public class LoginMaxFailures implements AuthFailure {
 			UserLocalServiceUtil.updateLockoutByEmailAddress(
 				companyId, emailAddress, true);
 		}
-		catch (Exception e) {
-			throw new AuthException();
+		catch (Exception exception) {
+			throw new AuthException(exception);
 		}
 	}
 
@@ -49,8 +53,8 @@ public class LoginMaxFailures implements AuthFailure {
 			UserLocalServiceUtil.updateLockoutByScreenName(
 				companyId, screenName, true);
 		}
-		catch (Exception e) {
-			throw new AuthException();
+		catch (Exception exception) {
+			throw new AuthException(exception);
 		}
 	}
 
@@ -63,8 +67,8 @@ public class LoginMaxFailures implements AuthFailure {
 		try {
 			UserLocalServiceUtil.updateLockoutById(userId, true);
 		}
-		catch (Exception e) {
-			throw new AuthException();
+		catch (Exception exception) {
+			throw new AuthException(exception);
 		}
 	}
 

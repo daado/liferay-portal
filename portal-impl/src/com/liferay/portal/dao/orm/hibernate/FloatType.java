@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -40,8 +40,8 @@ public class FloatType implements CompositeUserType, Serializable {
 	}
 
 	@Override
-	public Object deepCopy(Object obj) {
-		return obj;
+	public Object deepCopy(Object object) {
+		return object;
 	}
 
 	@Override
@@ -57,9 +57,8 @@ public class FloatType implements CompositeUserType, Serializable {
 		else if ((x == null) || (y == null)) {
 			return false;
 		}
-		else {
-			return x.equals(y);
-		}
+
+		return x.equals(y);
 	}
 
 	@Override
@@ -99,9 +98,8 @@ public class FloatType implements CompositeUserType, Serializable {
 		if (value == null) {
 			return DEFAULT_VALUE;
 		}
-		else {
-			return value;
-		}
+
+		return value;
 	}
 
 	@Override

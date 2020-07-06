@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -16,6 +16,7 @@ package com.liferay.portal.tools.propertiesdoc;
 
 import com.liferay.portal.freemarker.FreeMarkerUtil;
 import com.liferay.portal.kernel.util.GetterUtil;
+import com.liferay.portal.kernel.util.HashMapBuilder;
 import com.liferay.portal.kernel.util.ReleaseInfo;
 import com.liferay.portal.tools.ArgumentsUtil;
 
@@ -25,7 +26,6 @@ import java.io.IOException;
 import java.io.Writer;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -35,18 +35,18 @@ import java.util.Map;
  */
 public class PropertiesDocIndexBuilder {
 
-	public static void main(String[] args) {
+	public static void main(String[] args) throws Exception {
+		Map<String, String> arguments = ArgumentsUtil.parseArguments(args);
+
 		try {
-			new PropertiesDocIndexBuilder(args);
+			new PropertiesDocIndexBuilder(arguments);
 		}
-		catch (Exception e) {
-			e.printStackTrace();
+		catch (Exception exception) {
+			ArgumentsUtil.processMainException(arguments, exception);
 		}
 	}
 
-	public PropertiesDocIndexBuilder(String[] args) {
-		Map<String, String> arguments = ArgumentsUtil.parseArguments(args);
-
+	public PropertiesDocIndexBuilder(Map<String, String> arguments) {
 		String propertiesDirName = GetterUtil.getString(
 			arguments.get("properties.dir"));
 
@@ -58,7 +58,7 @@ public class PropertiesDocIndexBuilder {
 			return;
 		}
 
-		List<String> propertiesHTMLFileNames = new ArrayList<String>();
+		List<String> propertiesHTMLFileNames = new ArrayList<>();
 
 		File[] files = propertiesDir.listFiles();
 
@@ -80,10 +80,11 @@ public class PropertiesDocIndexBuilder {
 			return;
 		}
 
-		Map<String, Object> context = new HashMap<String, Object>();
-
-		context.put("propertiesHTMLFileNames", propertiesHTMLFileNames);
-		context.put("releaseInfoVersion", ReleaseInfo.getVersion());
+		Map<String, Object> context = HashMapBuilder.<String, Object>put(
+			"propertiesHTMLFileNames", propertiesHTMLFileNames
+		).put(
+			"releaseInfoVersion", ReleaseInfo.getVersion()
+		).build();
 
 		try {
 			String indexHTMLFileName = propertiesDirName + "/index.html";
@@ -100,14 +101,14 @@ public class PropertiesDocIndexBuilder {
 						"/index.ftl",
 					context, writer);
 			}
-			catch (Exception e) {
-				e.printStackTrace();
+			catch (Exception exception) {
+				exception.printStackTrace();
 			}
 
 			writer.flush();
 		}
-		catch (IOException ioe) {
-			ioe.printStackTrace();
+		catch (IOException ioException) {
+			ioException.printStackTrace();
 		}
 	}
 

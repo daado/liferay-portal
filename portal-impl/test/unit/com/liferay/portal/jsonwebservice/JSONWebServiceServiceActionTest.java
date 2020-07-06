@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,30 +14,38 @@
 
 package com.liferay.portal.jsonwebservice;
 
+import com.liferay.portal.kernel.jsonwebservice.JSONWebServiceAction;
 import com.liferay.portal.kernel.jsonwebservice.JSONWebServiceActionsManagerUtil;
 import com.liferay.portal.kernel.servlet.HttpMethods;
+import com.liferay.portal.kernel.test.FinalizeManagerUtil;
+import com.liferay.portal.kernel.test.GCUtil;
+import com.liferay.portal.kernel.upload.FileItem;
+import com.liferay.portal.kernel.util.FileUtil;
+import com.liferay.portal.kernel.util.HashMapBuilder;
+import com.liferay.portal.kernel.util.LinkedHashMapBuilder;
 import com.liferay.portal.kernel.util.PortalClassLoaderUtil;
-import com.liferay.portal.kernel.util.PropsUtil;
+import com.liferay.portal.kernel.util.PortalUtil;
+import com.liferay.portal.kernel.util.StringUtil;
+import com.liferay.portal.upload.LiferayFileItem;
+import com.liferay.portal.upload.LiferayFileItemFactory;
+import com.liferay.portal.upload.UploadServletRequestImpl;
+import com.liferay.portal.util.FileImpl;
 import com.liferay.portal.util.PortalImpl;
-import com.liferay.portal.util.PortalUtil;
-import com.liferay.portal.util.PropsImpl;
+
+import java.io.IOException;
+import java.io.OutputStream;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-import org.apache.struts.action.ActionMapping;
-import org.apache.struts.action.DynaActionForm;
+import javax.servlet.http.HttpServletRequest;
 
+import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
-import org.junit.runner.RunWith;
-
-import org.powermock.core.classloader.annotations.PowerMockIgnore;
-import org.powermock.core.classloader.annotations.PrepareForTest;
-import org.powermock.modules.junit4.PowerMockRunner;
 
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
@@ -46,15 +54,16 @@ import org.springframework.mock.web.MockHttpServletResponse;
  * @author Igor Spasic
  * @author Raymond Augé
  */
-@PowerMockIgnore("javax.xml.datatype.*")
-@PrepareForTest(PortalUtil.class)
-@RunWith(PowerMockRunner.class)
 public class JSONWebServiceServiceActionTest
 	extends BaseJSONWebServiceTestCase {
 
 	@BeforeClass
 	public static void setUpClass() throws Exception {
 		initPortalServices();
+
+		FileUtil fileUtil = new FileUtil();
+
+		fileUtil.setFile(new FileImpl());
 
 		Class<?> clazz = JSONWebServiceServiceAction.class;
 
@@ -63,8 +72,6 @@ public class JSONWebServiceServiceActionTest
 		PortalUtil portalUtil = new PortalUtil();
 
 		portalUtil.setPortal(new PortalImpl());
-
-		PropsUtil.setProps(new PropsImpl());
 
 		_jsonWebServiceServiceAction = new JSONWebServiceServiceAction();
 	}
@@ -81,36 +88,32 @@ public class JSONWebServiceServiceActionTest
 
 		jsonWebServiceActionsManagerUtil.setJSONWebServiceActionsManager(
 			new JSONWebServiceActionsManagerImpl());
+	}
 
-		spy(PortalUtil.class);
+	@After
+	public void tearDown() throws InterruptedException {
+		GCUtil.gc(true);
 
-		when(
-			PortalUtil.getPortalLibDir()
-		).thenReturn(
-			""
-		);
+		FinalizeManagerUtil.drainPendingFinalizeActions();
 	}
 
 	@Test
 	public void testInvokerNullCall() throws Exception {
 		registerActionClass(FooService.class);
 
-		Map<String, Object> map = new LinkedHashMap<String, Object>();
-
-		Map<String, Object> params = new LinkedHashMap<String, Object>();
-
-		map.put("/foo/null-return", params);
-
-		String json = toJSON(map);
+		String json = toJSON(
+			LinkedHashMapBuilder.<String, Object>put(
+				"/foo/null-return", new LinkedHashMap<>()
+			).build());
 
 		MockHttpServletRequest mockHttpServletRequest =
 			createInvokerHttpServletRequest(json);
+
 		MockHttpServletResponse mockHttpServletResponse =
 			new MockHttpServletResponse();
 
 		json = _jsonWebServiceServiceAction.getJSON(
-			new ActionMapping(), new DynaActionForm(), mockHttpServletRequest,
-			mockHttpServletResponse);
+			mockHttpServletRequest, mockHttpServletResponse);
 
 		Assert.assertEquals("{}", json);
 	}
@@ -119,11 +122,11 @@ public class JSONWebServiceServiceActionTest
 	public void testInvokerSimpleCall() throws Exception {
 		registerActionClass(FooService.class);
 
-		Map<String, Object> map = new LinkedHashMap<String, Object>();
+		Map<String, Object> params = new LinkedHashMap<>();
 
-		Map<String, Object> params = new LinkedHashMap<String, Object>();
-
-		map.put("/foo/hello-world", params);
+		Map<String, Object> map = LinkedHashMapBuilder.<String, Object>put(
+			"/foo/hello-world", params
+		).build();
 
 		params.put("userId", 173);
 		params.put("worldName", "Jupiter");
@@ -132,49 +135,106 @@ public class JSONWebServiceServiceActionTest
 
 		MockHttpServletRequest mockHttpServletRequest =
 			createInvokerHttpServletRequest(json);
+
 		MockHttpServletResponse mockHttpServletResponse =
 			new MockHttpServletResponse();
 
 		json = _jsonWebServiceServiceAction.getJSON(
-			new ActionMapping(), new DynaActionForm(), mockHttpServletRequest,
-			mockHttpServletResponse);
+			mockHttpServletRequest, mockHttpServletResponse);
 
 		Assert.assertEquals("\"Welcome 173 to Jupiter\"", json);
 	}
 
 	@Test
+	public void testMultipartRequest() throws Exception {
+		registerActionClass(FooService.class);
+
+		Map<String, FileItem[]> fileParams =
+			HashMapBuilder.<String, FileItem[]>put(
+				"fileName", new FileItem[] {createLiferayFileItem("aaa")}
+			).build();
+
+		HttpServletRequest httpServletRequest = new UploadServletRequestImpl(
+			createHttpRequest("/foo/add-file"), fileParams, null) {
+
+			@Override
+			public String getFileName(String name) {
+				return "test";
+			}
+
+			@Override
+			public Map<String, FileItem[]> getMultipartParameterMap() {
+				return fileParams;
+			}
+
+		};
+
+		JSONWebServiceAction jsonWebServiceAction = lookupJSONWebServiceAction(
+			httpServletRequest);
+
+		Assert.assertNotNull(jsonWebServiceAction);
+	}
+
+	@Test
+	public void testMultipartRequestFilesUpload() throws Exception {
+		registerActionClass(FooService.class);
+
+		Map<String, FileItem[]> fileParams =
+			HashMapBuilder.<String, FileItem[]>put(
+				"firstFile", new FileItem[] {createLiferayFileItem("aaa")}
+			).put(
+				"otherFiles",
+				new FileItem[] {
+					createLiferayFileItem("bbb"), createLiferayFileItem("ccc")
+				}
+			).build();
+
+		HttpServletRequest httpServletRequest = new UploadServletRequestImpl(
+			createHttpRequest("/foo/upload-files"), fileParams, null);
+
+		JSONWebServiceAction jsonWebServiceAction = lookupJSONWebServiceAction(
+			httpServletRequest);
+
+		Assert.assertNotNull(jsonWebServiceAction);
+
+		Object result = jsonWebServiceAction.invoke();
+
+		Assert.assertNotNull(result);
+
+		Assert.assertEquals("aaabbbccc", result.toString());
+	}
+
+	@Test
 	public void testServletContextInvoker1() throws Exception {
-		testServletContextInvoker("/somectx", true, "/foo/hello-world");
+		testServletContextInvoker("somectx", true, "/foo/hello-world");
 	}
 
 	@Test
 	public void testServletContextInvoker2() throws Exception {
-		testServletContextInvoker(
-			"/somectx", false, "/somectx.foo/hello-world");
+		testServletContextInvoker("somectx", false, "/somectx.foo/hello-world");
 	}
 
 	@Test
 	public void testServletContextRequestParams1() throws Exception {
-		testServletContextRequestParams("/somectx", true, "/foo/hello-world");
+		testServletContextRequestParams("somectx", true, "/foo/hello-world");
 	}
 
 	@Test
 	public void testServletContextRequestParams2() throws Exception {
 		testServletContextRequestParams(
-			"/somectx", false, "/somectx.foo/hello-world");
+			"somectx", false, "/somectx.foo/hello-world");
 	}
 
 	@Test
 	public void testServletContextURL1() throws Exception {
 		testServletContextURL(
-			"/somectx", true,
-			"/foo/hello-world/user-id/173/world-name/Jupiter");
+			"somectx", true, "/foo/hello-world/user-id/173/world-name/Jupiter");
 	}
 
 	@Test
 	public void testServletContextURL2() throws Exception {
 		testServletContextURL(
-			"/somectx", false,
+			"somectx", false,
 			"/somectx.foo/hello-world/user-id/173/world-name/Jupiter");
 	}
 
@@ -191,17 +251,34 @@ public class JSONWebServiceServiceActionTest
 		return mockHttpServletRequest;
 	}
 
+	protected FileItem createLiferayFileItem(String content)
+		throws IOException {
+
+		LiferayFileItemFactory liferayFileItemFactory =
+			new LiferayFileItemFactory(null);
+
+		LiferayFileItem liferayFileItem = liferayFileItemFactory.createItem(
+			StringUtil.randomString(), StringUtil.randomString(), true,
+			StringUtil.randomString());
+
+		try (OutputStream outputStream = liferayFileItem.getOutputStream()) {
+			outputStream.write(content.getBytes());
+		}
+
+		return liferayFileItem;
+	}
+
 	protected void testServletContextInvoker(
-			String contextPath, boolean setContextPath, String query)
+			String contextName, boolean setContextPath, String query)
 		throws Exception {
 
-		registerActionClass(FooService.class, contextPath);
+		registerActionClass(FooService.class, contextName);
 
-		Map<String, Object> map = new LinkedHashMap<String, Object>();
+		Map<String, Object> params = new LinkedHashMap<>();
 
-		Map<String, Object> params = new LinkedHashMap<String, Object>();
-
-		map.put(query, params);
+		Map<String, Object> map = LinkedHashMapBuilder.<String, Object>put(
+			query, params
+		).build();
 
 		params.put("userId", 173);
 		params.put("worldName", "Jupiter");
@@ -212,24 +289,23 @@ public class JSONWebServiceServiceActionTest
 			createInvokerHttpServletRequest(json);
 
 		if (setContextPath) {
-			setServletContext(mockHttpServletRequest, contextPath);
+			setServletContext(mockHttpServletRequest, contextName);
 		}
 
 		MockHttpServletResponse mockHttpServletResponse =
 			new MockHttpServletResponse();
 
 		json = _jsonWebServiceServiceAction.getJSON(
-			new ActionMapping(), new DynaActionForm(), mockHttpServletRequest,
-			mockHttpServletResponse);
+			mockHttpServletRequest, mockHttpServletResponse);
 
 		Assert.assertEquals("\"Welcome 173 to Jupiter\"", json);
 	}
 
 	protected void testServletContextRequestParams(
-			String contextPath, boolean setContextPath, String request)
+			String contextName, boolean setContextPath, String request)
 		throws Exception {
 
-		registerActionClass(FooService.class, contextPath);
+		registerActionClass(FooService.class, contextName);
 
 		MockHttpServletRequest mockHttpServletRequest = createHttpRequest(
 			request);
@@ -240,24 +316,23 @@ public class JSONWebServiceServiceActionTest
 		mockHttpServletRequest.setMethod(HttpMethods.GET);
 
 		if (setContextPath) {
-			setServletContext(mockHttpServletRequest, contextPath);
+			setServletContext(mockHttpServletRequest, contextName);
 		}
 
 		MockHttpServletResponse mockHttpServletResponse =
 			new MockHttpServletResponse();
 
 		String json = _jsonWebServiceServiceAction.getJSON(
-			new ActionMapping(), new DynaActionForm(), mockHttpServletRequest,
-			mockHttpServletResponse);
+			mockHttpServletRequest, mockHttpServletResponse);
 
 		Assert.assertEquals("\"Welcome 173 to Jupiter\"", json);
 	}
 
 	protected void testServletContextURL(
-			String contextPath, boolean setContextPath, String request)
+			String contextName, boolean setContextPath, String request)
 		throws Exception {
 
-		registerActionClass(FooService.class, contextPath);
+		registerActionClass(FooService.class, contextName);
 
 		MockHttpServletRequest mockHttpServletRequest = createHttpRequest(
 			request);
@@ -265,15 +340,14 @@ public class JSONWebServiceServiceActionTest
 		mockHttpServletRequest.setMethod(HttpMethods.GET);
 
 		if (setContextPath) {
-			setServletContext(mockHttpServletRequest, contextPath);
+			setServletContext(mockHttpServletRequest, contextName);
 		}
 
 		MockHttpServletResponse mockHttpServletResponse =
 			new MockHttpServletResponse();
 
 		String json = _jsonWebServiceServiceAction.getJSON(
-			new ActionMapping(), new DynaActionForm(), mockHttpServletRequest,
-			mockHttpServletResponse);
+			mockHttpServletRequest, mockHttpServletResponse);
 
 		Assert.assertEquals("\"Welcome 173 to Jupiter\"", json);
 	}

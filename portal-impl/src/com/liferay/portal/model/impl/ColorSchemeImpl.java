@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,14 +14,14 @@
 
 package com.liferay.portal.model.impl;
 
+import com.liferay.petra.string.CharPool;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
-import com.liferay.portal.kernel.util.CharPool;
+import com.liferay.portal.kernel.model.ColorScheme;
 import com.liferay.portal.kernel.util.PropertiesUtil;
 import com.liferay.portal.kernel.util.SafeProperties;
 import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.util.Validator;
-import com.liferay.portal.model.ColorScheme;
 
 import java.io.IOException;
 
@@ -33,10 +33,11 @@ import java.util.Properties;
 public class ColorSchemeImpl implements ColorScheme {
 
 	public ColorSchemeImpl() {
+		this(null, null, null);
 	}
 
 	public ColorSchemeImpl(String colorSchemeId) {
-		_colorSchemeId = colorSchemeId;
+		this(colorSchemeId, null, null);
 	}
 
 	public ColorSchemeImpl(String colorSchemeId, String name, String cssClass) {
@@ -51,25 +52,22 @@ public class ColorSchemeImpl implements ColorScheme {
 	}
 
 	@Override
-	public boolean equals(Object obj) {
-		if (this == obj) {
+	public boolean equals(Object object) {
+		if (this == object) {
 			return true;
 		}
 
-		if (!(obj instanceof ColorScheme)) {
+		if (!(object instanceof ColorScheme)) {
 			return false;
 		}
 
-		ColorScheme colorScheme = (ColorScheme)obj;
+		ColorScheme colorScheme = (ColorScheme)object;
 
-		String colorSchemeId = colorScheme.getColorSchemeId();
-
-		if (getColorSchemeId().equals(colorSchemeId)) {
+		if (getColorSchemeId().equals(colorScheme.getColorSchemeId())) {
 			return true;
 		}
-		else {
-			return false;
-		}
+
+		return false;
 	}
 
 	@Override
@@ -92,15 +90,13 @@ public class ColorSchemeImpl implements ColorScheme {
 
 			int pos = _cssClass.indexOf(CharPool.SPACE);
 
-			if (pos > 0) {
-				if (_colorSchemeImagesPath.endsWith(
-						_cssClass.substring(0, pos))) {
+			if ((pos > 0) &&
+				_colorSchemeImagesPath.endsWith(_cssClass.substring(0, pos))) {
 
-					String subclassPath = StringUtil.replace(
-						_cssClass, CharPool.SPACE, CharPool.SLASH);
+				String subclassPath = StringUtil.replace(
+					_cssClass, CharPool.SPACE, CharPool.SLASH);
 
-					return _colorSchemeImagesPath + subclassPath.substring(pos);
-				}
+				return _colorSchemeImagesPath + subclassPath.substring(pos);
 			}
 		}
 
@@ -122,9 +118,8 @@ public class ColorSchemeImpl implements ColorScheme {
 		if (Validator.isNull(_name)) {
 			return _colorSchemeId;
 		}
-		else {
-			return _name;
-		}
+
+		return _name;
 	}
 
 	@Override
@@ -136,9 +131,8 @@ public class ColorSchemeImpl implements ColorScheme {
 		if (key.endsWith("-bg")) {
 			return "#FFFFFF";
 		}
-		else {
-			return "#000000";
-		}
+
+		return "#000000";
 	}
 
 	@Override
@@ -187,10 +181,11 @@ public class ColorSchemeImpl implements ColorScheme {
 
 		try {
 			PropertiesUtil.load(_settingsProperties, settings);
+
 			PropertiesUtil.trimKeys(_settingsProperties);
 		}
-		catch (IOException ioe) {
-			_log.error(ioe);
+		catch (IOException ioException) {
+			_log.error("Unable to load colors cheme properties", ioException);
 		}
 	}
 
@@ -199,9 +194,10 @@ public class ColorSchemeImpl implements ColorScheme {
 		_settingsProperties = settingsProperties;
 	}
 
-	private static Log _log = LogFactoryUtil.getLog(ColorSchemeImpl.class);
+	private static final Log _log = LogFactoryUtil.getLog(
+		ColorSchemeImpl.class);
 
-	private String _colorSchemeId;
+	private final String _colorSchemeId;
 	private String _colorSchemeImagesPath =
 		"${images-path}/color_schemes/${css-class}";
 	private String _cssClass;

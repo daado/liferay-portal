@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,15 +14,17 @@
 
 package com.liferay.portal.tools;
 
+import com.liferay.petra.string.StringPool;
+import com.liferay.petra.xml.DocUtil;
 import com.liferay.portal.kernel.io.unsync.UnsyncStringReader;
-import com.liferay.portal.kernel.util.StringPool;
 import com.liferay.portal.kernel.util.StringUtil;
+import com.liferay.portal.kernel.util.TreeMapBuilder;
 import com.liferay.portal.kernel.util.Validator;
 import com.liferay.portal.kernel.xml.Document;
 import com.liferay.portal.kernel.xml.Element;
+import com.liferay.portal.kernel.xml.SAXReader;
 import com.liferay.portal.util.FileImpl;
 import com.liferay.portal.xml.SAXReaderImpl;
-import com.liferay.util.xml.DocUtil;
 
 import com.thoughtworks.qdox.JavaDocBuilder;
 import com.thoughtworks.qdox.model.AbstractJavaEntity;
@@ -44,7 +46,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.TreeMap;
 
 import org.apache.tools.ant.DirectoryScanner;
 
@@ -57,8 +58,8 @@ public class JavadocBuilder {
 		try {
 			new JavadocBuilder(args);
 		}
-		catch (Exception e) {
-			e.printStackTrace();
+		catch (Exception exception) {
+			exception.printStackTrace();
 		}
 	}
 
@@ -93,7 +94,7 @@ public class JavadocBuilder {
 
 		String comment = _getCDATA(javaClass);
 
-		if (comment.startsWith("Copyright (c) 2000-2010 Liferay, Inc.")) {
+		if (comment.startsWith("Copyright (c) 2000-present Liferay, Inc.")) {
 			comment = StringPool.BLANK;
 		}
 
@@ -102,7 +103,7 @@ public class JavadocBuilder {
 
 			int pos = comment.indexOf("</a>");
 
-			comment = comment.substring(pos + 4).trim();
+			comment = StringUtil.trim(comment.substring(pos + 4));
 		}
 
 		commentElement.addCDATA(comment);
@@ -198,7 +199,11 @@ public class JavadocBuilder {
 		DocletTag[] paramDocletTags) {
 
 		String name = javaParameter.getName();
-		String type = javaParameter.getType().getValue();
+
+		Type parameterType = javaParameter.getType();
+
+		String type = parameterType.getValue();
+
 		String value = null;
 
 		for (DocletTag paramDocletTag : paramDocletTags) {
@@ -207,11 +212,10 @@ public class JavadocBuilder {
 			if (!curValue.startsWith(name)) {
 				continue;
 			}
-			else {
-				curValue = value;
 
-				break;
-			}
+			value = curValue;
+
+			break;
 		}
 
 		Element paramElement = methodElement.addElement("param");
@@ -243,19 +247,26 @@ public class JavadocBuilder {
 	private void _addReturnElement(
 		Element methodElement, JavaMethod javaMethod) {
 
-		Type returns = javaMethod.getReturns();
+		Type returnType = javaMethod.getReturnType();
 
-		if ((returns == null) || returns.getValue().equals("void")) {
+		if (returnType == null) {
 			return;
 		}
 
-		_addDocletElements(methodElement, javaMethod, "return");
+		String returnTypeValue = returnType.getValue();
+
+		if (!returnTypeValue.equals("void")) {
+			_addDocletElements(methodElement, javaMethod, "return");
+		}
 	}
 
 	private void _addThrowsElement(
 		Element methodElement, Type exception, DocletTag[] throwsDocletTags) {
 
-		String name = exception.getJavaClass().getName();
+		JavaClass exceptionClass = exception.getJavaClass();
+
+		String name = exceptionClass.getName();
+
 		String value = null;
 
 		for (DocletTag throwsDocletTag : throwsDocletTags) {
@@ -264,11 +275,10 @@ public class JavadocBuilder {
 			if (!curValue.startsWith(name)) {
 				continue;
 			}
-			else {
-				curValue = value;
 
-				break;
-			}
+			value = curValue;
+
+			break;
 		}
 
 		Element throwsElement = methodElement.addElement("throws");
@@ -345,8 +355,6 @@ public class JavadocBuilder {
 		pos = fileName.indexOf("/", pos);
 
 		String srcFile = fileName.substring(pos + 1);
-		String className = StringUtil.replace(
-			srcFile.substring(0, srcFile.length() - 5), "/", ".");
 
 		JavaDocBuilder builder = new JavaDocBuilder();
 
@@ -363,12 +371,13 @@ public class JavadocBuilder {
 			builder.addSource(reader);
 		}
 
+		String className = StringUtil.replace(
+			srcFile.substring(0, srcFile.length() - 5), '/', '.');
+
 		return builder.getClassByName(className);
 	}
 
-	private String _getJavaClassComment(
-		Element rootElement, JavaClass javaClass) {
-
+	private String _getJavaClassComment(Element rootElement) {
 		StringBuilder sb = new StringBuilder();
 
 		sb.append("/**\n");
@@ -392,9 +401,9 @@ public class JavadocBuilder {
 	}
 
 	private String _getJavadocXml(JavaClass javaClass) throws Exception {
-		Element rootElement = _saxReaderUtil.createElement("javadoc");
+		Element rootElement = _saxReader.createElement("javadoc");
 
-		Document document = _saxReaderUtil.createDocument(rootElement);
+		Document document = _saxReader.createDocument(rootElement);
 
 		DocUtil.add(rootElement, "name", javaClass.getName());
 		DocUtil.add(rootElement, "type", javaClass.getFullyQualifiedName());
@@ -550,7 +559,11 @@ public class JavadocBuilder {
 		for (JavaParameter javaParameter : javaParameters) {
 			sb.append(javaParameter.getName());
 			sb.append("|");
-			sb.append(javaParameter.getType().getValue());
+
+			Type type = javaParameter.getType();
+
+			sb.append(type.getValue());
+
 			sb.append(",");
 		}
 
@@ -563,9 +576,8 @@ public class JavadocBuilder {
 		if (content.contains("<javadoc autogenerated=\"true\">")) {
 			return true;
 		}
-		else {
-			return false;
-		}
+
+		return false;
 	}
 
 	private void _process(
@@ -574,20 +586,20 @@ public class JavadocBuilder {
 
 		DirectoryScanner ds = new DirectoryScanner();
 
-		ds.setBasedir(_basedir);
+		ds.setBasedir(_BASEDIR);
 		ds.setExcludes(
 			new String[] {
 				"**\\classes\\**", "**\\portal-client\\**", "**\\portal-web\\**"
 			});
 
-		List<String> includes = new ArrayList<String>();
+		List<String> includes = new ArrayList<>();
 
 		if (Validator.isNotNull(limit) && !limit.startsWith("$")) {
 			String[] limitArray = StringUtil.split(limit, '/');
 
 			for (String curLimit : limitArray) {
 				includes.add(
-					"**\\" + StringUtil.replace(curLimit, ".", "\\") +
+					"**\\" + StringUtil.replace(curLimit, '.', '\\') +
 						"\\**\\*.java");
 				includes.add("**\\" + curLimit + ".java");
 			}
@@ -596,14 +608,14 @@ public class JavadocBuilder {
 			includes.add("**\\*.java");
 		}
 
-		ds.setIncludes(includes.toArray(new String[includes.size()]));
+		ds.setIncludes(includes.toArray(new String[0]));
 
 		ds.scan();
 
 		String[] fileNames = ds.getIncludedFiles();
 
 		for (String fileName : fileNames) {
-			fileName = StringUtil.replace(fileName, "\\", "/");
+			fileName = StringUtil.replace(fileName, '\\', '/');
 
 			/*if (!fileName.endsWith("Isolation.java")) {
 				continue;
@@ -612,11 +624,11 @@ public class JavadocBuilder {
 			if ((ignoreAutogenerated != null) &&
 				ignoreAutogenerated.booleanValue()) {
 
-				File file = new File(_basedir + fileName);
+				File file = new File(_BASEDIR + fileName);
 
 				if (file.exists()) {
-					String oldContent = _fileUtil.read(
-						_basedir + fileName + "doc");
+					String oldContent = _fileImpl.read(
+						_BASEDIR + fileName + "doc");
 
 					if (_isGenerated(oldContent)) {
 						continue;
@@ -650,7 +662,7 @@ public class JavadocBuilder {
 	}
 
 	private void _processGet(String fileName) throws Exception {
-		File javadocFile = new File(_basedir + fileName + "doc");
+		File javadocFile = new File(_BASEDIR + fileName + "doc");
 
 		if (!javadocFile.exists()) {
 			_updateJavadocFromJava(fileName);
@@ -668,16 +680,16 @@ public class JavadocBuilder {
 	private String _removeJavadocFromJava(String fileName, boolean log)
 		throws Exception {
 
-		File file = new File(_basedir + fileName);
+		File file = new File(_BASEDIR + fileName);
 
-		String oldContent = _fileUtil.read(file);
+		String oldContent = _fileImpl.read(file);
 
 		String[] lines = StringUtil.splitLines(oldContent);
 
 		JavaClass javaClass = _getJavaClass(
 			fileName, new UnsyncStringReader(oldContent));
 
-		Set<Integer> lineNumbers = new HashSet<Integer>();
+		Set<Integer> lineNumbers = new HashSet<>();
 
 		lineNumbers.add(javaClass.getLineNumber());
 
@@ -720,10 +732,10 @@ public class JavadocBuilder {
 			}
 		}
 
-		String newContent = sb.toString().trim();
+		String newContent = StringUtil.trim(sb.toString());
 
 		if ((oldContent == null) || !oldContent.equals(newContent)) {
-			_fileUtil.write(file, newContent);
+			_fileImpl.write(file, newContent);
 
 			if (log) {
 				System.out.println("Writing " + file);
@@ -734,12 +746,12 @@ public class JavadocBuilder {
 	}
 
 	private void _updateJavadocFromJava(String fileName) throws Exception {
-		File file = new File(_basedir + fileName + "doc");
+		File file = new File(_BASEDIR + fileName + "doc");
 
 		String oldContent = null;
 
 		if (file.exists()) {
-			oldContent = _fileUtil.read(file);
+			oldContent = _fileImpl.read(file);
 
 			if (_isGenerated(oldContent)) {
 				return;
@@ -751,7 +763,7 @@ public class JavadocBuilder {
 		String newContent = _getJavadocXml(javaClass);
 
 		if ((oldContent == null) || !oldContent.equals(newContent)) {
-			_fileUtil.write(file, newContent.getBytes());
+			_fileImpl.write(file, newContent.getBytes());
 
 			System.out.println("Writing " + file);
 		}
@@ -760,16 +772,16 @@ public class JavadocBuilder {
 	private void _updateJavaFromJavadoc(String fileName, String oldContent)
 		throws Exception {
 
-		File javadocFile = new File(_basedir + fileName + "doc");
+		File javadocFile = new File(_BASEDIR + fileName + "doc");
 
 		if (!javadocFile.exists()) {
 			return;
 		}
 
-		File file = new File(_basedir + fileName);
+		File file = new File(_BASEDIR + fileName);
 
 		if (oldContent == null) {
-			oldContent = _fileUtil.read(file);
+			oldContent = _fileImpl.read(file);
 		}
 
 		String[] lines = StringUtil.splitLines(oldContent);
@@ -777,17 +789,15 @@ public class JavadocBuilder {
 		JavaClass javaClass = _getJavaClass(
 			fileName, new UnsyncStringReader(oldContent));
 
-		Document document = _saxReaderUtil.read(javadocFile);
+		Document document = _saxReader.read(javadocFile);
 
 		Element rootElement = document.getRootElement();
 
-		Map<Integer, String> commentsMap = new TreeMap<Integer, String>();
+		Map<Integer, String> commentsMap = TreeMapBuilder.put(
+			javaClass.getLineNumber(), _getJavaClassComment(rootElement)
+		).build();
 
-		commentsMap.put(
-			javaClass.getLineNumber(),
-			_getJavaClassComment(rootElement, javaClass));
-
-		Map<String, Element> methodElementsMap = new HashMap<String, Element>();
+		Map<String, Element> methodElementsMap = new HashMap<>();
 
 		List<Element> methodElements = rootElement.elements("method");
 
@@ -809,7 +819,7 @@ public class JavadocBuilder {
 				_getJavaMethodComment(lines, methodElementsMap, javaMethod));
 		}
 
-		Map<String, Element> fieldElementsMap = new HashMap<String, Element>();
+		Map<String, Element> fieldElementsMap = new HashMap<>();
 
 		List<Element> fieldElements = rootElement.elements("field");
 
@@ -846,18 +856,18 @@ public class JavadocBuilder {
 			sb.append("\n");
 		}
 
-		String newContent = sb.toString().trim();
+		String newContent = StringUtil.trim(sb.toString());
 
 		if ((oldContent == null) || !oldContent.equals(newContent)) {
-			_fileUtil.write(file, newContent);
+			_fileImpl.write(file, newContent);
 
 			System.out.println("Writing " + file);
 		}
 	}
 
-	private static FileImpl _fileUtil = FileImpl.getInstance();
-	private static SAXReaderImpl _saxReaderUtil = SAXReaderImpl.getInstance();
+	private static final String _BASEDIR = "./";
 
-	private String _basedir = "./";
+	private static final FileImpl _fileImpl = FileImpl.getInstance();
+	private static final SAXReader _saxReader = new SAXReaderImpl();
 
 }

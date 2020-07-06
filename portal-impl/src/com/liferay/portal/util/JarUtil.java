@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,168 +14,150 @@
 
 package com.liferay.portal.util;
 
-import com.liferay.portal.kernel.cluster.ClusterExecutorUtil;
-import com.liferay.portal.kernel.cluster.ClusterRequest;
-import com.liferay.portal.kernel.cluster.FutureClusterResponses;
+import com.liferay.petra.reflect.ReflectionUtil;
+import com.liferay.petra.string.StringBundler;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
-import com.liferay.portal.kernel.util.FileUtil;
-import com.liferay.portal.kernel.util.HttpUtil;
-import com.liferay.portal.kernel.util.MethodHandler;
-import com.liferay.portal.kernel.util.MethodKey;
-import com.liferay.portal.kernel.util.ProgressStatusConstants;
-import com.liferay.portal.kernel.util.ProgressTracker;
-import com.liferay.portal.kernel.util.StringPool;
-import com.liferay.portal.model.CompanyConstants;
-import com.liferay.portal.spring.context.PortalContextLoaderLifecycleThreadLocal;
-import com.liferay.portlet.documentlibrary.store.DLStoreUtil;
+import com.liferay.portal.kernel.util.Http;
+import com.liferay.portal.kernel.util.PortalRunMode;
+import com.liferay.portal.kernel.util.StringUtil;
 
 import java.io.File;
 import java.io.InputStream;
 
 import java.lang.reflect.Method;
 
+import java.net.InetAddress;
 import java.net.URI;
 import java.net.URL;
 import java.net.URLClassLoader;
+import java.net.UnknownHostException;
 
-import java.util.concurrent.TimeUnit;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 
 /**
- * @author Alexander Chow
+ * @author Shuyang Zhou
  */
 public class JarUtil {
 
-	public static void downloadAndInstallJar(
-			boolean globalClassPath, String url, String name,
-			ProgressTracker progressTracker)
+	public static void downloadAndInstallJar(URL url, Path path)
 		throws Exception {
 
-		setProgressStatus(progressTracker, ProgressStatusConstants.DOWNLOADING);
+		String protocol = url.getProtocol();
+
+		if (PortalRunMode.isTestMode() &&
+			(protocol.equals(Http.HTTP) || protocol.equals(Http.HTTPS))) {
+
+			String urlString = url.toExternalForm();
+
+			if (!urlString.contains("mirrors")) {
+				try {
+					InetAddress.getAllByName("mirrors");
+
+					String newURLString = StringUtil.replace(
+						urlString, "://", "://mirrors/");
+
+					url = new URL(newURLString);
+
+					if (_log.isDebugEnabled()) {
+						_log.debug(
+							StringBundler.concat(
+								"Swapping URL from ", urlString, " to ",
+								newURLString));
+					}
+				}
+				catch (UnknownHostException unknownHostException) {
+					if (_log.isDebugEnabled()) {
+						_log.debug("Unable to resolve \"mirrors\"");
+					}
+				}
+			}
+		}
 
 		if (_log.isInfoEnabled()) {
-			_log.info("Downloading " + url);
+			_log.info(StringBundler.concat("Downloading ", url, " to ", path));
 		}
 
-		byte[] bytes = HttpUtil.URLtoByteArray(url);
-
-		setProgressStatus(progressTracker, ProgressStatusConstants.COPYING);
-
-		if (PropsValues.CLUSTER_LINK_ENABLED &&
-			!PortalContextLoaderLifecycleThreadLocal.isInitializing()) {
-
-			try {
-				DLStoreUtil.deleteFile(
-					_REPOSITORY, _REPOSITORY, _FILE_PATH + name);
-			}
-			catch (Exception e) {
-			}
-
-			DLStoreUtil.addFile(
-				_REPOSITORY, _REPOSITORY, _FILE_PATH + name, bytes);
-
-			try {
-				ClusterRequest clusterRequest =
-					ClusterRequest.createMulticastRequest(
-						new MethodHandler(
-							_installJarKey, globalClassPath, name));
-
-				FutureClusterResponses futureClusterResponses =
-					ClusterExecutorUtil.execute(clusterRequest);
-
-				futureClusterResponses.get(30, TimeUnit.SECONDS);
-			}
-			finally {
-				try {
-					DLStoreUtil.deleteFile(
-						_REPOSITORY, _REPOSITORY, _FILE_PATH + name);
-				}
-				catch (Exception e) {
-				}
-			}
+		try (InputStream inputStream = url.openStream()) {
+			Files.copy(inputStream, path, StandardCopyOption.REPLACE_EXISTING);
 		}
-		else {
-			setProgressStatus(progressTracker, ProgressStatusConstants.COPYING);
 
-			installJar(bytes, globalClassPath, name);
+		if (_log.isInfoEnabled()) {
+			_log.info(StringBundler.concat("Downloaded ", url, " to ", path));
 		}
 	}
 
-	public static void installJar(boolean globalClassPath, String name)
+	public static void downloadAndInstallJar(
+			URL url, Path path, URLClassLoader urlClassLoader)
 		throws Exception {
 
-		installJar(null, globalClassPath, name);
-	}
+		downloadAndInstallJar(url, path);
 
-	protected static void addJarFileToClassLoader(File file) throws Exception {
-		Class<?> clazz = URLClassLoader.class;
+		URI uri = path.toUri();
 
-		Method method = clazz.getDeclaredMethod(
-			"addURL", new Class[] {URL.class});
-
-		method.setAccessible(true);
-
-		URI uri = file.toURI();
-
-		method.invoke(
-			ClassLoader.getSystemClassLoader(), new Object[] {uri.toURL()});
-	}
-
-	protected static void installJar(
-			byte[] bytes, boolean globalClassPath, String name)
-		throws Exception {
-
-		String libPath = PropsValues.LIFERAY_LIB_PORTAL_DIR;
-
-		if (globalClassPath) {
-			libPath = PropsValues.LIFERAY_LIB_GLOBAL_DIR;
+		if (_log.isInfoEnabled()) {
+			_log.info(
+				StringBundler.concat(
+					"Installing ", path, " to ", urlClassLoader));
 		}
 
-		File file = new File(libPath + StringPool.SLASH + name);
+		_addURLMethod.invoke(urlClassLoader, uri.toURL());
 
-		InputStream is = null;
+		if (_log.isInfoEnabled()) {
+			_log.info(
+				StringBundler.concat(
+					"Installed ", path, " to ", urlClassLoader));
+		}
+	}
 
+	/**
+	 * @deprecated As of Athanasius (7.3.x), replaced by {@link
+	 #downloadAndInstallJar(URL, Path)}
+	 */
+	@Deprecated
+	public static Path downloadAndInstallJar(
+			URL url, String libPath, String name)
+		throws Exception {
+
+		File file = new File(libPath, name);
+
+		Path path = file.toPath();
+
+		downloadAndInstallJar(url, path);
+
+		return path;
+	}
+
+	/**
+	 * @deprecated As of Athanasius (7.3.x), replaced by {@link
+	 #downloadAndInstallJar(URL, Path, URLClassLoader)}
+	 */
+	@Deprecated
+	public static void downloadAndInstallJar(
+			URL url, String libPath, String name, URLClassLoader urlClassLoader)
+		throws Exception {
+
+		File file = new File(libPath, name);
+
+		Path path = file.toPath();
+
+		downloadAndInstallJar(url, path, urlClassLoader);
+	}
+
+	private static final Log _log = LogFactoryUtil.getLog(JarUtil.class);
+
+	private static final Method _addURLMethod;
+
+	static {
 		try {
-			if (_log.isInfoEnabled()) {
-				_log.info("Writing " + file);
-			}
-
-			if (bytes != null) {
-				FileUtil.write(file, bytes);
-			}
-			else {
-				is = DLStoreUtil.getFileAsStream(
-					_REPOSITORY, _REPOSITORY, _FILE_PATH + name);
-
-				FileUtil.write(file, is);
-			}
+			_addURLMethod = ReflectionUtil.getDeclaredMethod(
+				URLClassLoader.class, "addURL", URL.class);
 		}
-		finally {
-			if (is != null) {
-				is.close();
-			}
+		catch (Exception exception) {
+			throw new ExceptionInInitializerError(exception);
 		}
-
-		addJarFileToClassLoader(file);
 	}
-
-	protected static void setProgressStatus(
-		ProgressTracker progressTracker, int status) {
-
-		if (progressTracker == null) {
-			return;
-		}
-
-		progressTracker.setStatus(status);
-	}
-
-	private static final String _FILE_PATH = "jar_temp/";
-
-	private static final long _REPOSITORY = CompanyConstants.SYSTEM;
-
-	private static Log _log = LogFactoryUtil.getLog(JarUtil.class);
-
-	private static MethodKey _installJarKey = new MethodKey(
-		JarUtil.class, "installJar", boolean.class, String.class);
 
 }

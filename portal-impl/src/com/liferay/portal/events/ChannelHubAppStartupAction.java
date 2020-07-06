@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -39,17 +39,17 @@ public class ChannelHubAppStartupAction extends SimpleAction {
 
 			ChannelHubManagerUtil.createChannelHub(companyId);
 		}
-		catch (DuplicateChannelHubException dche) {
+		catch (DuplicateChannelHubException duplicateChannelHubException) {
 			if (_log.isWarnEnabled()) {
-				_log.warn(dche.getMessage());
+				_log.warn(duplicateChannelHubException.getMessage());
 			}
 		}
-		catch (Exception e) {
-			throw new ActionException(e);
+		catch (Exception exception) {
+			throw new ActionException(exception);
 		}
 	}
 
-	private static Log _log = LogFactoryUtil.getLog(
+	private static final Log _log = LogFactoryUtil.getLog(
 		ChannelHubAppStartupAction.class);
 
 }

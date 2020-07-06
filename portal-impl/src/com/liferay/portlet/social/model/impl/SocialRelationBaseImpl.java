@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,10 +14,8 @@
 
 package com.liferay.portlet.social.model.impl;
 
-import com.liferay.portal.kernel.exception.SystemException;
-
-import com.liferay.portlet.social.model.SocialRelation;
-import com.liferay.portlet.social.service.SocialRelationLocalServiceUtil;
+import com.liferay.social.kernel.model.SocialRelation;
+import com.liferay.social.kernel.service.SocialRelationLocalServiceUtil;
 
 /**
  * The extended model base implementation for the SocialRelation service. Represents a row in the &quot;SocialRelation&quot; database table, with each column mapped to a property of this class.
@@ -28,18 +26,19 @@ import com.liferay.portlet.social.service.SocialRelationLocalServiceUtil;
  *
  * @author Brian Wing Shun Chan
  * @see SocialRelationImpl
- * @see com.liferay.portlet.social.model.SocialRelation
+ * @see SocialRelation
  * @generated
  */
-public abstract class SocialRelationBaseImpl extends SocialRelationModelImpl
-	implements SocialRelation {
+public abstract class SocialRelationBaseImpl
+	extends SocialRelationModelImpl implements SocialRelation {
+
 	/*
 	 * NOTE FOR DEVELOPERS:
 	 *
-	 * Never modify or reference this class directly. All methods that expect a social relation model instance should use the {@link SocialRelation} interface instead.
+	 * Never modify or reference this class directly. All methods that expect a social relation model instance should use the <code>SocialRelation</code> interface instead.
 	 */
 	@Override
-	public void persist() throws SystemException {
+	public void persist() {
 		if (this.isNew()) {
 			SocialRelationLocalServiceUtil.addSocialRelation(this);
 		}
@@ -47,4 +46,5 @@ public abstract class SocialRelationBaseImpl extends SocialRelationModelImpl
 			SocialRelationLocalServiceUtil.updateSocialRelation(this);
 		}
 	}
+
 }

@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -17,8 +17,10 @@ package com.liferay.taglib.ui;
 import com.liferay.taglib.util.IncludeTag;
 
 /**
- * @author Bruno Farache
+ * @author     Bruno Farache
+ * @deprecated As of Mueller (7.2.x)
  */
+@Deprecated
 public class InputSchedulerTag extends IncludeTag {
 
 	@Override

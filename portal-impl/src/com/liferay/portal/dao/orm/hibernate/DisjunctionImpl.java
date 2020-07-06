@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,6 +14,7 @@
 
 package com.liferay.portal.dao.orm.hibernate;
 
+import com.liferay.petra.string.StringBundler;
 import com.liferay.portal.kernel.dao.orm.Criterion;
 import com.liferay.portal.kernel.dao.orm.Disjunction;
 import com.liferay.portal.kernel.dao.orm.Junction;
@@ -42,6 +43,17 @@ public class DisjunctionImpl extends CriterionImpl implements Disjunction {
 		return _disjunction;
 	}
 
-	private org.hibernate.criterion.Disjunction _disjunction;
+	@Override
+	public String toString() {
+		StringBundler sb = new StringBundler(3);
+
+		sb.append("{_disjunction=");
+		sb.append(String.valueOf(_disjunction));
+		sb.append("}");
+
+		return sb.toString();
+	}
+
+	private final org.hibernate.criterion.Disjunction _disjunction;
 
 }

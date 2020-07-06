@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -23,7 +23,6 @@ import com.liferay.portal.kernel.poller.PollerProcessor;
 import com.liferay.portal.kernel.poller.PollerRequest;
 import com.liferay.portal.kernel.poller.PollerResponse;
 import com.liferay.portal.poller.PollerProcessorUtil;
-import com.liferay.portal.poller.PollerRequestResponsePair;
 
 /**
  * @author Michael C. Han
@@ -33,48 +32,51 @@ public class PollerRequestMessageListener extends BaseMessageListener {
 
 	@Override
 	protected void doReceive(Message message) throws Exception {
-		PollerRequestResponsePair pollerRequestResponsePair =
-			(PollerRequestResponsePair)message.getPayload();
-
-		PollerRequest pollerRequest =
-			pollerRequestResponsePair.getPollerRequest();
-
-		PollerResponse pollerResponse =
-			pollerRequestResponsePair.getPollerResponse();
-
-		String portletId = pollerRequest.getPortletId();
+		PollerRequest pollerRequest = (PollerRequest)message.getPayload();
 
 		PollerProcessor pollerProcessor =
-			PollerProcessorUtil.getPollerProcessor(portletId);
+			PollerProcessorUtil.getPollerProcessor(
+				pollerRequest.getPortletId());
 
 		if (pollerRequest.isReceiveRequest()) {
-			pollerResponse.createResponseMessage(message);
+			PollerResponse pollerResponse = null;
 
 			try {
-				pollerProcessor.receive(pollerRequest, pollerResponse);
+				pollerResponse = pollerProcessor.receive(pollerRequest);
 			}
-			catch (PollerException pe) {
+			catch (PollerException pollerException) {
 				_log.error(
-					"Unable to receive poller request " + pollerRequest, pe);
+					"Unable to receive poller request " + pollerRequest,
+					pollerException);
 
-				pollerResponse.setParameter("pollerException", pe.getMessage());
+				pollerResponse = pollerRequest.createPollerResponse();
+
+				pollerResponse.setParameter(
+					"pollerException", pollerException.getMessage());
 			}
 			finally {
-				pollerResponse.close();
+				if (pollerResponse == null) {
+					pollerResponse = pollerRequest.createPollerResponse();
+				}
+
+				pollerResponse.close(
+					message, pollerRequest.getPollerHeader(),
+					pollerRequest.getPortletId(), pollerRequest.getChunkId());
 			}
 		}
 		else {
 			try {
 				pollerProcessor.send(pollerRequest);
 			}
-			catch (PollerException pe) {
+			catch (PollerException pollerException) {
 				_log.error(
-					"Unable to send poller request " + pollerRequest, pe);
+					"Unable to send poller request " + pollerRequest,
+					pollerException);
 			}
 		}
 	}
 
-	private static Log _log = LogFactoryUtil.getLog(
+	private static final Log _log = LogFactoryUtil.getLog(
 		PollerRequestMessageListener.class);
 
 }

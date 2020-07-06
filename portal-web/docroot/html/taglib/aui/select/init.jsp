@@ -1,6 +1,6 @@
 <%--
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -19,24 +19,13 @@
 <%@ include file="/html/taglib/taglib-init.jsp" %>
 
 <%
-Map<String, Object> dynamicAttributes = (Map<String, Object>)request.getAttribute("aui:select:dynamicAttributes");
-Map<String, Object> scopedAttributes = (Map<String, Object>)request.getAttribute("aui:select:scopedAttributes");
-
-Map<String, Object> _options = new HashMap<String, Object>();
-
-if ((scopedAttributes != null) && !scopedAttributes.isEmpty()) {
-	_options.putAll(scopedAttributes);
-}
-
-if ((dynamicAttributes != null) && !dynamicAttributes.isEmpty()) {
-	_options.putAll(dynamicAttributes);
-}
-
 java.lang.Object bean = (java.lang.Object)request.getAttribute("aui:select:bean");
+java.lang.String bodyContent = GetterUtil.getString((java.lang.String)request.getAttribute("aui:select:bodyContent"));
 boolean changesContext = GetterUtil.getBoolean(String.valueOf(request.getAttribute("aui:select:changesContext")));
 java.lang.String cssClass = GetterUtil.getString((java.lang.String)request.getAttribute("aui:select:cssClass"));
 java.util.Map<java.lang.String, java.lang.Object> data = (java.util.Map<java.lang.String, java.lang.Object>)request.getAttribute("aui:select:data");
 boolean disabled = GetterUtil.getBoolean(String.valueOf(request.getAttribute("aui:select:disabled")));
+java.lang.String field = GetterUtil.getString((java.lang.String)request.getAttribute("aui:select:field"));
 boolean first = GetterUtil.getBoolean(String.valueOf(request.getAttribute("aui:select:first")));
 java.lang.String helpMessage = GetterUtil.getString((java.lang.String)request.getAttribute("aui:select:helpMessage"));
 java.lang.String id = GetterUtil.getString((java.lang.String)request.getAttribute("aui:select:id"));
@@ -47,6 +36,8 @@ java.lang.String label = GetterUtil.getString((java.lang.String)request.getAttri
 boolean last = GetterUtil.getBoolean(String.valueOf(request.getAttribute("aui:select:last")));
 java.lang.String listType = GetterUtil.getString((java.lang.String)request.getAttribute("aui:select:listType"));
 java.lang.String listTypeFieldName = GetterUtil.getString((java.lang.String)request.getAttribute("aui:select:listTypeFieldName"));
+boolean localizeLabel = GetterUtil.getBoolean(String.valueOf(request.getAttribute("aui:select:localizeLabel")), true);
+java.lang.Class<?> model = (java.lang.Class<?>)request.getAttribute("aui:select:model");
 boolean multiple = GetterUtil.getBoolean(String.valueOf(request.getAttribute("aui:select:multiple")));
 java.lang.String name = GetterUtil.getString((java.lang.String)request.getAttribute("aui:select:name"));
 java.lang.String onChange = GetterUtil.getString((java.lang.String)request.getAttribute("aui:select:onChange"));
@@ -58,37 +49,9 @@ boolean showRequiredLabel = GetterUtil.getBoolean(String.valueOf(request.getAttr
 java.lang.String suffix = GetterUtil.getString((java.lang.String)request.getAttribute("aui:select:suffix"));
 java.lang.String title = GetterUtil.getString((java.lang.String)request.getAttribute("aui:select:title"));
 boolean useNamespace = GetterUtil.getBoolean(String.valueOf(request.getAttribute("aui:select:useNamespace")), true);
-
-_updateOptions(_options, "bean", bean);
-_updateOptions(_options, "changesContext", changesContext);
-_updateOptions(_options, "cssClass", cssClass);
-_updateOptions(_options, "data", data);
-_updateOptions(_options, "disabled", disabled);
-_updateOptions(_options, "first", first);
-_updateOptions(_options, "helpMessage", helpMessage);
-_updateOptions(_options, "id", id);
-_updateOptions(_options, "ignoreRequestValue", ignoreRequestValue);
-_updateOptions(_options, "inlineField", inlineField);
-_updateOptions(_options, "inlineLabel", inlineLabel);
-_updateOptions(_options, "label", label);
-_updateOptions(_options, "last", last);
-_updateOptions(_options, "listType", listType);
-_updateOptions(_options, "listTypeFieldName", listTypeFieldName);
-_updateOptions(_options, "multiple", multiple);
-_updateOptions(_options, "name", name);
-_updateOptions(_options, "onChange", onChange);
-_updateOptions(_options, "onClick", onClick);
-_updateOptions(_options, "prefix", prefix);
-_updateOptions(_options, "required", required);
-_updateOptions(_options, "showEmptyOption", showEmptyOption);
-_updateOptions(_options, "showRequiredLabel", showRequiredLabel);
-_updateOptions(_options, "suffix", suffix);
-_updateOptions(_options, "title", title);
-_updateOptions(_options, "useNamespace", useNamespace);
+java.lang.Object value = (java.lang.Object)request.getAttribute("aui:select:value");
+java.lang.String wrapperCssClass = GetterUtil.getString((java.lang.String)request.getAttribute("aui:select:wrapperCssClass"));
+Map<String, Object> dynamicAttributes = (Map<String, Object>)request.getAttribute("aui:select:dynamicAttributes");
 %>
 
 <%@ include file="/html/taglib/aui/select/init-ext.jspf" %>
-
-<%!
-private static final String _NAMESPACE = "aui:select:";
-%>

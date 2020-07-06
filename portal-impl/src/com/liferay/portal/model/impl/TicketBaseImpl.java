@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,9 +14,8 @@
 
 package com.liferay.portal.model.impl;
 
-import com.liferay.portal.kernel.exception.SystemException;
-import com.liferay.portal.model.Ticket;
-import com.liferay.portal.service.TicketLocalServiceUtil;
+import com.liferay.portal.kernel.model.Ticket;
+import com.liferay.portal.kernel.service.TicketLocalServiceUtil;
 
 /**
  * The extended model base implementation for the Ticket service. Represents a row in the &quot;Ticket&quot; database table, with each column mapped to a property of this class.
@@ -27,17 +26,18 @@ import com.liferay.portal.service.TicketLocalServiceUtil;
  *
  * @author Brian Wing Shun Chan
  * @see TicketImpl
- * @see com.liferay.portal.model.Ticket
+ * @see Ticket
  * @generated
  */
 public abstract class TicketBaseImpl extends TicketModelImpl implements Ticket {
+
 	/*
 	 * NOTE FOR DEVELOPERS:
 	 *
-	 * Never modify or reference this class directly. All methods that expect a ticket model instance should use the {@link Ticket} interface instead.
+	 * Never modify or reference this class directly. All methods that expect a ticket model instance should use the <code>Ticket</code> interface instead.
 	 */
 	@Override
-	public void persist() throws SystemException {
+	public void persist() {
 		if (this.isNew()) {
 			TicketLocalServiceUtil.addTicket(this);
 		}
@@ -45,4 +45,5 @@ public abstract class TicketBaseImpl extends TicketModelImpl implements Ticket {
 			TicketLocalServiceUtil.updateTicket(this);
 		}
 	}
+
 }

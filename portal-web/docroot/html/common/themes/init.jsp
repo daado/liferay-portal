@@ -1,6 +1,6 @@
 <%--
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -16,12 +16,17 @@
 
 <%@ include file="/html/common/init.jsp" %>
 
-<%@ page import="com.liferay.portal.kernel.monitoring.RequestStatus" %><%@
-page import="com.liferay.portal.kernel.monitoring.statistics.DataSample" %><%@
-page import="com.liferay.portal.kernel.monitoring.statistics.DataSampleThreadLocal" %><%@
-page import="com.liferay.portal.monitoring.statistics.portal.PortalRequestDataSample" %><%@
-page import="com.liferay.portal.security.ldap.LDAPSettingsUtil" %><%@
+<%@ page import="com.liferay.portal.kernel.model.Portlet" %><%@
+page import="com.liferay.portal.kernel.model.portlet.PortletDependency" %><%@
+page import="com.liferay.portal.kernel.servlet.BrowserMetadata" %><%@
+page import="com.liferay.portal.kernel.upload.UploadServletRequestConfigurationHelperUtil" %><%@
+page import="com.liferay.portal.servlet.ComboServletStaticURLGenerator" %><%@
+page import="com.liferay.portal.util.LayoutTypeAccessPolicyTracker" %><%@
+page import="com.liferay.portlet.PortletResourceAccessor" %><%@
+page import="com.liferay.portlet.PortletResourceStaticURLGenerator" %><%@
+page import="com.liferay.portlet.internal.RenderStateUtil" %><%@
 page import="com.liferay.taglib.aui.ScriptTag" %>
 
-<%@ page import="org.apache.struts.taglib.tiles.ComponentConstants" %><%@
-page import="org.apache.struts.tiles.ComponentContext" %>
+<%@ page import="java.util.Iterator" %><%@
+page import="java.util.concurrent.ConcurrentHashMap" %><%@
+page import="java.util.function.Predicate" %>

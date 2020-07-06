@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,7 +14,6 @@
 
 package com.liferay.taglib.ui;
 
-import com.liferay.portlet.calendar.model.CalEvent;
 import com.liferay.taglib.util.IncludeTag;
 
 import javax.servlet.http.HttpServletRequest;
@@ -25,18 +24,19 @@ import javax.servlet.http.HttpServletRequest;
  */
 public class InputRepeatTag extends IncludeTag {
 
+	public String getCssClass() {
+		return _cssClass;
+	}
+
 	public void setCssClass(String cssClass) {
 		_cssClass = cssClass;
 	}
 
-	public void setEvent(CalEvent event) {
-		_event = event;
-	}
-
 	@Override
 	protected void cleanUp() {
+		super.cleanUp();
+
 		_cssClass = null;
-		_event = null;
 	}
 
 	@Override
@@ -45,14 +45,13 @@ public class InputRepeatTag extends IncludeTag {
 	}
 
 	@Override
-	protected void setAttributes(HttpServletRequest request) {
-		request.setAttribute("liferay-ui:input-repeat:cssClass", _cssClass);
-		request.setAttribute("liferay-ui:input-repeat:event", _event);
+	protected void setAttributes(HttpServletRequest httpServletRequest) {
+		httpServletRequest.setAttribute(
+			"liferay-ui:input-repeat:cssClass", _cssClass);
 	}
 
 	private static final String _PAGE = "/html/taglib/ui/input_repeat/page.jsp";
 
 	private String _cssClass;
-	private CalEvent _event;
 
 }

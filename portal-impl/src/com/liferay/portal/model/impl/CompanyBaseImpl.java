@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,9 +14,8 @@
 
 package com.liferay.portal.model.impl;
 
-import com.liferay.portal.kernel.exception.SystemException;
-import com.liferay.portal.model.Company;
-import com.liferay.portal.service.CompanyLocalServiceUtil;
+import com.liferay.portal.kernel.model.Company;
+import com.liferay.portal.kernel.service.CompanyLocalServiceUtil;
 
 /**
  * The extended model base implementation for the Company service. Represents a row in the &quot;Company&quot; database table, with each column mapped to a property of this class.
@@ -27,18 +26,19 @@ import com.liferay.portal.service.CompanyLocalServiceUtil;
  *
  * @author Brian Wing Shun Chan
  * @see CompanyImpl
- * @see com.liferay.portal.model.Company
+ * @see Company
  * @generated
  */
-public abstract class CompanyBaseImpl extends CompanyModelImpl
-	implements Company {
+public abstract class CompanyBaseImpl
+	extends CompanyModelImpl implements Company {
+
 	/*
 	 * NOTE FOR DEVELOPERS:
 	 *
-	 * Never modify or reference this class directly. All methods that expect a company model instance should use the {@link Company} interface instead.
+	 * Never modify or reference this class directly. All methods that expect a company model instance should use the <code>Company</code> interface instead.
 	 */
 	@Override
-	public void persist() throws SystemException {
+	public void persist() {
 		if (this.isNew()) {
 			CompanyLocalServiceUtil.addCompany(this);
 		}
@@ -46,4 +46,5 @@ public abstract class CompanyBaseImpl extends CompanyModelImpl
 			CompanyLocalServiceUtil.updateCompany(this);
 		}
 	}
+
 }

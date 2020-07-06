@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,20 +14,20 @@
 
 package com.liferay.util.resiliency.spi.provider;
 
+import com.liferay.petra.reflect.ReflectionUtil;
+import com.liferay.petra.string.CharPool;
+import com.liferay.petra.string.StringBundler;
+import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.exception.PortalException;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
 import com.liferay.portal.kernel.resiliency.mpi.MPIHelperUtil;
 import com.liferay.portal.kernel.resiliency.spi.SPIUtil;
 import com.liferay.portal.kernel.resiliency.spi.provider.SPIProvider;
-import com.liferay.portal.kernel.util.CharPool;
 import com.liferay.portal.kernel.util.ClassUtil;
 import com.liferay.portal.kernel.util.PortalClassLoaderUtil;
 import com.liferay.portal.kernel.util.PropsKeys;
 import com.liferay.portal.kernel.util.PropsUtil;
-import com.liferay.portal.kernel.util.ReflectionUtil;
-import com.liferay.portal.kernel.util.StringBundler;
-import com.liferay.portal.kernel.util.StringPool;
 
 import java.io.File;
 
@@ -44,7 +44,9 @@ import javax.servlet.ServletContextListener;
 
 /**
  * @author Shuyang Zhou
+ * @deprecated As of Athanasius (7.3.x), with no direct replacement
  */
+@Deprecated
 public class SPIClassPathContextListener implements ServletContextListener {
 
 	public static volatile String SPI_CLASS_PATH = StringPool.BLANK;
@@ -66,7 +68,7 @@ public class SPIClassPathContextListener implements ServletContextListener {
 		String spiEmbeddedLibDirName = servletContext.getInitParameter(
 			"spiEmbeddedLibDir");
 
-		Set<File> jarFiles = new LinkedHashSet<File>();
+		Set<File> jarFiles = new LinkedHashSet<>();
 
 		// Load embedded Tomcat
 
@@ -74,7 +76,7 @@ public class SPIClassPathContextListener implements ServletContextListener {
 
 		addJarFiles(jarFiles, spiEmbeddedLibDir);
 
-		// Load portal-service.jar from MPI
+		// Load portal-kernel.jar from MPI
 
 		addJarFiles(
 			jarFiles, PortalClassLoaderUtil.getClassLoader(),
@@ -90,7 +92,7 @@ public class SPIClassPathContextListener implements ServletContextListener {
 
 		addJarFiles(jarFiles, new File(spiEmbeddedLibDir, "ext"));
 
-		StringBundler sb = new StringBundler(jarFiles.size() * 2 + 4);
+		StringBundler sb = new StringBundler(jarFiles.size() * 2 + 2);
 
 		for (File file : jarFiles) {
 			sb.append(file.getAbsolutePath());
@@ -133,19 +135,20 @@ public class SPIClassPathContextListener implements ServletContextListener {
 
 			if (!result) {
 				_log.error(
-					"Duplicate SPI provider " + spiProvider +
-						" is already registered in servlet context " +
-							servletContext.getContextPath());
+					StringBundler.concat(
+						"Duplicate SPI provider ", spiProvider,
+						" is already registered in servlet context ",
+						servletContext.getContextPath()));
 			}
 			else {
 				MPIHelperUtil.registerSPIProvider(spiProvider);
 			}
 		}
-		catch (Exception e) {
+		catch (Exception exception) {
 			_log.error(
 				"Unable to create SPI provider with name " +
 					spiProviderClassName,
-				e);
+				exception);
 		}
 	}
 
@@ -211,9 +214,9 @@ public class SPIClassPathContextListener implements ServletContextListener {
 	}
 
 	protected static final AtomicReference<SPIProvider> spiProviderReference =
-		new AtomicReference<SPIProvider>();
+		new AtomicReference<>();
 
-	private static Log _log = LogFactoryUtil.getLog(
+	private static final Log _log = LogFactoryUtil.getLog(
 		SPIClassPathContextListener.class);
 
 }

@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -52,16 +52,23 @@ public class DocumentImpl extends BranchImpl implements Document {
 	}
 
 	@Override
-	public boolean equals(Object obj) {
-		if (this == obj) {
+	public Document clone() {
+		return new DocumentImpl((org.dom4j.Document)_document.clone());
+	}
+
+	@Override
+	public boolean equals(Object object) {
+		if (this == object) {
 			return true;
 		}
 
-		if (!(obj instanceof DocumentImpl)) {
+		if (!(object instanceof DocumentImpl)) {
 			return false;
 		}
 
-		org.dom4j.Document document = ((DocumentImpl)obj).getWrappedDocument();
+		DocumentImpl documentImpl = (DocumentImpl)object;
+
+		org.dom4j.Document document = documentImpl.getWrappedDocument();
 
 		return _document.equals(document);
 	}
@@ -107,6 +114,6 @@ public class DocumentImpl extends BranchImpl implements Document {
 		return _document.toString();
 	}
 
-	private org.dom4j.Document _document;
+	private final org.dom4j.Document _document;
 
 }

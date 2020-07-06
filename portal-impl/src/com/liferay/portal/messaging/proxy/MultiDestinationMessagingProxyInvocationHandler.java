@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -17,7 +17,7 @@ package com.liferay.portal.messaging.proxy;
 import com.liferay.portal.kernel.messaging.proxy.BaseMultiDestinationProxyBean;
 import com.liferay.portal.kernel.messaging.proxy.ProxyModeThreadLocal;
 import com.liferay.portal.kernel.messaging.proxy.ProxyRequest;
-import com.liferay.portal.spring.aop.InvocationHandlerFactory;
+import com.liferay.portal.kernel.spring.aop.InvocationHandlerFactory;
 
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
@@ -49,24 +49,23 @@ public class MultiDestinationMessagingProxyInvocationHandler
 
 			return _baseMultiDestinationProxyBean.synchronousSend(proxyRequest);
 		}
-		else {
-			_baseMultiDestinationProxyBean.send(proxyRequest);
 
-			return null;
-		}
+		_baseMultiDestinationProxyBean.send(proxyRequest);
+
+		return null;
 	}
 
-	private static InvocationHandlerFactory _invocationHandlerFactory =
+	private static final InvocationHandlerFactory _invocationHandlerFactory =
 		new InvocationHandlerFactory() {
 
 			@Override
-			public InvocationHandler createInvocationHandler(Object obj) {
+			public InvocationHandler createInvocationHandler(Object object) {
 				return new MultiDestinationMessagingProxyInvocationHandler(
-					(BaseMultiDestinationProxyBean)obj);
+					(BaseMultiDestinationProxyBean)object);
 			}
 
 		};
 
-	private BaseMultiDestinationProxyBean _baseMultiDestinationProxyBean;
+	private final BaseMultiDestinationProxyBean _baseMultiDestinationProxyBean;
 
 }

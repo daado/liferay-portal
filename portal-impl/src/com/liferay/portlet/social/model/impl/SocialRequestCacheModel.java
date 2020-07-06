@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,11 +14,11 @@
 
 package com.liferay.portlet.social.model.impl;
 
-import com.liferay.portal.kernel.util.StringBundler;
-import com.liferay.portal.kernel.util.StringPool;
-import com.liferay.portal.model.CacheModel;
-
-import com.liferay.portlet.social.model.SocialRequest;
+import com.liferay.petra.lang.HashUtil;
+import com.liferay.petra.string.StringBundler;
+import com.liferay.portal.kernel.model.CacheModel;
+import com.liferay.portal.kernel.model.MVCCModel;
+import com.liferay.social.kernel.model.SocialRequest;
 
 import java.io.Externalizable;
 import java.io.IOException;
@@ -29,16 +29,59 @@ import java.io.ObjectOutput;
  * The cache model class for representing SocialRequest in entity cache.
  *
  * @author Brian Wing Shun Chan
- * @see SocialRequest
  * @generated
  */
-public class SocialRequestCacheModel implements CacheModel<SocialRequest>,
-	Externalizable {
+public class SocialRequestCacheModel
+	implements CacheModel<SocialRequest>, Externalizable, MVCCModel {
+
+	@Override
+	public boolean equals(Object object) {
+		if (this == object) {
+			return true;
+		}
+
+		if (!(object instanceof SocialRequestCacheModel)) {
+			return false;
+		}
+
+		SocialRequestCacheModel socialRequestCacheModel =
+			(SocialRequestCacheModel)object;
+
+		if ((requestId == socialRequestCacheModel.requestId) &&
+			(mvccVersion == socialRequestCacheModel.mvccVersion)) {
+
+			return true;
+		}
+
+		return false;
+	}
+
+	@Override
+	public int hashCode() {
+		int hashCode = HashUtil.hash(0, requestId);
+
+		return HashUtil.hash(hashCode, mvccVersion);
+	}
+
+	@Override
+	public long getMvccVersion() {
+		return mvccVersion;
+	}
+
+	@Override
+	public void setMvccVersion(long mvccVersion) {
+		this.mvccVersion = mvccVersion;
+	}
+
 	@Override
 	public String toString() {
-		StringBundler sb = new StringBundler(27);
+		StringBundler sb = new StringBundler(31);
 
-		sb.append("{uuid=");
+		sb.append("{mvccVersion=");
+		sb.append(mvccVersion);
+		sb.append(", ctCollectionId=");
+		sb.append(ctCollectionId);
+		sb.append(", uuid=");
 		sb.append(uuid);
 		sb.append(", requestId=");
 		sb.append(requestId);
@@ -73,8 +116,11 @@ public class SocialRequestCacheModel implements CacheModel<SocialRequest>,
 	public SocialRequest toEntityModel() {
 		SocialRequestImpl socialRequestImpl = new SocialRequestImpl();
 
+		socialRequestImpl.setMvccVersion(mvccVersion);
+		socialRequestImpl.setCtCollectionId(ctCollectionId);
+
 		if (uuid == null) {
-			socialRequestImpl.setUuid(StringPool.BLANK);
+			socialRequestImpl.setUuid("");
 		}
 		else {
 			socialRequestImpl.setUuid(uuid);
@@ -91,7 +137,7 @@ public class SocialRequestCacheModel implements CacheModel<SocialRequest>,
 		socialRequestImpl.setType(type);
 
 		if (extraData == null) {
-			socialRequestImpl.setExtraData(StringPool.BLANK);
+			socialRequestImpl.setExtraData("");
 		}
 		else {
 			socialRequestImpl.setExtraData(extraData);
@@ -107,52 +153,80 @@ public class SocialRequestCacheModel implements CacheModel<SocialRequest>,
 
 	@Override
 	public void readExternal(ObjectInput objectInput) throws IOException {
+		mvccVersion = objectInput.readLong();
+
+		ctCollectionId = objectInput.readLong();
 		uuid = objectInput.readUTF();
+
 		requestId = objectInput.readLong();
+
 		groupId = objectInput.readLong();
+
 		companyId = objectInput.readLong();
+
 		userId = objectInput.readLong();
+
 		createDate = objectInput.readLong();
+
 		modifiedDate = objectInput.readLong();
+
 		classNameId = objectInput.readLong();
+
 		classPK = objectInput.readLong();
+
 		type = objectInput.readInt();
 		extraData = objectInput.readUTF();
+
 		receiverUserId = objectInput.readLong();
+
 		status = objectInput.readInt();
 	}
 
 	@Override
-	public void writeExternal(ObjectOutput objectOutput)
-		throws IOException {
+	public void writeExternal(ObjectOutput objectOutput) throws IOException {
+		objectOutput.writeLong(mvccVersion);
+
+		objectOutput.writeLong(ctCollectionId);
+
 		if (uuid == null) {
-			objectOutput.writeUTF(StringPool.BLANK);
+			objectOutput.writeUTF("");
 		}
 		else {
 			objectOutput.writeUTF(uuid);
 		}
 
 		objectOutput.writeLong(requestId);
+
 		objectOutput.writeLong(groupId);
+
 		objectOutput.writeLong(companyId);
+
 		objectOutput.writeLong(userId);
+
 		objectOutput.writeLong(createDate);
+
 		objectOutput.writeLong(modifiedDate);
+
 		objectOutput.writeLong(classNameId);
+
 		objectOutput.writeLong(classPK);
+
 		objectOutput.writeInt(type);
 
 		if (extraData == null) {
-			objectOutput.writeUTF(StringPool.BLANK);
+			objectOutput.writeUTF("");
 		}
 		else {
 			objectOutput.writeUTF(extraData);
 		}
 
 		objectOutput.writeLong(receiverUserId);
+
 		objectOutput.writeInt(status);
 	}
 
+	public long mvccVersion;
+	public long ctCollectionId;
 	public String uuid;
 	public long requestId;
 	public long groupId;
@@ -166,4 +240,5 @@ public class SocialRequestCacheModel implements CacheModel<SocialRequest>,
 	public String extraData;
 	public long receiverUserId;
 	public int status;
+
 }

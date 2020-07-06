@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,10 +14,8 @@
 
 package com.liferay.portlet.asset.model.impl;
 
-import com.liferay.portal.kernel.exception.SystemException;
-
-import com.liferay.portlet.asset.model.AssetTag;
-import com.liferay.portlet.asset.service.AssetTagLocalServiceUtil;
+import com.liferay.asset.kernel.model.AssetTag;
+import com.liferay.asset.kernel.service.AssetTagLocalServiceUtil;
 
 /**
  * The extended model base implementation for the AssetTag service. Represents a row in the &quot;AssetTag&quot; database table, with each column mapped to a property of this class.
@@ -28,18 +26,19 @@ import com.liferay.portlet.asset.service.AssetTagLocalServiceUtil;
  *
  * @author Brian Wing Shun Chan
  * @see AssetTagImpl
- * @see com.liferay.portlet.asset.model.AssetTag
+ * @see AssetTag
  * @generated
  */
-public abstract class AssetTagBaseImpl extends AssetTagModelImpl
-	implements AssetTag {
+public abstract class AssetTagBaseImpl
+	extends AssetTagModelImpl implements AssetTag {
+
 	/*
 	 * NOTE FOR DEVELOPERS:
 	 *
-	 * Never modify or reference this class directly. All methods that expect a asset tag model instance should use the {@link AssetTag} interface instead.
+	 * Never modify or reference this class directly. All methods that expect a asset tag model instance should use the <code>AssetTag</code> interface instead.
 	 */
 	@Override
-	public void persist() throws SystemException {
+	public void persist() {
 		if (this.isNew()) {
 			AssetTagLocalServiceUtil.addAssetTag(this);
 		}
@@ -47,4 +46,5 @@ public abstract class AssetTagBaseImpl extends AssetTagModelImpl
 			AssetTagLocalServiceUtil.updateAssetTag(this);
 		}
 	}
+
 }

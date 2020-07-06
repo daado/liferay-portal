@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,19 +14,20 @@
 
 package com.liferay.portal.sharepoint;
 
+import com.liferay.petra.string.CharPool;
+import com.liferay.petra.string.StringBundler;
+import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.configuration.Filter;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
-import com.liferay.portal.kernel.util.CharPool;
+import com.liferay.portal.kernel.security.auth.CompanyThreadLocal;
 import com.liferay.portal.kernel.util.HttpUtil;
 import com.liferay.portal.kernel.util.InstancePool;
 import com.liferay.portal.kernel.util.PropsKeys;
-import com.liferay.portal.kernel.util.StringPool;
 import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.util.Validator;
 import com.liferay.portal.kernel.webdav.WebDAVException;
 import com.liferay.portal.kernel.webdav.WebDAVUtil;
-import com.liferay.portal.security.auth.CompanyThreadLocal;
 import com.liferay.portal.util.PropsUtil;
 
 import java.util.Collection;
@@ -51,9 +52,10 @@ public class SharepointUtil {
 		try {
 			groupId = WebDAVUtil.getGroupId(companyId, path);
 		}
-		catch (WebDAVException wde) {
+		catch (WebDAVException webDAVException) {
 			if (_log.isWarnEnabled()) {
-				_log.warn("Unable to get groupId for path " + path);
+				_log.warn(
+					"Unable to get groupId for path " + path, webDAVException);
 			}
 		}
 
@@ -67,11 +69,11 @@ public class SharepointUtil {
 	}
 
 	public static SharepointStorage getStorage(String path) {
-		String storageClass = null;
-
 		if (path == null) {
 			return null;
 		}
+
+		String storageClass = null;
 
 		String[] pathArray = getPathArray(path);
 
@@ -86,34 +88,36 @@ public class SharepointUtil {
 		}
 
 		if (_log.isInfoEnabled()) {
-			_log.info("Storage class for path " + path + " is " + storageClass);
+			_log.info(
+				StringBundler.concat(
+					"Storage class for path ", path, " is ", storageClass));
 		}
 
 		return (SharepointStorage)InstancePool.get(storageClass);
 	}
 
 	public static String getStorageClass(String token) {
-		return _instance._getStorageClass(token);
+		return _sharepointUtil._getStorageClass(token);
 	}
 
 	public static String getStorageToken(String className) {
-		return _instance._getStorageToken(className);
+		return _sharepointUtil._getStorageToken(className);
 	}
 
 	public static Collection<String> getStorageTokens() {
-		return _instance._getStorageTokens();
+		return _sharepointUtil._getStorageTokens();
 	}
 
 	public static String replaceBackSlashes(String value) {
-		return value.replaceAll("\\\\", StringPool.BLANK);
+		return StringUtil.replace(value, '\\', StringPool.BLANK);
 	}
 
 	public static String stripService(String url, boolean trailingSlash) {
-		return _instance._stripService(url, trailingSlash);
+		return _sharepointUtil._stripService(url, trailingSlash);
 	}
 
 	private SharepointUtil() {
-		_storageMap = new HashMap<String, String>();
+		_storageMap = new HashMap<>();
 
 		String[] tokens = PropsUtil.getArray(
 			PropsKeys.SHAREPOINT_STORAGE_TOKENS);
@@ -176,9 +180,9 @@ public class SharepointUtil {
 		return url;
 	}
 
-	private static Log _log = LogFactoryUtil.getLog(SharepointUtil.class);
+	private static final Log _log = LogFactoryUtil.getLog(SharepointUtil.class);
 
-	private static SharepointUtil _instance = new SharepointUtil();
+	private static final SharepointUtil _sharepointUtil = new SharepointUtil();
 
 	private final Map<String, String> _storageMap;
 

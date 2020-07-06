@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -52,11 +52,18 @@ public class PollerCometChannelListener implements ChannelListener {
 			ChannelHubManagerUtil.unregisterChannelListener(
 				cometRequest.getCompanyId(), cometRequest.getUserId(), this);
 		}
-		catch (UnknownChannelException uce) {
+		catch (UnknownChannelException unknownChannelException) {
+
+			// LPS-52675
+
+			if (_log.isDebugEnabled()) {
+				_log.debug(unknownChannelException, unknownChannelException);
+			}
 		}
-		catch (ChannelException ce) {
+		catch (ChannelException channelException) {
 			if (_log.isWarnEnabled()) {
-				_log.warn("Unable to unregister channel listener", ce);
+				_log.warn(
+					"Unable to unregister channel listener", channelException);
 			}
 		}
 
@@ -68,10 +75,10 @@ public class PollerCometChannelListener implements ChannelListener {
 			pollerCometDelayedTask);
 	}
 
-	private static Log _log = LogFactoryUtil.getLog(
+	private static final Log _log = LogFactoryUtil.getLog(
 		PollerCometChannelListener.class);
 
-	private CometSession _cometSession;
-	private JSONObject _pollerResponseHeaderJSONObject;
+	private final CometSession _cometSession;
+	private final JSONObject _pollerResponseHeaderJSONObject;
 
 }

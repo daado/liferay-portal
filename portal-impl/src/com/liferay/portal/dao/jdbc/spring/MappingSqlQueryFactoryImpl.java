@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -16,23 +16,23 @@ package com.liferay.portal.dao.jdbc.spring;
 
 import com.liferay.portal.kernel.dao.jdbc.MappingSqlQuery;
 import com.liferay.portal.kernel.dao.jdbc.MappingSqlQueryFactory;
+import com.liferay.portal.kernel.dao.jdbc.ParamSetter;
 import com.liferay.portal.kernel.dao.jdbc.RowMapper;
-import com.liferay.portal.kernel.security.pacl.DoPrivileged;
 
 import javax.sql.DataSource;
 
 /**
  * @author Brian Wing Shun Chan
  */
-@DoPrivileged
 public class MappingSqlQueryFactoryImpl implements MappingSqlQueryFactory {
 
 	@Override
 	public <T> MappingSqlQuery<T> getMappingSqlQuery(
-		DataSource dataSource, String sql, int[] types,
-		RowMapper<T> rowMapper) {
+		DataSource dataSource, String sql, RowMapper<T> rowMapper,
+		ParamSetter... paramSetters) {
 
-		return new MappingSqlQueryImpl<T>(dataSource, sql, types, rowMapper);
+		return new MappingSqlQueryImpl<>(
+			dataSource, sql, rowMapper, paramSetters);
 	}
 
 }

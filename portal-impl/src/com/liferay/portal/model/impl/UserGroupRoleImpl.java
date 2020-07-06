@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,36 +14,65 @@
 
 package com.liferay.portal.model.impl;
 
+import com.liferay.petra.lang.HashUtil;
 import com.liferay.portal.kernel.exception.PortalException;
-import com.liferay.portal.kernel.exception.SystemException;
-import com.liferay.portal.model.Group;
-import com.liferay.portal.model.Role;
-import com.liferay.portal.model.User;
-import com.liferay.portal.service.GroupLocalServiceUtil;
-import com.liferay.portal.service.RoleLocalServiceUtil;
-import com.liferay.portal.service.UserLocalServiceUtil;
+import com.liferay.portal.kernel.model.Group;
+import com.liferay.portal.kernel.model.Role;
+import com.liferay.portal.kernel.model.User;
+import com.liferay.portal.kernel.model.UserGroupRole;
+import com.liferay.portal.kernel.service.GroupLocalServiceUtil;
+import com.liferay.portal.kernel.service.RoleLocalServiceUtil;
+import com.liferay.portal.kernel.service.UserLocalServiceUtil;
 
 /**
  * @author Brian Wing Shun Chan
  */
 public class UserGroupRoleImpl extends UserGroupRoleBaseImpl {
 
-	public UserGroupRoleImpl() {
+	@Override
+	public boolean equals(Object object) {
+		if (this == object) {
+			return true;
+		}
+
+		if (!(object instanceof UserGroupRole)) {
+			return false;
+		}
+
+		UserGroupRole userGroupRole = (UserGroupRole)object;
+
+		if ((getUserId() == userGroupRole.getUserId()) &&
+			(getGroupId() == userGroupRole.getGroupId()) &&
+			(getRoleId() == userGroupRole.getRoleId())) {
+
+			return true;
+		}
+
+		return false;
 	}
 
 	@Override
-	public Group getGroup() throws PortalException, SystemException {
+	public Group getGroup() throws PortalException {
 		return GroupLocalServiceUtil.getGroup(getGroupId());
 	}
 
 	@Override
-	public Role getRole() throws PortalException, SystemException {
+	public Role getRole() throws PortalException {
 		return RoleLocalServiceUtil.getRole(getRoleId());
 	}
 
 	@Override
-	public User getUser() throws PortalException, SystemException {
+	public User getUser() throws PortalException {
 		return UserLocalServiceUtil.getUser(getUserId());
+	}
+
+	@Override
+	public int hashCode() {
+		int hash = HashUtil.hash(0, getUserId());
+
+		hash = HashUtil.hash(hash, getGroupId());
+
+		return HashUtil.hash(hash, getRoleId());
 	}
 
 }

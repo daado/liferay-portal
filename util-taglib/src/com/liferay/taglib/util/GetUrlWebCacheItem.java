@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -37,8 +37,8 @@ public class GetUrlWebCacheItem implements WebCacheItem {
 		try {
 			content = HttpUtil.URLtoString(_url);
 		}
-		catch (Exception e) {
-			throw new WebCacheException(url + " " + e.toString());
+		catch (Exception exception) {
+			throw new WebCacheException(url + " " + exception.toString());
 		}
 
 		return content;
@@ -49,7 +49,7 @@ public class GetUrlWebCacheItem implements WebCacheItem {
 		return _refreshTime;
 	}
 
-	private long _refreshTime;
-	private String _url;
+	private final long _refreshTime;
+	private final String _url;
 
 }

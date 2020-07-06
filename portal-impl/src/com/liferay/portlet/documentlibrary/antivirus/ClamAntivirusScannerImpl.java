@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,7 +14,10 @@
 
 package com.liferay.portlet.documentlibrary.antivirus;
 
-import com.liferay.portal.kernel.exception.SystemException;
+import com.liferay.document.library.kernel.antivirus.AntivirusScannerException;
+import com.liferay.document.library.kernel.antivirus.BaseFileAntivirusScanner;
+import com.liferay.portal.kernel.log.Log;
+import com.liferay.portal.kernel.log.LogFactoryUtil;
 
 import java.io.File;
 import java.io.IOException;
@@ -25,38 +28,63 @@ import java.io.IOException;
 public class ClamAntivirusScannerImpl extends BaseFileAntivirusScanner {
 
 	@Override
-	public void scan(File file)
-		throws AntivirusScannerException, SystemException {
+	public void scan(File file) throws AntivirusScannerException {
+		int exitValue = 0;
 
-		ProcessBuilder processBuilder = new ProcessBuilder(
-			"clamscan", "--stdout", "--no-summary", file.getAbsolutePath());
+		try {
+			exitValue = _execute("clamdscan", file);
+		}
+		catch (InterruptedException | IOException exception) {
+			if (_log.isDebugEnabled()) {
+				_log.debug(
+					"Unable to successfully execute clamdscan", exception);
+			}
 
-		processBuilder.redirectErrorStream(true);
+			exitValue = -1;
+		}
+
+		try {
+			if ((exitValue != 0) && (exitValue != 1)) {
+				exitValue = _execute("clamscan", file);
+			}
+
+			if (exitValue == 1) {
+				throw new AntivirusScannerException(
+					"Virus detected in " + file.getAbsolutePath(),
+					AntivirusScannerException.VIRUS_DETECTED);
+			}
+			else if (exitValue >= 2) {
+				throw new AntivirusScannerException(
+					AntivirusScannerException.PROCESS_FAILURE);
+			}
+		}
+		catch (InterruptedException | IOException exception) {
+			if (_log.isDebugEnabled()) {
+				_log.debug(
+					"Unable to successfully execute clamscan", exception);
+			}
+
+			throw new AntivirusScannerException(
+				AntivirusScannerException.PROCESS_FAILURE, exception);
+		}
+	}
+
+	private int _execute(String command, File file)
+		throws InterruptedException, IOException {
 
 		Process process = null;
 
 		try {
+			ProcessBuilder processBuilder = new ProcessBuilder(
+				command, "--stdout", "--no-summary", file.getAbsolutePath());
+
+			processBuilder.redirectErrorStream(true);
+
 			process = processBuilder.start();
 
 			process.waitFor();
 
-			int exitValue = process.exitValue();
-
-			if (exitValue == 1) {
-				throw new AntivirusScannerException(
-					"Virus detected in " + file.getAbsolutePath());
-			}
-			else if (exitValue >= 2) {
-				throw new AntivirusScannerException(
-					"Unable to scan file due to inability to execute " +
-						"antivirus process");
-			}
-		}
-		catch (IOException ioe) {
-			throw new SystemException("Unable to scan file", ioe);
-		}
-		catch (InterruptedException ie) {
-			throw new SystemException("Unable to scan file", ie);
+			return process.exitValue();
 		}
 		finally {
 			if (process != null) {
@@ -64,5 +92,8 @@ public class ClamAntivirusScannerImpl extends BaseFileAntivirusScanner {
 			}
 		}
 	}
+
+	private static final Log _log = LogFactoryUtil.getLog(
+		ClamAntivirusScannerImpl.class);
 
 }

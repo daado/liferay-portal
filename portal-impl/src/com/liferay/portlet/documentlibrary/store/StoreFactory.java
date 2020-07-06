@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,34 +14,42 @@
 
 package com.liferay.portlet.documentlibrary.store;
 
-import com.liferay.portal.kernel.bean.PortalBeanLocatorUtil;
-import com.liferay.portal.kernel.dao.db.DB;
-import com.liferay.portal.kernel.dao.db.DBFactoryUtil;
+import com.liferay.document.library.kernel.store.Store;
+import com.liferay.petra.string.StringBundler;
+import com.liferay.portal.change.tracking.store.CTStoreFactoryUtil;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
-import com.liferay.portal.kernel.util.ClassUtil;
-import com.liferay.portal.kernel.util.InstanceFactory;
+import com.liferay.portal.kernel.util.GetterUtil;
 import com.liferay.portal.kernel.util.PropsKeys;
-import com.liferay.portal.kernel.util.ProxyUtil;
-import com.liferay.portal.kernel.util.StringBundler;
 import com.liferay.portal.kernel.util.Validator;
-import com.liferay.portal.spring.aop.MethodInterceptorInvocationHandler;
-import com.liferay.portal.util.ClassLoaderUtil;
 import com.liferay.portal.util.PropsUtil;
 import com.liferay.portal.util.PropsValues;
+import com.liferay.registry.Registry;
+import com.liferay.registry.RegistryUtil;
+import com.liferay.registry.ServiceReference;
+import com.liferay.registry.ServiceTrackerCustomizer;
+import com.liferay.registry.collections.ServiceTrackerCollections;
+import com.liferay.registry.collections.ServiceTrackerMap;
 
-import java.util.Arrays;
-import java.util.List;
-
-import org.aopalliance.intercept.MethodInterceptor;
+import java.util.Set;
 
 /**
  * @author Brian Wing Shun Chan
  * @author Shuyang Zhou
+ * @author Manuel de la Peña
+ * @author Edward C. Han
  */
 public class StoreFactory {
 
-	public static void checkProperties() {
+	public static StoreFactory getInstance() {
+		if (_storeFactory == null) {
+			_storeFactory = new StoreFactory();
+		}
+
+		return _storeFactory;
+	}
+
+	public void checkProperties() {
 		if (_warned) {
 			return;
 		}
@@ -56,9 +64,15 @@ public class StoreFactory {
 
 		boolean found = false;
 
-		for (String[] dlHookStoreParts : _DL_HOOK_STORES) {
-			if (dlHookImpl.equals(dlHookStoreParts[0])) {
-				PropsValues.DL_STORE_IMPL = dlHookStoreParts[1];
+		for (String key : StoreServiceTrackerMapHolder.keySet()) {
+			Store store = getStore(key);
+
+			Class<?> clazz = store.getClass();
+
+			String className = clazz.getName();
+
+			if (dlHookImpl.equals(className)) {
+				PropsValues.DL_STORE_IMPL = className;
 
 				found = true;
 
@@ -71,17 +85,15 @@ public class StoreFactory {
 		}
 
 		if (_log.isWarnEnabled()) {
-			StringBundler sb = new StringBundler(13);
+			StringBundler sb = new StringBundler(11);
 
-			sb.append("Liferay is configured with the legacy ");
-			sb.append("property \"dl.hook.impl=");
+			sb.append("Liferay is configured with the legacy property ");
+			sb.append("\"dl.hook.impl=");
 			sb.append(dlHookImpl);
-			sb.append("\" ");
-			sb.append("in portal-ext.properties. Please reconfigure ");
-			sb.append("to use the new property \"");
+			sb.append("\" in portal-ext.properties. Please reconfigure to ");
+			sb.append("use the new property \"");
 			sb.append(PropsKeys.DL_STORE_IMPL);
-			sb.append("\". Liferay will ");
-			sb.append("attempt to temporarily set \"");
+			sb.append("\". Liferay will attempt to temporarily set \"");
 			sb.append(PropsKeys.DL_STORE_IMPL);
 			sb.append("=");
 			sb.append(PropsValues.DL_STORE_IMPL);
@@ -93,97 +105,96 @@ public class StoreFactory {
 		_warned = true;
 	}
 
-	public static Store getInstance() {
-		if (_store == null) {
-			checkProperties();
+	public Store getStore() {
+		Store store = StoreServiceTrackerMapHolder.getService(
+			PropsValues.DL_STORE_IMPL);
 
-			if (_log.isDebugEnabled()) {
-				_log.debug("Instantiate " + PropsValues.DL_STORE_IMPL);
-			}
-
-			try {
-				_store = _getInstance();
-			}
-			catch (Exception e) {
-				_log.error(e, e);
-			}
-		}
-
-		if ((_store != null) && _log.isDebugEnabled()) {
-			Class<?> clazz = _store.getClass();
-
-			_log.debug("Return " + clazz.getName());
-		}
-
-		return _store;
-	}
-
-	public static void setInstance(Store store) {
-		if (_log.isDebugEnabled()) {
-			_log.debug("Set " + ClassUtil.getClassName(store));
-		}
-
-		_store = store;
-	}
-
-	private static Store _getInstance() throws Exception {
-		ClassLoader classLoader = ClassLoaderUtil.getPortalClassLoader();
-
-		Store store = (Store)InstanceFactory.newInstance(
-			classLoader, PropsValues.DL_STORE_IMPL);
-
-		if (!(store instanceof DBStore)) {
-			return store;
-		}
-
-		DB db = DBFactoryUtil.getDB();
-
-		String dbType = db.getType();
-
-		if (dbType.equals(DB.TYPE_POSTGRESQL)) {
-			MethodInterceptor transactionAdviceMethodInterceptor =
-				(MethodInterceptor)PortalBeanLocatorUtil.locate(
-					"transactionAdvice");
-
-			MethodInterceptor tempFileMethodInterceptor =
-				new TempFileMethodInterceptor();
-
-			List<MethodInterceptor> methodInterceptors = Arrays.asList(
-				transactionAdviceMethodInterceptor, tempFileMethodInterceptor);
-
-			store = (Store)ProxyUtil.newProxyInstance(
-				classLoader, new Class<?>[] {Store.class},
-				new MethodInterceptorInvocationHandler(
-					store, methodInterceptors));
+		if (store == null) {
+			throw new IllegalStateException("Store is not available");
 		}
 
 		return store;
 	}
 
-	private static final String[][] _DL_HOOK_STORES = new String[][] {
-		new String[] {
-			"com.liferay.documentlibrary.util.AdvancedFileSystemHook",
-			AdvancedFileSystemStore.class.getName()
-		},
-		new String[] {
-			"com.liferay.documentlibrary.util.CMISHook",
-			CMISStore.class.getName()
-		},
-		new String[] {
-			"com.liferay.documentlibrary.util.FileSystemHook",
-			FileSystemStore.class.getName()
-		},
-		new String[] {
-			"com.liferay.documentlibrary.util.JCRHook", JCRStore.class.getName()
-		},
-		new String[] {
-			"com.liferay.documentlibrary.util.S3Hook", S3Store.class.getName()
-		}
-	};
+	public Store getStore(String key) {
+		return StoreServiceTrackerMapHolder.getService(key);
+	}
 
-	private static Log _log = LogFactoryUtil.getLog(StoreFactory.class);
+	public String[] getStoreTypes() {
+		Set<String> storeTypes = StoreServiceTrackerMapHolder.keySet();
 
-	private static Store _store;
+		return storeTypes.toArray(new String[0]);
+	}
+
+	/**
+	 * @deprecated As of Mueller (7.2.x), with no direct replacement
+	 */
+	@Deprecated
+	public void setStore(String key) {
+	}
+
+	private static final Log _log = LogFactoryUtil.getLog(StoreFactory.class);
+
+	private static StoreFactory _storeFactory;
 	private static boolean _warned;
+
+	private static class StoreServiceTrackerMapHolder {
+
+		public static Store getService(String key) {
+			return _storeServiceTrackerMap.getService(key);
+		}
+
+		public static Set<String> keySet() {
+			return _storeServiceTrackerMap.keySet();
+		}
+
+		private static final ServiceTrackerMap<String, Store>
+			_storeServiceTrackerMap;
+
+		static {
+			Registry registry = RegistryUtil.getRegistry();
+
+			_storeServiceTrackerMap =
+				ServiceTrackerCollections.openSingleValueMap(
+					Store.class, "store.type",
+					new ServiceTrackerCustomizer<Store, Store>() {
+
+						@Override
+						public Store addingService(
+							ServiceReference<Store> serviceReference) {
+
+							Store store = registry.getService(serviceReference);
+
+							if (!GetterUtil.getBoolean(
+									serviceReference.getProperty("ct.aware"))) {
+
+								store = CTStoreFactoryUtil.createCTStore(
+									store,
+									GetterUtil.getString(
+										serviceReference.getProperty(
+											"store.type")));
+							}
+
+							return store;
+						}
+
+						@Override
+						public void modifiedService(
+							ServiceReference<Store> serviceReference,
+							Store service) {
+						}
+
+						@Override
+						public void removedService(
+							ServiceReference<Store> serviceReference,
+							Store service) {
+
+							registry.ungetService(serviceReference);
+						}
+
+					});
+		}
+
+	}
 
 }

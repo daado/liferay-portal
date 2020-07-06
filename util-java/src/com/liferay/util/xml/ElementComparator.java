@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -82,14 +82,15 @@ public class ElementComparator implements Comparator<Element> {
 	}
 
 	private int _compare(
-		List<Attribute> list, Attribute obj, Comparator<Attribute> comparator) {
+		List<Attribute> list, Attribute object,
+		Comparator<Attribute> comparator) {
 
 		int firstValue = -1;
 
 		for (int i = 0; i < list.size(); i++) {
 			Attribute o = list.get(i);
 
-			int value = comparator.compare(obj, o);
+			int value = comparator.compare(object, o);
 
 			if (i == 0) {
 				firstValue = value;
@@ -104,14 +105,14 @@ public class ElementComparator implements Comparator<Element> {
 	}
 
 	private int _compare(
-		List<Element> list, Element obj, Comparator<Element> comparator) {
+		List<Element> list, Element object, Comparator<Element> comparator) {
 
 		int firstValue = -1;
 
 		for (int i = 0; i < list.size(); i++) {
 			Element o = list.get(i);
 
-			int value = comparator.compare(obj, o);
+			int value = comparator.compare(object, o);
 
 			if (i == 0) {
 				firstValue = value;

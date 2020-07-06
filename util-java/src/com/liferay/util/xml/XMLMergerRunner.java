@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,6 +14,7 @@
 
 package com.liferay.util.xml;
 
+import com.liferay.petra.string.StringBundler;
 import com.liferay.portal.kernel.io.unsync.UnsyncByteArrayOutputStream;
 import com.liferay.portal.kernel.io.unsync.UnsyncStringReader;
 import com.liferay.portal.kernel.util.FileUtil;
@@ -38,6 +39,9 @@ public class XMLMergerRunner {
 	public XMLMergerRunner(String descriptorClassName) {
 		if (Validator.isNotNull(descriptorClassName)) {
 			_descriptorClassName = descriptorClassName;
+		}
+		else {
+			_descriptorClassName = _AUTO_DESCRIPTOR;
 		}
 	}
 
@@ -83,8 +87,8 @@ public class XMLMergerRunner {
 
 		String header = xml.substring(pos, xml.indexOf("?>", pos) + 2);
 
-		xml = StringUtil.replace(xml, header, "");
-		xml = header + "\n" + docType + "\n" + xml;
+		xml = StringUtil.removeSubstring(xml, header);
+		xml = StringBundler.concat(header, "\n", docType, "\n", xml);
 
 		return xml;
 	}
@@ -100,7 +104,8 @@ public class XMLMergerRunner {
 		if (pos >= 0) {
 			masterDoctype = masterXml.substring(
 				pos, masterXml.indexOf(">", pos) + 1);
-			masterXml = StringUtil.replace(masterXml, masterDoctype, "");
+
+			masterXml = StringUtil.removeSubstring(masterXml, masterDoctype);
 		}
 
 		pos = slaveXml.indexOf("<!DOCTYPE");
@@ -110,7 +115,8 @@ public class XMLMergerRunner {
 		if (pos >= 0) {
 			slaveDoctype = slaveXml.substring(
 				pos, slaveXml.indexOf(">", pos) + 1);
-			slaveXml = StringUtil.replace(slaveXml, slaveDoctype, "");
+
+			slaveXml = StringUtil.removeSubstring(slaveXml, slaveDoctype);
 		}
 
 		String doctype = null;
@@ -147,6 +153,6 @@ public class XMLMergerRunner {
 
 	private static final String _AUTO_DESCRIPTOR = "auto";
 
-	private String _descriptorClassName = _AUTO_DESCRIPTOR;
+	private final String _descriptorClassName;
 
 }

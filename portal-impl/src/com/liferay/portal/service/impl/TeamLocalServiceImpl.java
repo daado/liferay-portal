@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,22 +14,26 @@
 
 package com.liferay.portal.service.impl;
 
-import com.liferay.portal.DuplicateTeamException;
-import com.liferay.portal.TeamNameException;
+import com.liferay.petra.string.CharPool;
+import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.dao.orm.QueryUtil;
+import com.liferay.portal.kernel.exception.DuplicateTeamException;
 import com.liferay.portal.kernel.exception.PortalException;
-import com.liferay.portal.kernel.exception.SystemException;
-import com.liferay.portal.kernel.util.CharPool;
+import com.liferay.portal.kernel.exception.TeamNameException;
+import com.liferay.portal.kernel.model.Group;
+import com.liferay.portal.kernel.model.ResourceConstants;
+import com.liferay.portal.kernel.model.Team;
+import com.liferay.portal.kernel.model.User;
+import com.liferay.portal.kernel.model.role.RoleConstants;
+import com.liferay.portal.kernel.service.ServiceContext;
+import com.liferay.portal.kernel.util.LinkedHashMapBuilder;
+import com.liferay.portal.kernel.util.ListUtil;
 import com.liferay.portal.kernel.util.OrderByComparator;
+import com.liferay.portal.kernel.util.StringUtil;
+import com.liferay.portal.kernel.util.UnicodeProperties;
 import com.liferay.portal.kernel.util.Validator;
-import com.liferay.portal.model.ResourceConstants;
-import com.liferay.portal.model.Role;
-import com.liferay.portal.model.RoleConstants;
-import com.liferay.portal.model.Team;
-import com.liferay.portal.model.User;
 import com.liferay.portal.service.base.TeamLocalServiceBaseImpl;
 
-import java.util.Date;
 import java.util.LinkedHashMap;
 import java.util.List;
 
@@ -40,13 +44,13 @@ public class TeamLocalServiceImpl extends TeamLocalServiceBaseImpl {
 
 	@Override
 	public Team addTeam(
-			long userId, long groupId, String name, String description)
-		throws PortalException, SystemException {
+			long userId, long groupId, String name, String description,
+			ServiceContext serviceContext)
+		throws PortalException {
 
 		// Team
 
 		User user = userPersistence.findByPrimaryKey(userId);
-		Date now = new Date();
 
 		validate(0, groupId, name);
 
@@ -54,16 +58,15 @@ public class TeamLocalServiceImpl extends TeamLocalServiceBaseImpl {
 
 		Team team = teamPersistence.create(teamId);
 
-		team.setUserId(userId);
+		team.setUuid(serviceContext.getUuid());
 		team.setCompanyId(user.getCompanyId());
+		team.setUserId(userId);
 		team.setUserName(user.getFullName());
-		team.setCreateDate(now);
-		team.setModifiedDate(now);
 		team.setGroupId(groupId);
 		team.setName(name);
 		team.setDescription(description);
 
-		teamPersistence.update(team);
+		team = teamPersistence.update(team);
 
 		// Resources
 
@@ -81,16 +84,14 @@ public class TeamLocalServiceImpl extends TeamLocalServiceBaseImpl {
 	}
 
 	@Override
-	public Team deleteTeam(long teamId)
-		throws PortalException, SystemException {
-
+	public Team deleteTeam(long teamId) throws PortalException {
 		Team team = teamPersistence.findByPrimaryKey(teamId);
 
 		return deleteTeam(team);
 	}
 
 	@Override
-	public Team deleteTeam(Team team) throws PortalException, SystemException {
+	public Team deleteTeam(Team team) throws PortalException {
 
 		// Team
 
@@ -102,19 +103,43 @@ public class TeamLocalServiceImpl extends TeamLocalServiceBaseImpl {
 			team.getCompanyId(), Team.class.getName(),
 			ResourceConstants.SCOPE_INDIVIDUAL, team.getTeamId());
 
+		// Group
+
+		List<Group> groups = groupPersistence.findByC_S(
+			team.getCompanyId(), true);
+
+		for (Group group : groups) {
+			UnicodeProperties typeSettingsUnicodeUnicodeProperties =
+				group.getTypeSettingsProperties();
+
+			List<Long> defaultTeamIds = ListUtil.fromArray(
+				StringUtil.split(
+					typeSettingsUnicodeUnicodeProperties.getProperty(
+						"defaultTeamIds"),
+					0L));
+
+			if (defaultTeamIds.contains(team.getTeamId())) {
+				defaultTeamIds.remove(team.getTeamId());
+
+				typeSettingsUnicodeUnicodeProperties.setProperty(
+					"defaultTeamIds",
+					ListUtil.toString(defaultTeamIds, StringPool.BLANK));
+
+				groupLocalService.updateGroup(
+					group.getGroupId(),
+					typeSettingsUnicodeUnicodeProperties.toString());
+			}
+		}
+
 		// Role
 
-		Role role = team.getRole();
-
-		roleLocalService.deleteRole(role);
+		roleLocalService.deleteRole(team.getRole());
 
 		return team;
 	}
 
 	@Override
-	public void deleteTeams(long groupId)
-		throws PortalException, SystemException {
-
+	public void deleteTeams(long groupId) throws PortalException {
 		List<Team> teams = teamPersistence.findByGroupId(groupId);
 
 		for (Team team : teams) {
@@ -123,25 +148,37 @@ public class TeamLocalServiceImpl extends TeamLocalServiceBaseImpl {
 	}
 
 	@Override
-	public List<Team> getGroupTeams(long groupId) throws SystemException {
+	public Team fetchTeam(long groupId, String name) {
+		return teamPersistence.fetchByG_N(groupId, name);
+	}
+
+	@Override
+	public List<Team> getGroupTeams(long groupId) {
 		return teamPersistence.findByGroupId(groupId);
 	}
 
 	@Override
-	public Team getTeam(long groupId, String name)
-		throws PortalException, SystemException {
+	public int getGroupTeamsCount(long groupId) {
+		return teamPersistence.countByGroupId(groupId);
+	}
 
+	@Override
+	public Team getTeam(long groupId, String name) throws PortalException {
 		return teamPersistence.findByG_N(groupId, name);
 	}
 
 	@Override
-	public List<Team> getUserTeams(long userId, long groupId)
-		throws SystemException {
+	public List<Team> getUserOrUserGroupTeams(long groupId, long userId) {
+		return teamFinder.findByG_U(
+			groupId, userId, QueryUtil.ALL_POS, QueryUtil.ALL_POS, null);
+	}
 
+	@Override
+	public List<Team> getUserTeams(long userId, long groupId) {
 		LinkedHashMap<String, Object> params =
-			new LinkedHashMap<String, Object>();
-
-		params.put("usersTeams", userId);
+			LinkedHashMapBuilder.<String, Object>put(
+				"usersTeams", userId
+			).build();
 
 		return search(
 			groupId, null, null, params, QueryUtil.ALL_POS, QueryUtil.ALL_POS,
@@ -150,45 +187,38 @@ public class TeamLocalServiceImpl extends TeamLocalServiceBaseImpl {
 
 	@Override
 	public List<Team> search(
-			long groupId, String name, String description,
-			LinkedHashMap<String, Object> params, int start, int end,
-			OrderByComparator obc)
-		throws SystemException {
+		long groupId, String name, String description,
+		LinkedHashMap<String, Object> params, int start, int end,
+		OrderByComparator<Team> orderByComparator) {
 
 		return teamFinder.findByG_N_D(
-			groupId, name, description, params, start, end, obc);
+			groupId, name, description, params, start, end, orderByComparator);
 	}
 
 	@Override
 	public int searchCount(
-			long groupId, String name, String description,
-			LinkedHashMap<String, Object> params)
-		throws SystemException {
+		long groupId, String name, String description,
+		LinkedHashMap<String, Object> params) {
 
 		return teamFinder.countByG_N_D(groupId, name, description, params);
 	}
 
 	@Override
 	public Team updateTeam(long teamId, String name, String description)
-		throws PortalException, SystemException {
-
-		Date now = new Date();
+		throws PortalException {
 
 		Team team = teamPersistence.findByPrimaryKey(teamId);
 
 		validate(teamId, team.getGroupId(), name);
 
-		team.setModifiedDate(now);
 		team.setName(name);
 		team.setDescription(description);
 
-		teamPersistence.update(team);
-
-		return team;
+		return teamPersistence.update(team);
 	}
 
 	protected void validate(long teamId, long groupId, String name)
-		throws PortalException, SystemException {
+		throws PortalException {
 
 		if (Validator.isNull(name) || Validator.isNumber(name) ||
 			(name.indexOf(CharPool.COMMA) != -1) ||
@@ -199,10 +229,8 @@ public class TeamLocalServiceImpl extends TeamLocalServiceBaseImpl {
 
 		Team team = teamPersistence.fetchByG_N(groupId, name);
 
-		if (team != null) {
-			if ((teamId <= 0) || (team.getTeamId() != teamId)) {
-				throw new DuplicateTeamException();
-			}
+		if ((team != null) && (team.getTeamId() != teamId)) {
+			throw new DuplicateTeamException("{teamId=" + teamId + "}");
 		}
 	}
 

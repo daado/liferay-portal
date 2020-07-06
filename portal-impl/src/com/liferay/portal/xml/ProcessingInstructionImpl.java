@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -39,17 +39,20 @@ public class ProcessingInstructionImpl
 	}
 
 	@Override
-	public boolean equals(Object obj) {
-		if (this == obj) {
+	public boolean equals(Object object) {
+		if (this == object) {
 			return true;
 		}
 
-		if (!(obj instanceof ProcessingInstructionImpl)) {
+		if (!(object instanceof ProcessingInstructionImpl)) {
 			return false;
 		}
 
+		ProcessingInstructionImpl processingInstructionImpl =
+			(ProcessingInstructionImpl)object;
+
 		org.dom4j.ProcessingInstruction processingInstruction =
-			((ProcessingInstructionImpl)obj).getWrappedProcessingInstruction();
+			processingInstructionImpl.getWrappedProcessingInstruction();
 
 		return _processingInstruction.equals(processingInstruction);
 	}
@@ -108,6 +111,6 @@ public class ProcessingInstructionImpl
 		return _processingInstruction.toString();
 	}
 
-	private org.dom4j.ProcessingInstruction _processingInstruction;
+	private final org.dom4j.ProcessingInstruction _processingInstruction;
 
 }

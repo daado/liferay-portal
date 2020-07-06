@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,19 +14,26 @@
 
 package com.liferay.mail.messaging;
 
+import com.liferay.mail.kernel.model.MailMessage;
 import com.liferay.mail.util.HookFactory;
-import com.liferay.portal.kernel.mail.MailMessage;
+import com.liferay.petra.mail.MailEngine;
+import com.liferay.petra.string.StringBundler;
+import com.liferay.portal.kernel.log.Log;
+import com.liferay.portal.kernel.log.LogFactoryUtil;
 import com.liferay.portal.kernel.messaging.BaseMessageListener;
 import com.liferay.portal.kernel.messaging.Message;
+import com.liferay.portal.kernel.security.auth.EmailAddressGenerator;
 import com.liferay.portal.kernel.util.ArrayUtil;
 import com.liferay.portal.kernel.util.MethodHandler;
-import com.liferay.portal.security.auth.EmailAddressGenerator;
+import com.liferay.portal.kernel.util.PropsKeys;
 import com.liferay.portal.security.auth.EmailAddressGeneratorFactory;
 import com.liferay.portal.util.PropsValues;
-import com.liferay.util.mail.MailEngine;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import javax.mail.internet.InternetAddress;
 
@@ -38,33 +45,17 @@ import javax.mail.internet.InternetAddress;
 public class MailMessageListener extends BaseMessageListener {
 
 	protected void doMailMessage(MailMessage mailMessage) throws Exception {
-		InternetAddress[] auditTrail = InternetAddress.parse(
-			PropsValues.MAIL_AUDIT_TRAIL);
-
-		if (auditTrail.length > 0) {
-			InternetAddress[] bcc = mailMessage.getBCC();
-
-			if (bcc != null) {
-				InternetAddress[] allBCC = new InternetAddress[
-					bcc.length + auditTrail.length];
-
-				ArrayUtil.combine(bcc, auditTrail, allBCC);
-
-				mailMessage.setBCC(allBCC);
-			}
-			else {
-				mailMessage.setBCC(auditTrail);
-			}
-		}
-
 		InternetAddress from = filterInternetAddress(mailMessage.getFrom());
 
 		if (from == null) {
+			if (_log.isWarnEnabled()) {
+				_log.warn("Skipping email because the sender is not specified");
+			}
+
 			return;
 		}
-		else {
-			mailMessage.setFrom(from);
-		}
+
+		mailMessage.setFrom(from);
 
 		InternetAddress[] to = filterInternetAddresses(mailMessage.getTo());
 
@@ -76,12 +67,31 @@ public class MailMessageListener extends BaseMessageListener {
 
 		InternetAddress[] bcc = filterInternetAddresses(mailMessage.getBCC());
 
+		InternetAddress[] auditTrail = InternetAddress.parse(
+			PropsValues.MAIL_AUDIT_TRAIL);
+
+		if (auditTrail.length > 0) {
+			if (ArrayUtil.isNotEmpty(bcc)) {
+				for (InternetAddress internetAddress : auditTrail) {
+					bcc = ArrayUtil.append(bcc, internetAddress);
+				}
+			}
+			else {
+				bcc = auditTrail;
+			}
+		}
+
 		mailMessage.setBCC(bcc);
 
 		InternetAddress[] bulkAddresses = filterInternetAddresses(
 			mailMessage.getBulkAddresses());
 
 		mailMessage.setBulkAddresses(bulkAddresses);
+
+		InternetAddress[] replyTo = filterInternetAddresses(
+			mailMessage.getReplyTo());
+
+		mailMessage.setReplyTo(replyTo);
 
 		if (ArrayUtil.isNotEmpty(to) || ArrayUtil.isNotEmpty(cc) ||
 			ArrayUtil.isNotEmpty(bcc) || ArrayUtil.isNotEmpty(bulkAddresses)) {
@@ -114,7 +124,20 @@ public class MailMessageListener extends BaseMessageListener {
 		EmailAddressGenerator emailAddressGenerator =
 			EmailAddressGeneratorFactory.getInstance();
 
-		if (emailAddressGenerator.isFake(internetAddress.getAddress())) {
+		String emailAddress = internetAddress.getAddress();
+
+		if (emailAddressGenerator.isFake(emailAddress)) {
+			return null;
+		}
+
+		if (_mailSendBlacklist.contains(emailAddress)) {
+			if (_log.isWarnEnabled()) {
+				_log.warn(
+					StringBundler.concat(
+						"Email ", emailAddress, " will be ignored because it ",
+						"is included in ", PropsKeys.MAIL_SEND_BLACKLIST));
+			}
+
 			return null;
 		}
 
@@ -128,8 +151,8 @@ public class MailMessageListener extends BaseMessageListener {
 			return null;
 		}
 
-		List<InternetAddress> filteredInternetAddresses =
-			new ArrayList<InternetAddress>(internetAddresses.length);
+		List<InternetAddress> filteredInternetAddresses = new ArrayList<>(
+			internetAddresses.length);
 
 		for (InternetAddress internetAddress : internetAddresses) {
 			InternetAddress filteredInternetAddress = filterInternetAddress(
@@ -140,8 +163,13 @@ public class MailMessageListener extends BaseMessageListener {
 			}
 		}
 
-		return filteredInternetAddresses.toArray(
-			new InternetAddress[filteredInternetAddresses.size()]);
+		return filteredInternetAddresses.toArray(new InternetAddress[0]);
 	}
+
+	private static final Log _log = LogFactoryUtil.getLog(
+		MailMessageListener.class);
+
+	private static final Set<String> _mailSendBlacklist = new HashSet<>(
+		Arrays.asList(PropsValues.MAIL_SEND_BLACKLIST));
 
 }

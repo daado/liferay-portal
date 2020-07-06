@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,14 +14,14 @@
 
 package com.liferay.portal.webdav;
 
-import com.liferay.portal.kernel.util.StringPool;
+import com.liferay.petra.string.StringPool;
+import com.liferay.portal.kernel.model.Group;
 import com.liferay.portal.kernel.webdav.BaseResourceImpl;
 import com.liferay.portal.kernel.webdav.BaseWebDAVStorageImpl;
 import com.liferay.portal.kernel.webdav.Resource;
 import com.liferay.portal.kernel.webdav.WebDAVException;
 import com.liferay.portal.kernel.webdav.WebDAVRequest;
 import com.liferay.portal.kernel.webdav.WebDAVUtil;
-import com.liferay.portal.model.Group;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -48,7 +48,7 @@ public class GroupWebDAVStorageImpl extends BaseWebDAVStorageImpl {
 
 		verifyGroup(webDAVRequest);
 
-		List<Resource> resources = new ArrayList<Resource>();
+		List<Resource> resources = new ArrayList<>();
 
 		String path = getRootPath() + webDAVRequest.getPath();
 
@@ -65,9 +65,8 @@ public class GroupWebDAVStorageImpl extends BaseWebDAVStorageImpl {
 		String path = webDAVRequest.getPath();
 
 		try {
-			long userId = webDAVRequest.getUserId();
-
-			List<Group> groups = WebDAVUtil.getGroups(userId);
+			List<Group> groups = WebDAVUtil.getGroups(
+				webDAVRequest.getUserId());
 
 			for (Group group : groups) {
 				if (path.equals(group.getFriendlyURL())) {
@@ -75,7 +74,7 @@ public class GroupWebDAVStorageImpl extends BaseWebDAVStorageImpl {
 				}
 			}
 		}
-		catch (Exception e) {
+		catch (Exception exception) {
 		}
 
 		throw new WebDAVException(

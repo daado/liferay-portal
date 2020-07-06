@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,52 +14,103 @@
 
 package com.liferay.portal.template;
 
+import com.liferay.petra.lang.CentralizedThreadLocal;
+import com.liferay.petra.string.StringBundler;
+import com.liferay.petra.xml.XMLUtil;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
-import com.liferay.portal.model.PortletConstants;
-import com.liferay.portlet.PortletPreferencesFactoryUtil;
+import com.liferay.portal.kernel.model.PortletConstants;
+import com.liferay.portal.kernel.portlet.PortletPreferencesFactoryUtil;
 import com.liferay.portlet.PortletPreferencesImpl;
+
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Map;
 
 import javax.portlet.ReadOnlyException;
 
 /**
  * @author Brian Wing Shun Chan
+ * @author László Csontos
  */
 public class TemplatePortletPreferences {
 
-	public TemplatePortletPreferences() {
-		_portletPreferencesImpl = new PortletPreferencesImpl();
-	}
-
-	public void reset() {
-		_portletPreferencesImpl.reset();
-	}
-
-	public void setValue(String key, String value) throws ReadOnlyException {
-		_portletPreferencesImpl.setValue(key, value);
-	}
-
-	public void setValues(String key, String[] values)
+	public String getPreferences(Map<String, Object> preferences)
 		throws ReadOnlyException {
 
-		_portletPreferencesImpl.setValues(key, values);
+		StringBundler sb = new StringBundler();
+
+		sb.append("<portlet-preferences>");
+
+		for (Map.Entry<String, Object> entry : preferences.entrySet()) {
+			sb.append("<preference><name>");
+			sb.append(entry.getKey());
+			sb.append("</name>");
+
+			Object valueObject = entry.getValue();
+
+			if (valueObject instanceof Collection) {
+				for (Object value : (Collection)valueObject) {
+					if (value instanceof String) {
+						sb.append("<value>");
+						sb.append(XMLUtil.toCompactSafe((String)value));
+						sb.append("</value>");
+					}
+				}
+			}
+			else if (valueObject instanceof String) {
+				sb.append("<value>");
+				sb.append(XMLUtil.toCompactSafe((String)valueObject));
+				sb.append("</value>");
+			}
+			else if (valueObject instanceof String[]) {
+				for (String value : (String[])valueObject) {
+					sb.append("<value>");
+					sb.append(XMLUtil.toCompactSafe(value));
+					sb.append("</value>");
+				}
+			}
+			else {
+				sb.setIndex(sb.index() - 3);
+
+				continue;
+			}
+
+			sb.append("</preference>");
+		}
+
+		sb.append("</portlet-preferences>");
+
+		return sb.toString();
+	}
+
+	public String getPreferences(String key, String value)
+		throws ReadOnlyException {
+
+		return getPreferences(Collections.singletonMap(key, value));
 	}
 
 	@Override
 	public String toString() {
+		PortletPreferencesImpl portletPreferencesImpl =
+			_portletPreferencesImplThreadLocal.get();
+
 		try {
-			return PortletPreferencesFactoryUtil.toXML(_portletPreferencesImpl);
+			return PortletPreferencesFactoryUtil.toXML(portletPreferencesImpl);
 		}
-		catch (Exception e) {
-			_log.error(e, e);
+		catch (Exception exception) {
+			_log.error(exception, exception);
 
 			return PortletConstants.DEFAULT_PREFERENCES;
 		}
 	}
 
-	private static Log _log = LogFactoryUtil.getLog(
+	private static final Log _log = LogFactoryUtil.getLog(
 		TemplatePortletPreferences.class);
 
-	private PortletPreferencesImpl _portletPreferencesImpl;
+	private final ThreadLocal<PortletPreferencesImpl>
+		_portletPreferencesImplThreadLocal = new CentralizedThreadLocal<>(
+			TemplatePortletPreferences.class.getName(),
+			PortletPreferencesImpl::new);
 
 }

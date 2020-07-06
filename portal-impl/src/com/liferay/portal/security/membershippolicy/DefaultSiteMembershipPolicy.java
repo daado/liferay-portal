@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,26 +14,27 @@
 
 package com.liferay.portal.security.membershippolicy;
 
+import com.liferay.asset.kernel.model.AssetCategory;
+import com.liferay.asset.kernel.model.AssetTag;
+import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.dao.orm.QueryUtil;
 import com.liferay.portal.kernel.exception.PortalException;
-import com.liferay.portal.kernel.exception.SystemException;
+import com.liferay.portal.kernel.interval.IntervalActionProcessor;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
-import com.liferay.portal.kernel.search.Indexer;
+import com.liferay.portal.kernel.model.Group;
+import com.liferay.portal.kernel.model.GroupConstants;
+import com.liferay.portal.kernel.model.User;
+import com.liferay.portal.kernel.security.membershippolicy.BaseSiteMembershipPolicy;
+import com.liferay.portal.kernel.security.membershippolicy.MembershipPolicyException;
+import com.liferay.portal.kernel.service.GroupLocalServiceUtil;
+import com.liferay.portal.kernel.service.UserLocalServiceUtil;
+import com.liferay.portal.kernel.util.LinkedHashMapBuilder;
 import com.liferay.portal.kernel.util.ListUtil;
-import com.liferay.portal.kernel.util.StringPool;
 import com.liferay.portal.kernel.util.UnicodeProperties;
-import com.liferay.portal.model.Group;
-import com.liferay.portal.model.GroupConstants;
-import com.liferay.portal.model.User;
-import com.liferay.portal.service.GroupLocalServiceUtil;
-import com.liferay.portal.service.UserLocalServiceUtil;
-import com.liferay.portlet.asset.model.AssetCategory;
-import com.liferay.portlet.asset.model.AssetTag;
 
 import java.io.Serializable;
 
-import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -46,7 +47,7 @@ public class DefaultSiteMembershipPolicy extends BaseSiteMembershipPolicy {
 	@Override
 	public void checkMembership(
 			long[] userIds, long[] addGroupIds, long[] removeGroupIds)
-		throws PortalException, SystemException {
+		throws PortalException {
 
 		if (addGroupIds != null) {
 			checkAddUsersLimitedGroup(userIds, addGroupIds);
@@ -58,16 +59,15 @@ public class DefaultSiteMembershipPolicy extends BaseSiteMembershipPolicy {
 		try {
 			Group group = GroupLocalServiceUtil.getGroup(groupId);
 
-			if (group.isLimitedToParentSiteMembers()) {
-				if (!GroupLocalServiceUtil.hasUserGroup(
-						userId, group.getParentGroupId(), false)) {
+			if (group.isLimitedToParentSiteMembers() &&
+				!GroupLocalServiceUtil.hasUserGroup(
+					userId, group.getParentGroupId(), false)) {
 
-					return false;
-				}
+				return false;
 			}
 		}
-		catch (Exception e) {
-			_log.error(e, e);
+		catch (Exception exception) {
+			_log.error(exception, exception);
 		}
 
 		return true;
@@ -76,7 +76,7 @@ public class DefaultSiteMembershipPolicy extends BaseSiteMembershipPolicy {
 	@Override
 	public void propagateMembership(
 			long[] userIds, long[] addGroupIds, long[] removeGroupIds)
-		throws PortalException, SystemException {
+		throws PortalException {
 
 		if (removeGroupIds != null) {
 			for (long removeGroupId : removeGroupIds) {
@@ -86,9 +86,7 @@ public class DefaultSiteMembershipPolicy extends BaseSiteMembershipPolicy {
 	}
 
 	@Override
-	public void verifyPolicy(Group group)
-		throws PortalException, SystemException {
-
+	public void verifyPolicy(Group group) throws PortalException {
 		if (group.isLimitedToParentSiteMembers()) {
 			verifyLimitedParentMembership(group);
 		}
@@ -99,8 +97,8 @@ public class DefaultSiteMembershipPolicy extends BaseSiteMembershipPolicy {
 			Group group, Group oldGroup, List<AssetCategory> oldAssetCategories,
 			List<AssetTag> oldAssetTags,
 			Map<String, Serializable> oldExpandoAttributes,
-			UnicodeProperties oldTypeSettingsProperties)
-		throws PortalException, SystemException {
+			UnicodeProperties oldTypeSettingsUnicodeProperties)
+		throws PortalException {
 
 		if (group.isLimitedToParentSiteMembers()) {
 			if ((group.getParentGroupId() == oldGroup.getParentGroupId()) &&
@@ -119,7 +117,7 @@ public class DefaultSiteMembershipPolicy extends BaseSiteMembershipPolicy {
 	}
 
 	protected void checkAddUsersLimitedGroup(long[] userIds, long[] groupIds)
-		throws PortalException, SystemException {
+		throws PortalException {
 
 		MembershipPolicyException membershipPolicyException = null;
 
@@ -141,9 +139,8 @@ public class DefaultSiteMembershipPolicy extends BaseSiteMembershipPolicy {
 									SITE_MEMBERSHIP_NOT_ALLOWED);
 					}
 
-					User user = UserLocalServiceUtil.getUser(userId);
-
-					membershipPolicyException.addUser(user);
+					membershipPolicyException.addUser(
+						UserLocalServiceUtil.getUser(userId));
 				}
 			}
 
@@ -158,20 +155,17 @@ public class DefaultSiteMembershipPolicy extends BaseSiteMembershipPolicy {
 	}
 
 	protected List<Group> getLimitedChildrenGroups(Group group)
-		throws PortalException, SystemException {
-
-		List<Group> parentGroups = new ArrayList<Group>();
-
-		parentGroups.add(group);
+		throws PortalException {
 
 		LinkedHashMap<String, Object> groupParams =
-			new LinkedHashMap<String, Object>();
-
-		groupParams.put("groupsTree", parentGroups);
-		groupParams.put(
-			"membershipRestriction",
-			GroupConstants.MEMBERSHIP_RESTRICTION_TO_PARENT_SITE_MEMBERS);
-		groupParams.put("site", Boolean.TRUE);
+			LinkedHashMapBuilder.<String, Object>put(
+				"groupsTree", ListUtil.fromArray(group)
+			).put(
+				"membershipRestriction",
+				GroupConstants.MEMBERSHIP_RESTRICTION_TO_PARENT_SITE_MEMBERS
+			).put(
+				"site", Boolean.TRUE
+			).build();
 
 		List<Group> childrenGroups = GroupLocalServiceUtil.search(
 			group.getCompanyId(), null, StringPool.BLANK, groupParams,
@@ -196,11 +190,10 @@ public class DefaultSiteMembershipPolicy extends BaseSiteMembershipPolicy {
 
 	protected void removeUsersFromLimitedChildrenGroups(
 			long[] userIds, long groupId)
-		throws PortalException, SystemException {
+		throws PortalException {
 
-		Group group = GroupLocalServiceUtil.getGroup(groupId);
-
-		List<Group> childrenGroups = getLimitedChildrenGroups(group);
+		List<Group> childrenGroups = getLimitedChildrenGroups(
+			GroupLocalServiceUtil.getGroup(groupId));
 
 		for (Group childrenGroup : childrenGroups) {
 			if (!childrenGroup.isLimitedToParentSiteMembers()) {
@@ -215,32 +208,45 @@ public class DefaultSiteMembershipPolicy extends BaseSiteMembershipPolicy {
 	}
 
 	protected void verifyLimitedParentMembership(final Group group)
-		throws PortalException, SystemException {
+		throws PortalException {
 
-		int count = UserLocalServiceUtil.getGroupUsersCount(group.getGroupId());
+		int total = UserLocalServiceUtil.getGroupUsersCount(group.getGroupId());
 
-		int pages = count / Indexer.DEFAULT_INTERVAL;
+		final IntervalActionProcessor<Void> intervalActionProcessor =
+			new IntervalActionProcessor<>(total);
 
-		for (int i = 0; i <= pages; i++) {
-			int start = (i * Indexer.DEFAULT_INTERVAL);
-			int end = start + Indexer.DEFAULT_INTERVAL;
+		intervalActionProcessor.setPerformIntervalActionMethod(
+			new IntervalActionProcessor.PerformIntervalActionMethod<Void>() {
 
-			List<User> users = UserLocalServiceUtil.getGroupUsers(
-				group.getGroupId(), start, end);
+				@Override
+				public Void performIntervalAction(int start, int end)
+					throws PortalException {
 
-			for (User user : users) {
-				if (!UserLocalServiceUtil.hasGroupUser(
-						group.getParentGroupId(), user.getUserId())) {
+					List<User> users = UserLocalServiceUtil.getGroupUsers(
+						group.getGroupId(), start, end);
 
-					UserLocalServiceUtil.unsetGroupUsers(
-						group.getGroupId(), new long[] {user.getUserId()},
-						null);
+					for (User user : users) {
+						if (!UserLocalServiceUtil.hasGroupUser(
+								group.getParentGroupId(), user.getUserId())) {
+
+							UserLocalServiceUtil.unsetGroupUsers(
+								group.getGroupId(),
+								new long[] {user.getUserId()}, null);
+						}
+						else {
+							intervalActionProcessor.incrementStart();
+						}
+					}
+
+					return null;
 				}
-			}
-		}
+
+			});
+
+		intervalActionProcessor.performIntervalActions();
 	}
 
-	private static Log _log = LogFactoryUtil.getLog(
+	private static final Log _log = LogFactoryUtil.getLog(
 		DefaultSiteMembershipPolicy.class);
 
 }

@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,11 +14,11 @@
 
 package com.liferay.portlet.social.model.impl;
 
-import com.liferay.portal.kernel.util.StringBundler;
-import com.liferay.portal.kernel.util.StringPool;
-import com.liferay.portal.model.CacheModel;
-
-import com.liferay.portlet.social.model.SocialActivitySet;
+import com.liferay.petra.lang.HashUtil;
+import com.liferay.petra.string.StringBundler;
+import com.liferay.portal.kernel.model.CacheModel;
+import com.liferay.portal.kernel.model.MVCCModel;
+import com.liferay.social.kernel.model.SocialActivitySet;
 
 import java.io.Externalizable;
 import java.io.IOException;
@@ -29,16 +29,59 @@ import java.io.ObjectOutput;
  * The cache model class for representing SocialActivitySet in entity cache.
  *
  * @author Brian Wing Shun Chan
- * @see SocialActivitySet
  * @generated
  */
-public class SocialActivitySetCacheModel implements CacheModel<SocialActivitySet>,
-	Externalizable {
+public class SocialActivitySetCacheModel
+	implements CacheModel<SocialActivitySet>, Externalizable, MVCCModel {
+
+	@Override
+	public boolean equals(Object object) {
+		if (this == object) {
+			return true;
+		}
+
+		if (!(object instanceof SocialActivitySetCacheModel)) {
+			return false;
+		}
+
+		SocialActivitySetCacheModel socialActivitySetCacheModel =
+			(SocialActivitySetCacheModel)object;
+
+		if ((activitySetId == socialActivitySetCacheModel.activitySetId) &&
+			(mvccVersion == socialActivitySetCacheModel.mvccVersion)) {
+
+			return true;
+		}
+
+		return false;
+	}
+
+	@Override
+	public int hashCode() {
+		int hashCode = HashUtil.hash(0, activitySetId);
+
+		return HashUtil.hash(hashCode, mvccVersion);
+	}
+
+	@Override
+	public long getMvccVersion() {
+		return mvccVersion;
+	}
+
+	@Override
+	public void setMvccVersion(long mvccVersion) {
+		this.mvccVersion = mvccVersion;
+	}
+
 	@Override
 	public String toString() {
-		StringBundler sb = new StringBundler(23);
+		StringBundler sb = new StringBundler(27);
 
-		sb.append("{activitySetId=");
+		sb.append("{mvccVersion=");
+		sb.append(mvccVersion);
+		sb.append(", ctCollectionId=");
+		sb.append(ctCollectionId);
+		sb.append(", activitySetId=");
 		sb.append(activitySetId);
 		sb.append(", groupId=");
 		sb.append(groupId);
@@ -67,8 +110,11 @@ public class SocialActivitySetCacheModel implements CacheModel<SocialActivitySet
 
 	@Override
 	public SocialActivitySet toEntityModel() {
-		SocialActivitySetImpl socialActivitySetImpl = new SocialActivitySetImpl();
+		SocialActivitySetImpl socialActivitySetImpl =
+			new SocialActivitySetImpl();
 
+		socialActivitySetImpl.setMvccVersion(mvccVersion);
+		socialActivitySetImpl.setCtCollectionId(ctCollectionId);
 		socialActivitySetImpl.setActivitySetId(activitySetId);
 		socialActivitySetImpl.setGroupId(groupId);
 		socialActivitySetImpl.setCompanyId(companyId);
@@ -80,7 +126,7 @@ public class SocialActivitySetCacheModel implements CacheModel<SocialActivitySet
 		socialActivitySetImpl.setType(type);
 
 		if (extraData == null) {
-			socialActivitySetImpl.setExtraData(StringPool.BLANK);
+			socialActivitySetImpl.setExtraData("");
 		}
 		else {
 			socialActivitySetImpl.setExtraData(extraData);
@@ -95,34 +141,58 @@ public class SocialActivitySetCacheModel implements CacheModel<SocialActivitySet
 
 	@Override
 	public void readExternal(ObjectInput objectInput) throws IOException {
+		mvccVersion = objectInput.readLong();
+
+		ctCollectionId = objectInput.readLong();
+
 		activitySetId = objectInput.readLong();
+
 		groupId = objectInput.readLong();
+
 		companyId = objectInput.readLong();
+
 		userId = objectInput.readLong();
+
 		createDate = objectInput.readLong();
+
 		modifiedDate = objectInput.readLong();
+
 		classNameId = objectInput.readLong();
+
 		classPK = objectInput.readLong();
+
 		type = objectInput.readInt();
 		extraData = objectInput.readUTF();
+
 		activityCount = objectInput.readInt();
 	}
 
 	@Override
-	public void writeExternal(ObjectOutput objectOutput)
-		throws IOException {
+	public void writeExternal(ObjectOutput objectOutput) throws IOException {
+		objectOutput.writeLong(mvccVersion);
+
+		objectOutput.writeLong(ctCollectionId);
+
 		objectOutput.writeLong(activitySetId);
+
 		objectOutput.writeLong(groupId);
+
 		objectOutput.writeLong(companyId);
+
 		objectOutput.writeLong(userId);
+
 		objectOutput.writeLong(createDate);
+
 		objectOutput.writeLong(modifiedDate);
+
 		objectOutput.writeLong(classNameId);
+
 		objectOutput.writeLong(classPK);
+
 		objectOutput.writeInt(type);
 
 		if (extraData == null) {
-			objectOutput.writeUTF(StringPool.BLANK);
+			objectOutput.writeUTF("");
 		}
 		else {
 			objectOutput.writeUTF(extraData);
@@ -131,6 +201,8 @@ public class SocialActivitySetCacheModel implements CacheModel<SocialActivitySet
 		objectOutput.writeInt(activityCount);
 	}
 
+	public long mvccVersion;
+	public long ctCollectionId;
 	public long activitySetId;
 	public long groupId;
 	public long companyId;
@@ -142,4 +214,5 @@ public class SocialActivitySetCacheModel implements CacheModel<SocialActivitySet
 	public int type;
 	public String extraData;
 	public int activityCount;
+
 }

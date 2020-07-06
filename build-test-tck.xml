@@ -1,174 +1,180 @@
 <?xml version="1.0"?>
 
-<project name="portal-test-tck" basedir="." default="test" xmlns:antelope="antlib:ise.antelope.tasks">
+<project basedir="." default="test" name="portal-test-tck" xmlns:antelope="antlib:ise.antelope.tasks" xmlns:if="ant:if">
 	<import file="build-test.xml" />
 
+	<fail message="Please set the property ${tck.home}." unless="tck.home" />
+
+	<target name="clean-up-tck">
+		<exec dir="${tck.home}/.." executable="git" failonerror="false">
+			<arg value="apply" />
+			<arg value="--reverse" />
+			<arg value="${project.dir}/tools/tck/pluto-patch.diff" />
+		</exec>
+	</target>
+
 	<target name="prepare-tck">
-		<delete dir="tools/tck" />
 
-		<if>
-			<isset property="portlet.tck.url" />
-			<then>
-				<tstamp>
-					<format property="tstamp.value" pattern="yyyyMMddkkmmssSSS" />
-				</tstamp>
+		<!--
+		Prepare TCK target is expected by CI.
+		-->
 
-				<get dest="${tstamp.value}.zip" src="${portlet.tck.url}" />
+		<echo>prepare-tck</echo>
+	</target>
 
-				<unzip src="${tstamp.value}.zip" dest="tools/tck" />
+	<target name="prepare-tck-app-server">
+		<antcall target="prepare-portal-ssl" />
 
-				<delete file="${tstamp.value}.zip" />
-			</then>
-			<else>
-				<unzip src="${portlet.tck.zip}" dest="tools/tck" />
-			</else>
-		</if>
+		<propertycopy from="app.server.${app.server.type}.classes.portal.dir" name="app.server.classes.portal.dir" override="true" />
 
-		<chmod
-			dir="tools/tck/bin/"
-			includes="tsant*"
-			perm="744"
+		<get-database-property property.name="database.version" />
+
+		<replace
+			file="${app.server.dir}/webapps/ROOT/WEB-INF/web.xml"
+			token="&lt;session-timeout&gt;15&lt;/session-timeout&gt;"
+			value="&lt;session-timeout&gt;${test.session.timeout[tck]}&lt;/session-timeout&gt;"
 		/>
-
-		<replace file="tools/tck/bin/ts.jte">
-			<replacefilter token="http://localhost:8080/pluto/tck" value="http://localhost:8080/c/portal/tck" />
-		</replace>
-
-		<echo file="tools/tck/bin/build.properties" append="true">
-
-work.dir=${basedir.unix}/tools/tck/work</echo>
-	</target>
-
-	<target name="record-test-tck-package-names">
-		<ant antfile="build-test-tck.xml" target="prepare-tck" />
-
-		<script classpathref="project.classpath" language="beanshell">
-			import com.liferay.portal.kernel.util.OSDetector;
-			import com.liferay.portal.kernel.util.StringUtil;
-
-			import org.apache.tools.ant.DirectoryScanner;
-
-			DirectoryScanner directoryScanner = new DirectoryScanner();
-
-			directoryScanner.setBasedir(project.getBaseDir());
-			directoryScanner.setIncludes(new String[] {"**/com/sun/ts/tests/**/*.war"});
-
-			directoryScanner.scan();
-
-			String[] fileNames = directoryScanner.getIncludedFiles();
-
-			Arrays.sort(fileNames);
-
-			Set packageNames = new TreeSet();
-
-			for (String fileName : fileNames) {
-				int x = fileName.indexOf("com/");
-				int y = fileName.lastIndexOf("/");
-
-				if (OSDetector.isWindows()) {
-					x = fileName.indexOf("com\\");
-					y = fileName.lastIndexOf("\\");
-				}
-
-				String packageName = fileName.substring(x, y);
-
-				if (packageName.endsWith("PortletSessionSecondapp")) {
-					continue;
-				}
-
-				packageName = StringUtil.replace(packageName, "/", ".");
-				packageName = StringUtil.replace(packageName, "\\", ".");
-
-				packageNames.add(packageName);
-			}
-
-			project.setProperty("test.tck.package.names", StringUtil.merge(packageNames, " "));
-		</script>
-
-		<echo file="test.tck.package.names.properties">TEST_TCK_PACKAGE_NAMES=${test.tck.package.names}</echo>
-	</target>
-
-	<target name="run-tck-tomcat">
-		<antcall target="clean-up-java-processes" inheritAll="false" />
-
 		<antcall target="prepare-portal-ext-properties">
-			<param name="tck.url" value="true" />
+			<param name="app.server.classes.portal.dir" value="${app.server.classes.portal.dir}" />
 		</antcall>
 
-		<antcall target="rebuild-database" inheritAll="false" />
+		<echo append="true" file="${app.server.classes.portal.dir}/portal-ext.properties"><![CDATA[
+			browser.launcher.url=
+			javascript.single.page.application.enabled=false
+			module.framework.auto.deploy.interval=2000
+			setup.wizard.enabled=false
+			terms.of.use.required=false
+			theme.portlet.decorate.default=false
+			users.reminder.queries.enabled=false
+			users.reminder.queries.custom.question.enabled=false
+			web.server.https.port=8443]]></echo>
 
-		<antcall target="prepare-tck" />
+		<exec dir="${tck.home}/.." executable="git" failonerror="true">
+			<arg value="stash" />
+		</exec>
 
-		<ant antfile="build-test-plugins.xml" target="deploy-simple-server-plugins">
-			<property name="plugin.types" value="portlets" />
-			<property name="plugins.includes" value="marketplace-portlet" />
-			<property name="simple.server.dir" value="${app.server.tomcat.dir}" />
-			<property name="simple.server.bin.dir" value="${app.server.tomcat.bin.dir}" />
-			<property name="simple.server.deploy.dir" value="${app.server.tomcat.deploy.dir}" />
-			<property name="simple.server.lib.global.dir" value="${app.server.tomcat.lib.global.dir}" />
-			<property name="simple.server.portal.dir" value="${app.server.tomcat.portal.dir}" />
-		</ant>
+		<!--
+		Due to a Liferay-specific performance optimization, the Portlet Hub dependency must be
+		configured statically in order for top_head.jsp to output render data.
+		-->
 
-		<if>
-			<not>
-				<isset property="test.package" />
-			</not>
-			<then>
-				<property name="test.package" value="com.sun.ts.tests" />
-			</then>
-		</if>
+		<exec dir="${tck.home}/.." executable="git" failonerror="true">
+			<arg value="apply" />
+			<arg value="${project.dir}/tools/tck/pluto-patch.diff" />
+		</exec>
 
-		<propertyregex
-			global="true"
-			input="${test.package}."
-			property="test.directory"
-			regexp="\."
-			replace="/"
-		/>
+		<execute dir="${tck.home}/..">
+			mvn -P all,liferay clean install
+		</execute>
 
-		<copy todir="${liferay.home}/deploy" flatten="true">
+		<copy
+			flatten="true"
+			todir="${liferay.home}/deploy/"
+		>
 			<fileset
-				dir="tools/tck/dist/${test.directory}"
-				includes="**/*.war"
+				dir="${tck.home}"
+				includes="**/target/tck-*.war"
 			/>
 		</copy>
 
-		<parallel>
-			<exec dir="${app.server.tomcat.bin.dir}" executable="catalina${file.suffix.bat}" resolveexecutable="true">
-				<arg line="run" />
-			</exec>
+		<if>
+			<not>
+				<isset property="env.JENKINS_HOME" />
+			</not>
+			<then>
+				<update-gradle-properties />
+			</then>
+		</if>
 
-			<sequential>
-				<waitfor>
-					<http url="http://localhost:8080" />
-				</waitfor>
+		<echo
+			file="${liferay.home}/osgi/configs/com.liferay.portlet.tck.bridge.configuration.PortletTCKBridgeConfiguration.config"
+		>configFile="${tck.home}/deploy/target/deploy-files/pluto-portal-driver-config.xml"</echo
+	>
+		<gradle-execute dir="modules/test/portlet-tck-bridge" task="deploy" />
 
-				<sleep seconds="30" />
+		<propertycopy from="app.server.${app.server.type}.bin.dir" name="app.server.bin.dir" override="true" />
 
-				<condition property="tsant.file.suffix.bat" value=".bat" else="">
-					<contains string="${os.name}" substring="Windows" casesensitive="false" />
-				</condition>
+		<antcall inheritall="false" target="start-app-server">
+			<param name="app.server.bin.dir" value="${app.server.bin.dir}" />
+		</antcall>
+	</target>
 
-				<exec dir="tools/tck/src/${test.directory}" executable="${basedir}/tools/tck/bin/tsant${tsant.file.suffix.bat}">
-					<arg line="runclient" />
-					<env key="TS_HOME" value="${basedir}/tools/tck" />
-				</exec>
+	<target name="run-tck-tests">
+		<tempfile
+			createfile="true"
+			deleteonexit="true"
+			destDir="${project.dir}/tools/tck"
+			prefix="tck-tests_"
+			property="tck.tests.xml"
+			suffix=".xml"
+		/>
 
-				<exec dir="${app.server.tomcat.bin.dir}" executable="shutdown${file.suffix.bat}" resolveexecutable="true" />
-			</sequential>
-		</parallel>
+		<copy
+			file="${tck.home}/driver/target/classes/generated-resources/xml/final/test.xml"
+			overwrite="true"
+			tofile="${tck.tests.xml}"
+		/>
 
-		<mkdir dir="portal-impl/test-results" />
+		<xmltask preserveType="true" source="${project.dir}/tools/tck/htmlunit-tests.xml">
+			<call path="//*[local-name()='entry'][@key]">
+				<param name="key" path="@key" />
+				<actions>
+					<replaceregexp
+						file="${tck.tests.xml}"
+						flags="gis"
+						match="&lt;entry[^&gt;]+key=&quot;@{key}&quot;[^&gt;]*&gt;[^&lt;]*&lt;/entry&gt;"
+						replace=""
+					/>
+				</actions>
+			</call>
+		</xmltask>
 
-		<java
-			classname="com.liferay.portal.tools.TCKtoJUnitConverter"
-			classpathref="project.classpath"
-			fork="true"
-			newenvironment="true"
-		>
-			<jvmarg value="-Dexternal-properties=com/liferay/portal/tools/dependencies/portal-tools.properties" />
-			<arg value="tools/tck/work/jtData/harness.trace" />
-			<arg value="portal-impl/test-results" />
-		</java>
+		<var name="tck.properties" value="-Dtest.context.base='${test.context.base[tck]}' -Dtest.server.username.id='${test.server.username.id[tck]}' -Dtest.server.username='${test.server.username[tck]}' -Dtest.server.password.id='${test.server.password.id[tck]}' -Dtest.server.password='${test.server.password[tck]}' -Dtest.timeout='${test.timeout[tck]}' -Dtest.ignore.list.file=${project.dir}/tools/tck/ignoredTestCases.xml -Dtest.non.exclusive.file=${project.dir}/tools/tck/nonExclusiveTestCases.xml" />
+
+		<execute dir="${tck.home}" failonerror="true">
+			mvn -Pliferay,run-tck -Djava.awt.headless=true ${tck.properties} -Dtest.browser=htmlunit -Dtest.browser.binary= -Dtest.browser.webDriver= -Dtest.list.file=${project.dir}/tools/tck/htmlunit-tests.xml test
+		</execute>
+
+		<if>
+			<available file="${tck.home}/driver/target/surefire-reports/TEST-javax.portlet.tck.driver.TCKLiferayTestDriver.xml" />
+			<then>
+				<mkdir dir="${project.dir}/tools/tck/test-results" />
+
+				<copy
+					file="${tck.home}/driver/target/surefire-reports/TEST-javax.portlet.tck.driver.TCKLiferayTestDriver.xml"
+					tofile="${project.dir}/tools/tck/test-results/TEST-javax.portlet.tck.driver.TCKLiferayTestDriver-htmlunit.xml"
+				/>
+			</then>
+			<else>
+				<fail message="No TCK tests were run with HTMLUnit." />
+			</else>
+		</if>
+
+		<prepare-chrome-driver />
+
+		<propertycopy from="browser.${browser.type[tck]}.version" name="tck.browser.version" silent="true" />
+
+		<propertycopy from="browser.${browser.type[tck]}.bin.file[${tck.browser.version}]" name="tck.browser.bin.file" silent="true" />
+
+		<propertycopy from="selenium.${browser.type[tck]}.driver.executable" name="tck.selenium.browser.driver.executable" silent="true" />
+
+		<execute dir="${tck.home}" failonerror="true">
+			mvn -Pliferay,run-tck -Djava.awt.headless=true ${tck.properties} -Dtest.browser=${browser.type[tck]} -Dtest.browser.binary='${tck.browser.bin.file}' -Dtest.browser.webDriver=${project.dir}/tools/tck/../${selenium.executable.dir.name}${tck.selenium.browser.driver.executable} -Dtest.list.file=${tck.tests.xml} test
+		</execute>
+
+		<if>
+			<available file="${tck.home}/driver/target/surefire-reports/TEST-javax.portlet.tck.driver.TCKLiferayTestDriver.xml" />
+			<then>
+				<mkdir dir="${project.dir}/tools/tck/test-results" />
+
+				<copy
+					file="${tck.home}/driver/target/surefire-reports/TEST-javax.portlet.tck.driver.TCKLiferayTestDriver.xml"
+					tofile="${project.dir}/tools/tck/test-results/TEST-javax.portlet.tck.driver.TCKLiferayTestDriver-${browser.type[tck]}.xml"
+				/>
+			</then>
+			<else>
+				<fail message="No TCK tests were run with ${browser.type[tck]}." />
+			</else>
+		</if>
 	</target>
 </project>

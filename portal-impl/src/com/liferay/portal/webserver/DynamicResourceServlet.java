@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,12 +14,12 @@
 
 package com.liferay.portal.webserver;
 
+import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.image.SpriteProcessor;
 import com.liferay.portal.kernel.servlet.HttpHeaders;
 import com.liferay.portal.kernel.servlet.ServletResponseUtil;
 import com.liferay.portal.kernel.util.JavaConstants;
 import com.liferay.portal.kernel.util.MimeTypesUtil;
-import com.liferay.portal.kernel.util.StringPool;
 import com.liferay.portal.kernel.util.Validator;
 import com.liferay.portal.util.PropsValues;
 
@@ -49,17 +49,23 @@ public class DynamicResourceServlet extends WebServerServlet {
 
 	@Override
 	public void service(
-			HttpServletRequest request, HttpServletResponse response)
+			HttpServletRequest httpServletRequest,
+			HttpServletResponse httpServletResponse)
 		throws IOException {
 
-		String servletPath = request.getServletPath();
-		String pathInfo = URLDecoder.decode(
-			request.getPathInfo(), StringPool.UTF8);
+		String servletPath = httpServletRequest.getServletPath();
+
+		String pathInfo = StringPool.BLANK;
+
+		if (httpServletRequest.getPathInfo() != null) {
+			pathInfo = URLDecoder.decode(
+				httpServletRequest.getPathInfo(), StringPool.UTF8);
+		}
 
 		String path = servletPath.concat(pathInfo);
 
 		if (!isAllowedPath(path)) {
-			response.setStatus(HttpServletResponse.SC_NOT_FOUND);
+			httpServletResponse.setStatus(HttpServletResponse.SC_NOT_FOUND);
 
 			return;
 		}
@@ -84,7 +90,7 @@ public class DynamicResourceServlet extends WebServerServlet {
 			file.isHidden() ||
 			!canonicalPath.startsWith(rootDir.getCanonicalPath())) {
 
-			response.setStatus(HttpServletResponse.SC_NOT_FOUND);
+			httpServletResponse.setStatus(HttpServletResponse.SC_NOT_FOUND);
 
 			return;
 		}
@@ -92,18 +98,20 @@ public class DynamicResourceServlet extends WebServerServlet {
 		long lastModified = file.lastModified();
 
 		if (lastModified > 0) {
-			long ifModifiedSince = request.getDateHeader(
+			long ifModifiedSince = httpServletRequest.getDateHeader(
 				HttpHeaders.IF_MODIFIED_SINCE);
 
 			if ((ifModifiedSince > 0) && (ifModifiedSince == lastModified)) {
-				response.setStatus(HttpServletResponse.SC_NOT_MODIFIED);
+				httpServletResponse.setStatus(
+					HttpServletResponse.SC_NOT_MODIFIED);
 
 				return;
 			}
 		}
 
 		if (lastModified > 0) {
-			response.setDateHeader(HttpHeaders.LAST_MODIFIED, lastModified);
+			httpServletResponse.setDateHeader(
+				HttpHeaders.LAST_MODIFIED, lastModified);
 		}
 
 		String fileName = file.getName();
@@ -115,14 +123,14 @@ public class DynamicResourceServlet extends WebServerServlet {
 		// Send file
 
 		if (isSupportsRangeHeader(contentType)) {
-			sendFileWithRangeHeader(
-				request, response, fileName, new FileInputStream(file),
-				file.length(), contentType);
+			ServletResponseUtil.sendFileWithRangeHeader(
+				httpServletRequest, httpServletResponse, fileName,
+				new FileInputStream(file), file.length(), contentType);
 		}
 		else {
 			ServletResponseUtil.sendFile(
-				request, response, fileName, new FileInputStream(file),
-				file.length(), contentType);
+				httpServletRequest, httpServletResponse, fileName,
+				new FileInputStream(file), file.length(), contentType);
 		}
 	}
 

@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,17 +14,17 @@
 
 package com.liferay.portal.deploy.hot;
 
+import com.liferay.petra.io.StreamUtil;
 import com.liferay.portal.kernel.deploy.hot.BaseHotDeployListener;
 import com.liferay.portal.kernel.deploy.hot.HotDeployEvent;
 import com.liferay.portal.kernel.deploy.hot.HotDeployException;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
-import com.liferay.portal.kernel.util.HttpUtil;
 import com.liferay.portal.kernel.util.Tuple;
-import com.liferay.portlet.social.model.SocialAchievement;
-import com.liferay.portlet.social.model.SocialActivityCounterDefinition;
-import com.liferay.portlet.social.model.SocialActivityDefinition;
-import com.liferay.portlet.social.util.SocialConfigurationUtil;
+import com.liferay.social.kernel.model.SocialAchievement;
+import com.liferay.social.kernel.model.SocialActivityCounterDefinition;
+import com.liferay.social.kernel.model.SocialActivityDefinition;
+import com.liferay.social.kernel.util.SocialConfigurationUtil;
 
 import java.util.Collection;
 import java.util.HashMap;
@@ -47,10 +47,7 @@ public class SocialHotDeployListener extends BaseHotDeployListener {
 		}
 		catch (Throwable t) {
 			throwHotDeployException(
-				hotDeployEvent,
-				"Error registering social for " +
-					hotDeployEvent.getServletContextName(),
-				t);
+				hotDeployEvent, "Error registering social for ", t);
 		}
 	}
 
@@ -63,10 +60,7 @@ public class SocialHotDeployListener extends BaseHotDeployListener {
 		}
 		catch (Throwable t) {
 			throwHotDeployException(
-				hotDeployEvent,
-				"Error unregistering social for " +
-					hotDeployEvent.getServletContextName(),
-				t);
+				hotDeployEvent, "Error unregistering social for ", t);
 		}
 	}
 
@@ -81,17 +75,18 @@ public class SocialHotDeployListener extends BaseHotDeployListener {
 			_log.debug("Invoking deploy for " + servletContextName);
 		}
 
-		String[] xmls = new String[] {
-			HttpUtil.URLtoString(
-				servletContext.getResource("/WEB-INF/liferay-social.xml"))
+		String[] xmls = {
+			StreamUtil.toString(
+				servletContext.getResourceAsStream(
+					"/WEB-INF/liferay-social.xml"))
 		};
 
 		if (xmls[0] == null) {
 			return;
 		}
 
-		if (_log.isInfoEnabled()) {
-			_log.info("Registering social for " + servletContextName);
+		if (_log.isDebugEnabled()) {
+			_log.debug("Registering social for " + servletContextName);
 		}
 
 		List<Object> objects = SocialConfigurationUtil.read(
@@ -116,7 +111,7 @@ public class SocialHotDeployListener extends BaseHotDeployListener {
 			_log.debug("Invoking undeploy for " + servletContextName);
 		}
 
-		List<Object> objects = (List<Object>)_objects.get(servletContextName);
+		List<Object> objects = _objects.remove(servletContextName);
 
 		if (objects == null) {
 			return;
@@ -160,9 +155,9 @@ public class SocialHotDeployListener extends BaseHotDeployListener {
 		}
 	}
 
-	private static Log _log = LogFactoryUtil.getLog(
+	private static final Log _log = LogFactoryUtil.getLog(
 		SocialHotDeployListener.class);
 
-	private static Map<String, Object> _objects = new HashMap<String, Object>();
+	private static final Map<String, List<Object>> _objects = new HashMap<>();
 
 }

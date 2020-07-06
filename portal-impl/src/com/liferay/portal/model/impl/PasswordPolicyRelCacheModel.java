@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,9 +14,11 @@
 
 package com.liferay.portal.model.impl;
 
-import com.liferay.portal.kernel.util.StringBundler;
-import com.liferay.portal.model.CacheModel;
-import com.liferay.portal.model.PasswordPolicyRel;
+import com.liferay.petra.lang.HashUtil;
+import com.liferay.petra.string.StringBundler;
+import com.liferay.portal.kernel.model.CacheModel;
+import com.liferay.portal.kernel.model.MVCCModel;
+import com.liferay.portal.kernel.model.PasswordPolicyRel;
 
 import java.io.Externalizable;
 import java.io.IOException;
@@ -27,17 +29,61 @@ import java.io.ObjectOutput;
  * The cache model class for representing PasswordPolicyRel in entity cache.
  *
  * @author Brian Wing Shun Chan
- * @see PasswordPolicyRel
  * @generated
  */
-public class PasswordPolicyRelCacheModel implements CacheModel<PasswordPolicyRel>,
-	Externalizable {
+public class PasswordPolicyRelCacheModel
+	implements CacheModel<PasswordPolicyRel>, Externalizable, MVCCModel {
+
+	@Override
+	public boolean equals(Object object) {
+		if (this == object) {
+			return true;
+		}
+
+		if (!(object instanceof PasswordPolicyRelCacheModel)) {
+			return false;
+		}
+
+		PasswordPolicyRelCacheModel passwordPolicyRelCacheModel =
+			(PasswordPolicyRelCacheModel)object;
+
+		if ((passwordPolicyRelId ==
+				passwordPolicyRelCacheModel.passwordPolicyRelId) &&
+			(mvccVersion == passwordPolicyRelCacheModel.mvccVersion)) {
+
+			return true;
+		}
+
+		return false;
+	}
+
+	@Override
+	public int hashCode() {
+		int hashCode = HashUtil.hash(0, passwordPolicyRelId);
+
+		return HashUtil.hash(hashCode, mvccVersion);
+	}
+
+	@Override
+	public long getMvccVersion() {
+		return mvccVersion;
+	}
+
+	@Override
+	public void setMvccVersion(long mvccVersion) {
+		this.mvccVersion = mvccVersion;
+	}
+
 	@Override
 	public String toString() {
-		StringBundler sb = new StringBundler(9);
+		StringBundler sb = new StringBundler(13);
 
-		sb.append("{passwordPolicyRelId=");
+		sb.append("{mvccVersion=");
+		sb.append(mvccVersion);
+		sb.append(", passwordPolicyRelId=");
 		sb.append(passwordPolicyRelId);
+		sb.append(", companyId=");
+		sb.append(companyId);
 		sb.append(", passwordPolicyId=");
 		sb.append(passwordPolicyId);
 		sb.append(", classNameId=");
@@ -51,9 +97,12 @@ public class PasswordPolicyRelCacheModel implements CacheModel<PasswordPolicyRel
 
 	@Override
 	public PasswordPolicyRel toEntityModel() {
-		PasswordPolicyRelImpl passwordPolicyRelImpl = new PasswordPolicyRelImpl();
+		PasswordPolicyRelImpl passwordPolicyRelImpl =
+			new PasswordPolicyRelImpl();
 
+		passwordPolicyRelImpl.setMvccVersion(mvccVersion);
 		passwordPolicyRelImpl.setPasswordPolicyRelId(passwordPolicyRelId);
+		passwordPolicyRelImpl.setCompanyId(companyId);
 		passwordPolicyRelImpl.setPasswordPolicyId(passwordPolicyId);
 		passwordPolicyRelImpl.setClassNameId(classNameId);
 		passwordPolicyRelImpl.setClassPK(classPK);
@@ -65,23 +114,39 @@ public class PasswordPolicyRelCacheModel implements CacheModel<PasswordPolicyRel
 
 	@Override
 	public void readExternal(ObjectInput objectInput) throws IOException {
+		mvccVersion = objectInput.readLong();
+
 		passwordPolicyRelId = objectInput.readLong();
+
+		companyId = objectInput.readLong();
+
 		passwordPolicyId = objectInput.readLong();
+
 		classNameId = objectInput.readLong();
+
 		classPK = objectInput.readLong();
 	}
 
 	@Override
-	public void writeExternal(ObjectOutput objectOutput)
-		throws IOException {
+	public void writeExternal(ObjectOutput objectOutput) throws IOException {
+		objectOutput.writeLong(mvccVersion);
+
 		objectOutput.writeLong(passwordPolicyRelId);
+
+		objectOutput.writeLong(companyId);
+
 		objectOutput.writeLong(passwordPolicyId);
+
 		objectOutput.writeLong(classNameId);
+
 		objectOutput.writeLong(classPK);
 	}
 
+	public long mvccVersion;
 	public long passwordPolicyRelId;
+	public long companyId;
 	public long passwordPolicyId;
 	public long classNameId;
 	public long classPK;
+
 }

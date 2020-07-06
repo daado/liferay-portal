@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,43 +14,54 @@
 
 package com.liferay.portlet.documentlibrary.model.impl;
 
+import com.liferay.document.library.kernel.model.DLFolder;
+import com.liferay.document.library.kernel.model.DLFolderConstants;
+import com.liferay.document.library.kernel.service.DLAppLocalServiceUtil;
+import com.liferay.document.library.kernel.service.DLFolderLocalServiceUtil;
+import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.exception.PortalException;
-import com.liferay.portal.kernel.exception.SystemException;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
+import com.liferay.portal.kernel.model.Repository;
 import com.liferay.portal.kernel.repository.model.FileEntry;
+import com.liferay.portal.kernel.repository.model.FileVersion;
 import com.liferay.portal.kernel.repository.model.Folder;
-import com.liferay.portal.model.Repository;
+import com.liferay.portal.kernel.service.RepositoryLocalServiceUtil;
 import com.liferay.portal.repository.liferayrepository.model.LiferayFolder;
-import com.liferay.portal.service.RepositoryLocalServiceUtil;
-import com.liferay.portlet.documentlibrary.model.DLFolder;
-import com.liferay.portlet.documentlibrary.service.DLAppLocalServiceUtil;
-import com.liferay.portlet.documentlibrary.service.DLFolderLocalServiceUtil;
 
 /**
  * @author Brian Wing Shun Chan
  */
 public class DLFileShortcutImpl extends DLFileShortcutBaseImpl {
 
-	public DLFileShortcutImpl() {
-	}
-
 	@Override
-	public String buildTreePath() throws PortalException, SystemException {
+	public String buildTreePath() throws PortalException {
+		if (getFolderId() == DLFolderConstants.DEFAULT_PARENT_FOLDER_ID) {
+			return StringPool.SLASH;
+		}
+
 		DLFolder dlFolder = getDLFolder();
 
 		return dlFolder.buildTreePath();
 	}
 
 	@Override
-	public DLFolder getDLFolder() throws PortalException, SystemException {
+	public DLFolder getDLFolder() throws PortalException {
 		Folder folder = getFolder();
 
 		return (DLFolder)folder.getModel();
 	}
 
 	@Override
-	public Folder getFolder() throws PortalException, SystemException {
+	public FileVersion getFileVersion() throws PortalException {
+		FileEntry fileEntry = DLAppLocalServiceUtil.getFileEntry(
+			getToFileEntryId());
+
+		return fileEntry.getFileVersion();
+	}
+
+	@Override
+	public Folder getFolder() throws PortalException {
 		if (getFolderId() <= 0) {
 			return new LiferayFolder(new DLFolderImpl());
 		}
@@ -68,8 +79,8 @@ public class DLFileShortcutImpl extends DLFileShortcutBaseImpl {
 
 			toTitle = fileEntry.getTitle();
 		}
-		catch (Exception e) {
-			_log.error(e, e);
+		catch (PortalException portalException) {
+			_log.error(portalException, portalException);
 		}
 
 		return toTitle;
@@ -80,21 +91,37 @@ public class DLFileShortcutImpl extends DLFileShortcutBaseImpl {
 		try {
 			long repositoryId = getRepositoryId();
 
+			if (getGroupId() == repositoryId) {
+				return false;
+			}
+
 			Repository repository = RepositoryLocalServiceUtil.getRepository(
 				repositoryId);
 
-			long dlFolderId = repository.getDlFolderId();
-
-			DLFolder dlFolder = DLFolderLocalServiceUtil.getFolder(dlFolderId);
+			DLFolder dlFolder = DLFolderLocalServiceUtil.getFolder(
+				repository.getDlFolderId());
 
 			return dlFolder.isHidden();
 		}
-		catch (Exception e) {
+		catch (PortalException portalException) {
+			if (_log.isWarnEnabled()) {
+				_log.warn(portalException, portalException);
+			}
 		}
 
 		return false;
 	}
 
-	private static Log _log = LogFactoryUtil.getLog(DLFileShortcutImpl.class);
+	@Override
+	public boolean isInTrash() {
+		if (super.isInTrash() || !isActive()) {
+			return true;
+		}
+
+		return false;
+	}
+
+	private static final Log _log = LogFactoryUtil.getLog(
+		DLFileShortcutImpl.class);
 
 }

@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,8 +14,8 @@
 
 package com.liferay.portal.atom;
 
-import com.liferay.portal.kernel.util.CharPool;
-import com.liferay.portal.kernel.util.StringPool;
+import com.liferay.petra.string.CharPool;
+import com.liferay.petra.string.StringPool;
 
 import org.apache.abdera.protocol.server.RequestContext;
 import org.apache.abdera.protocol.server.TargetBuilder;
@@ -69,9 +69,7 @@ public class AtomTargetBuilder implements TargetBuilder {
 
 			collectionIndex += collectionName.length() + 1;
 
-			url = url.substring(0, collectionIndex);
-
-			return url;
+			return url.substring(0, collectionIndex);
 		}
 
 		return url + collectionName + query;

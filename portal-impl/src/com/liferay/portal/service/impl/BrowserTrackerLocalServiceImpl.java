@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -17,7 +17,7 @@ package com.liferay.portal.service.impl;
 import com.liferay.portal.kernel.exception.SystemException;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
-import com.liferay.portal.model.BrowserTracker;
+import com.liferay.portal.kernel.model.BrowserTracker;
 import com.liferay.portal.service.base.BrowserTrackerLocalServiceBaseImpl;
 
 /**
@@ -27,7 +27,7 @@ public class BrowserTrackerLocalServiceImpl
 	extends BrowserTrackerLocalServiceBaseImpl {
 
 	@Override
-	public void deleteUserBrowserTracker(long userId) throws SystemException {
+	public void deleteUserBrowserTracker(long userId) {
 		BrowserTracker browserTracker = browserTrackerPersistence.fetchByUserId(
 			userId);
 
@@ -37,9 +37,7 @@ public class BrowserTrackerLocalServiceImpl
 	}
 
 	@Override
-	public BrowserTracker getBrowserTracker(long userId, long browserKey)
-		throws SystemException {
-
+	public BrowserTracker getBrowserTracker(long userId, long browserKey) {
 		BrowserTracker browserTracker = browserTrackerPersistence.fetchByUserId(
 			userId);
 
@@ -52,9 +50,7 @@ public class BrowserTrackerLocalServiceImpl
 	}
 
 	@Override
-	public BrowserTracker updateBrowserTracker(long userId, long browserKey)
-		throws SystemException {
-
+	public BrowserTracker updateBrowserTracker(long userId, long browserKey) {
 		BrowserTracker browserTracker = browserTrackerPersistence.fetchByUserId(
 			userId);
 
@@ -69,9 +65,9 @@ public class BrowserTrackerLocalServiceImpl
 		browserTracker.setBrowserKey(browserKey);
 
 		try {
-			browserTrackerPersistence.update(browserTracker);
+			browserTracker = browserTrackerPersistence.update(browserTracker);
 		}
-		catch (SystemException se) {
+		catch (SystemException systemException) {
 			if (_log.isWarnEnabled()) {
 				_log.warn("Add failed, fetch {userId=" + userId + "}");
 			}
@@ -80,14 +76,14 @@ public class BrowserTrackerLocalServiceImpl
 				userId, false);
 
 			if (browserTracker == null) {
-				throw se;
+				throw systemException;
 			}
 		}
 
 		return browserTracker;
 	}
 
-	private static Log _log = LogFactoryUtil.getLog(
+	private static final Log _log = LogFactoryUtil.getLog(
 		BrowserTrackerLocalServiceImpl.class);
 
 }

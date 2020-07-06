@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,13 +14,14 @@
 
 package com.liferay.taglib.ui;
 
-import com.liferay.portal.kernel.servlet.PipingServletResponse;
+import com.liferay.petra.string.StringPool;
+import com.liferay.portal.kernel.servlet.DirectRequestDispatcherFactoryUtil;
+import com.liferay.portal.kernel.theme.ThemeDisplay;
 import com.liferay.portal.kernel.util.DeterminateKeyGenerator;
-import com.liferay.portal.kernel.util.StringPool;
+import com.liferay.portal.kernel.util.SessionClicks;
 import com.liferay.portal.kernel.util.Validator;
 import com.liferay.portal.kernel.util.WebKeys;
-import com.liferay.portal.theme.ThemeDisplay;
-import com.liferay.portal.util.SessionClicks;
+import com.liferay.taglib.servlet.PipingServletResponse;
 import com.liferay.taglib.util.IncludeTag;
 
 import javax.servlet.RequestDispatcher;
@@ -37,24 +38,28 @@ public class ToggleTag extends IncludeTag {
 	public static void doTag(
 			String id, String showImage, String hideImage, String showMessage,
 			String hideMessage, boolean defaultShowContent, String stateVar,
-			ServletContext servletContext, HttpServletRequest request,
-			HttpServletResponse response)
+			ServletContext servletContext,
+			HttpServletRequest httpServletRequest,
+			HttpServletResponse httpServletResponse)
 		throws Exception {
 
 		doTag(
 			_PAGE, id, showImage, hideImage, showMessage, hideMessage,
-			defaultShowContent, stateVar, servletContext, request, response);
+			defaultShowContent, stateVar, servletContext, httpServletRequest,
+			httpServletResponse);
 	}
 
 	public static void doTag(
 			String page, String id, String showImage, String hideImage,
 			String showMessage, String hideMessage, boolean defaultShowContent,
 			String stateVar, ServletContext servletContext,
-			HttpServletRequest request, HttpServletResponse response)
+			HttpServletRequest httpServletRequest,
+			HttpServletResponse httpServletResponse)
 		throws Exception {
 
-		ThemeDisplay themeDisplay = (ThemeDisplay)request.getAttribute(
-			WebKeys.THEME_DISPLAY);
+		ThemeDisplay themeDisplay =
+			(ThemeDisplay)httpServletRequest.getAttribute(
+				WebKeys.THEME_DISPLAY);
 
 		if (Validator.isNull(showImage) && Validator.isNull(showMessage)) {
 			showImage =
@@ -71,7 +76,7 @@ public class ToggleTag extends IncludeTag {
 		String defaultImage = defaultShowContent ? hideImage : showImage;
 		String defaultMessage = defaultShowContent ? hideMessage : showMessage;
 
-		String clickValue = SessionClicks.get(request, id, null);
+		String clickValue = SessionClicks.get(httpServletRequest, id, null);
 
 		if (defaultShowContent) {
 			if ((clickValue != null) && clickValue.equals("none")) {
@@ -103,22 +108,28 @@ public class ToggleTag extends IncludeTag {
 				ToggleTag.class.getName());
 		}
 
-		request.setAttribute("liferay-ui:toggle:id", id);
-		request.setAttribute("liferay-ui:toggle:showImage", showImage);
-		request.setAttribute("liferay-ui:toggle:hideImage", hideImage);
-		request.setAttribute("liferay-ui:toggle:showMessage", showMessage);
-		request.setAttribute("liferay-ui:toggle:hideMessage", hideMessage);
-		request.setAttribute("liferay-ui:toggle:stateVar", stateVar);
-		request.setAttribute(
-			"liferay-ui:toggle:defaultStateValue", defaultStateValue);
-		request.setAttribute("liferay-ui:toggle:defaultImage", defaultImage);
-		request.setAttribute(
+		httpServletRequest.setAttribute(
+			"liferay-ui:toggle:defaultImage", defaultImage);
+		httpServletRequest.setAttribute(
 			"liferay-ui:toggle:defaultMessage", defaultMessage);
+		httpServletRequest.setAttribute(
+			"liferay-ui:toggle:defaultStateValue", defaultStateValue);
+		httpServletRequest.setAttribute(
+			"liferay-ui:toggle:hideImage", hideImage);
+		httpServletRequest.setAttribute(
+			"liferay-ui:toggle:hideMessage", hideMessage);
+		httpServletRequest.setAttribute("liferay-ui:toggle:id", id);
+		httpServletRequest.setAttribute(
+			"liferay-ui:toggle:showImage", showImage);
+		httpServletRequest.setAttribute(
+			"liferay-ui:toggle:showMessage", showMessage);
+		httpServletRequest.setAttribute("liferay-ui:toggle:stateVar", stateVar);
 
 		RequestDispatcher requestDispatcher =
-			servletContext.getRequestDispatcher(page);
+			DirectRequestDispatcherFactoryUtil.getRequestDispatcher(
+				servletContext, page);
 
-		requestDispatcher.include(request, response);
+		requestDispatcher.include(httpServletRequest, httpServletResponse);
 	}
 
 	@Override
@@ -126,14 +137,43 @@ public class ToggleTag extends IncludeTag {
 		try {
 			doTag(
 				getPage(), _id, _showImage, _hideImage, _showMessage,
-				_hideMessage, _defaultShowContent, _stateVar, servletContext,
-				request, new PipingServletResponse(pageContext));
+				_hideMessage, _defaultShowContent, _stateVar,
+				getServletContext(), getRequest(),
+				PipingServletResponse.createPipingServletResponse(pageContext));
 
 			return EVAL_PAGE;
 		}
-		catch (Exception e) {
-			throw new JspException(e);
+		catch (Exception exception) {
+			throw new JspException(exception);
 		}
+	}
+
+	public String getHideImage() {
+		return _hideImage;
+	}
+
+	public String getHideMessage() {
+		return _hideMessage;
+	}
+
+	public String getId() {
+		return _id;
+	}
+
+	public String getShowImage() {
+		return _showImage;
+	}
+
+	public String getShowMessage() {
+		return _showMessage;
+	}
+
+	public String getStateVar() {
+		return _stateVar;
+	}
+
+	public boolean isDefaultShowContent() {
+		return _defaultShowContent;
 	}
 
 	public void setDefaultShowContent(boolean defaultShowContent) {

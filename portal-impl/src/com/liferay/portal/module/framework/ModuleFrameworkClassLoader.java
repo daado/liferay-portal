@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,137 +14,90 @@
 
 package com.liferay.portal.module.framework;
 
-import java.io.IOException;
+import com.liferay.petra.string.CharPool;
 
 import java.net.URL;
 import java.net.URLClassLoader;
 
-import java.util.ArrayList;
-import java.util.Enumeration;
-import java.util.Iterator;
-import java.util.List;
+import java.util.Arrays;
 
 /**
  * @author Miguel Pastor
  */
 public class ModuleFrameworkClassLoader extends URLClassLoader {
 
-	public ModuleFrameworkClassLoader(URL[] urls, ClassLoader parent) {
+	public ModuleFrameworkClassLoader(
+		URL[] urls, ClassLoader parent, String[] packageNames) {
+
 		super(urls, parent);
 
-		// Some application servers include their own OSGi framework in the
-		// bootstrap class loader
-
-		//_systemClassLoader = getSystemClassLoader();
+		_packageNames = packageNames;
 	}
 
 	@Override
-	public URL getResource(String name) {
-		URL url = null;
-
-		if (_systemClassLoader != null) {
-			url = _systemClassLoader.getResource(name);
-		}
-
-		if (url == null) {
-			url = findResource(name);
-
-			if (url == null) {
-				url = super.getResource(name);
-			}
-		}
-
-		return url;
-	}
-
-	@Override
-	public Enumeration<URL> getResources(String name) throws IOException {
-		final List<URL> urls = new ArrayList<URL>();
-
-		Enumeration<URL> systemURLs = null;
-
-		if (_systemClassLoader != null) {
-			systemURLs = _systemClassLoader.getResources(name);
-		}
-
-		urls.addAll(_buildURLs(systemURLs));
-
-		Enumeration<URL> localURLs = findResources(name);
-
-		urls.addAll(_buildURLs(localURLs));
-
-		Enumeration<URL> parentURLs = null;
-
-		ClassLoader parentClassLoader = getParent();
-
-		if (parentClassLoader != null) {
-			parentURLs = parentClassLoader.getResources(name);
-		}
-
-		urls.addAll(_buildURLs(parentURLs));
-
-		return new Enumeration<URL>() {
-			final Iterator<URL> iterator = urls.iterator();
-
-			@Override
-			public boolean hasMoreElements() {
-				return iterator.hasNext();
-			}
-
-			@Override
-			public URL nextElement() {
-				return iterator.next();
-			}
-
-		};
-	}
-
-	@Override
-	protected synchronized Class<?> loadClass(String name, boolean resolve)
+	protected Class<?> loadClass(String name, boolean resolve)
 		throws ClassNotFoundException {
 
-		Class<?> clazz = findLoadedClass(name);
+		Object lock = getClassLoadingLock(name);
 
-		if (clazz == null) {
-			if (_systemClassLoader != null) {
-				try {
-					clazz = _systemClassLoader.loadClass(name);
-				}
-				catch (ClassNotFoundException cnfe) {
-				}
-			}
+		synchronized (lock) {
+			Class<?> clazz = findLoadedClass(name);
 
 			if (clazz == null) {
-				try {
-					clazz = findClass(name);
+				if (_hasPackageName(name)) {
+					try {
+						clazz = findClass(name);
+					}
+					catch (ClassNotFoundException classNotFoundException) {
+						clazz = super.loadClass(name, resolve);
+					}
 				}
-				catch (ClassNotFoundException cnfe) {
-					clazz = super.loadClass(name, resolve);
+				else {
+					try {
+						clazz = super.loadClass(name, resolve);
+					}
+					catch (ClassNotFoundException classNotFoundException) {
+						clazz = findClass(name);
+					}
 				}
 			}
-		}
 
-		if (resolve) {
-			resolveClass(clazz);
-		}
+			if (resolve) {
+				resolveClass(clazz);
+			}
 
-		return clazz;
+			return clazz;
+		}
 	}
 
-	private List<URL> _buildURLs(Enumeration<URL> url) {
-		if (url == null) {
-			return new ArrayList<URL>();
+	private boolean _hasPackageName(String name) {
+		String packageName = name;
+
+		int index = name.lastIndexOf(CharPool.PERIOD);
+
+		if (index != -1) {
+			packageName = name.substring(0, index);
 		}
 
-		List<URL> urls = new ArrayList<URL>();
+		index = Arrays.binarySearch(_packageNames, packageName);
 
-		while (url.hasMoreElements()) {
-			urls.add(url.nextElement());
+		if (index >= 0) {
+			return true;
 		}
 
-		return urls;
+		index = -index - 1;
+
+		if ((index == 0) || !packageName.startsWith(_packageNames[index - 1])) {
+			return false;
+		}
+
+		return true;
 	}
 
-	private ClassLoader _systemClassLoader;
+	private final String[] _packageNames;
+
+	static {
+		ClassLoader.registerAsParallelCapable();
+	}
 
 }

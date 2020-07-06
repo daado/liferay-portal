@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,19 +14,22 @@
 
 package com.liferay.portal.spring.hibernate;
 
+import com.liferay.petra.string.StringBundler;
+import com.liferay.petra.string.StringPool;
+import com.liferay.portal.dao.jdbc.util.DBInfo;
+import com.liferay.portal.dao.jdbc.util.DBInfoUtil;
 import com.liferay.portal.dao.orm.hibernate.DB2Dialect;
+import com.liferay.portal.dao.orm.hibernate.HSQLDialect;
+import com.liferay.portal.dao.orm.hibernate.MariaDBDialect;
 import com.liferay.portal.dao.orm.hibernate.SQLServer2005Dialect;
 import com.liferay.portal.dao.orm.hibernate.SQLServer2008Dialect;
 import com.liferay.portal.dao.orm.hibernate.SybaseASE157Dialect;
-import com.liferay.portal.kernel.dao.jdbc.DataAccess;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
 import com.liferay.portal.kernel.util.GetterUtil;
-import com.liferay.portal.kernel.util.StringBundler;
-import com.liferay.portal.kernel.util.StringPool;
+import com.liferay.portal.kernel.util.StringUtil;
 
 import java.sql.Connection;
-import java.sql.DatabaseMetaData;
 
 import java.util.Map;
 import java.util.Properties;
@@ -45,21 +48,25 @@ import org.hibernate.dialect.resolver.DialectFactory;
 public class DialectDetector {
 
 	public static Dialect getDialect(DataSource dataSource) {
-		String dialectKey = null;
-		Dialect dialect = null;
+		DBInfo dbInfo = DBInfoUtil.getDBInfo(dataSource);
 
-		Connection connection = null;
+		int dbMajorVersion = dbInfo.getMajorVersion();
+		int dbMinorVersion = dbInfo.getMinorVersion();
+		String dbName = dbInfo.getName();
+
+		Dialect dialect = null;
+		String dialectKey = null;
 
 		try {
-			connection = dataSource.getConnection();
+			StringBundler sb = new StringBundler(5);
 
-			DatabaseMetaData databaseMetaData = connection.getMetaData();
+			sb.append(dbName);
+			sb.append(StringPool.COLON);
+			sb.append(dbMajorVersion);
+			sb.append(StringPool.COLON);
+			sb.append(dbMinorVersion);
 
-			String dbName = databaseMetaData.getDatabaseProductName();
-			int dbMajorVersion = databaseMetaData.getDatabaseMajorVersion();
-
-			dialectKey = dbName.concat(StringPool.COLON).concat(
-				String.valueOf(dbMajorVersion));
+			dialectKey = sb.toString();
 
 			dialect = _dialects.get(dialectKey);
 
@@ -67,48 +74,65 @@ public class DialectDetector {
 				return dialect;
 			}
 
-			if (_log.isInfoEnabled()) {
-				_log.info(
-					"Determine dialect for " + dbName + " " + dbMajorVersion);
+			if (_log.isDebugEnabled()) {
+				_log.debug(
+					StringBundler.concat(
+						"Determine dialect for ", dbName, " ", dbMajorVersion,
+						".", dbMinorVersion));
 			}
 
+			String driverName = dbInfo.getDriverName();
+
 			if (dbName.startsWith("HSQL")) {
+				dialect = new HSQLDialect();
+
 				if (_log.isWarnEnabled()) {
-					StringBundler sb = new StringBundler(6);
+					sb = new StringBundler(6);
 
 					sb.append("Liferay is configured to use Hypersonic as ");
 					sb.append("its database. Do NOT use Hypersonic in ");
 					sb.append("production. Hypersonic is an embedded ");
-					sb.append("database useful for development and demo'ing ");
-					sb.append("purposes. The database settings can be ");
-					sb.append("changed in portal-ext.properties.");
+					sb.append("database useful for development and ");
+					sb.append("demonstration purposes. The database settings ");
+					sb.append("can be changed in portal-ext.properties.");
 
 					_log.warn(sb.toString());
 				}
 			}
+			else if (dbName.equals("Adaptive Server Enterprise") &&
+					 (dbMajorVersion >= 15)) {
 
-			if (dbName.equals("ASE") && (dbMajorVersion == 15)) {
 				dialect = new SybaseASE157Dialect();
+			}
+			else if (dbName.equals("ASE")) {
+				throw new RuntimeException(
+					"jTDS is no longer suppported. Please use the Sybase " +
+						"JDBC driver to connect to Sybase.");
 			}
 			else if (dbName.startsWith("DB2") && (dbMajorVersion >= 9)) {
 				dialect = new DB2Dialect();
 			}
+			else if (StringUtil.startsWith(driverName, "mariadb")) {
+				dialect = new MariaDBDialect();
+			}
 			else if (dbName.startsWith("Microsoft") && (dbMajorVersion == 9)) {
 				dialect = new SQLServer2005Dialect();
 			}
-			else if (dbName.startsWith("Microsoft") && (dbMajorVersion == 10)) {
+			else if (dbName.startsWith("Microsoft") && (dbMajorVersion >= 10)) {
 				dialect = new SQLServer2008Dialect();
 			}
 			else if (dbName.startsWith("Oracle") && (dbMajorVersion >= 10)) {
 				dialect = new Oracle10gDialect();
 			}
 			else {
-				dialect = DialectFactory.buildDialect(
-					new Properties(), connection);
+				try (Connection connection = dataSource.getConnection()) {
+					dialect = DialectFactory.buildDialect(
+						new Properties(), connection);
+				}
 			}
 		}
-		catch (Exception e) {
-			String msg = GetterUtil.getString(e.getMessage());
+		catch (Exception exception) {
+			String msg = GetterUtil.getString(exception.getMessage());
 
 			if (msg.contains("explicitly set for database: DB2")) {
 				dialect = new DB2400Dialect();
@@ -121,11 +145,8 @@ public class DialectDetector {
 				}
 			}
 			else {
-				_log.error(e, e);
+				_log.error(exception, exception);
 			}
-		}
-		finally {
-			DataAccess.cleanUp(connection);
 		}
 
 		if (dialect == null) {
@@ -133,7 +154,12 @@ public class DialectDetector {
 		}
 		else if (dialectKey != null) {
 			if (_log.isInfoEnabled()) {
-				_log.info("Found dialect " + dialect.getClass().getName());
+				Class<?> clazz = dialect.getClass();
+
+				_log.info(
+					StringBundler.concat(
+						"Using dialect ", clazz.getName(), " for ", dbName, " ",
+						dbMajorVersion, ".", dbMinorVersion));
 			}
 
 			_dialects.put(dialectKey, dialect);
@@ -142,9 +168,10 @@ public class DialectDetector {
 		return dialect;
 	}
 
-	private static Log _log = LogFactoryUtil.getLog(DialectDetector.class);
+	private static final Log _log = LogFactoryUtil.getLog(
+		DialectDetector.class);
 
-	private static Map<String, Dialect> _dialects =
-		new ConcurrentHashMap<String, Dialect>();
+	private static final Map<String, Dialect> _dialects =
+		new ConcurrentHashMap<>();
 
 }

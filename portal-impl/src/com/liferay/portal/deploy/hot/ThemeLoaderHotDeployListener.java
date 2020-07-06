@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,13 +14,13 @@
 
 package com.liferay.portal.deploy.hot;
 
+import com.liferay.petra.io.StreamUtil;
 import com.liferay.portal.kernel.deploy.hot.BaseHotDeployListener;
 import com.liferay.portal.kernel.deploy.hot.HotDeployEvent;
 import com.liferay.portal.kernel.deploy.hot.HotDeployException;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
 import com.liferay.portal.kernel.servlet.ServletContextPool;
-import com.liferay.portal.kernel.util.HttpUtil;
 import com.liferay.portal.theme.ThemeLoaderFactory;
 
 import javax.servlet.ServletContext;
@@ -39,10 +39,7 @@ public class ThemeLoaderHotDeployListener extends BaseHotDeployListener {
 		}
 		catch (Throwable t) {
 			throwHotDeployException(
-				hotDeployEvent,
-				"Error registering theme loader for " +
-					hotDeployEvent.getServletContextName(),
-				t);
+				hotDeployEvent, "Error registering theme loader for ", t);
 		}
 	}
 
@@ -55,10 +52,7 @@ public class ThemeLoaderHotDeployListener extends BaseHotDeployListener {
 		}
 		catch (Throwable t) {
 			throwHotDeployException(
-				hotDeployEvent,
-				"Error unregistering theme loader for " +
-					hotDeployEvent.getServletContextName(),
-				t);
+				hotDeployEvent, "Error unregistering theme loader for ", t);
 		}
 	}
 
@@ -73,17 +67,18 @@ public class ThemeLoaderHotDeployListener extends BaseHotDeployListener {
 			_log.debug("Invoking deploy for " + servletContextName);
 		}
 
-		String[] xmls = new String[] {
-			HttpUtil.URLtoString(
-				servletContext.getResource("/WEB-INF/liferay-theme-loader.xml"))
+		String[] xmls = {
+			StreamUtil.toString(
+				servletContext.getResourceAsStream(
+					"/WEB-INF/liferay-theme-loader.xml"))
 		};
 
 		if (xmls[0] == null) {
 			return;
 		}
 
-		if (_log.isInfoEnabled()) {
-			_log.info("Registering theme loader for " + servletContextName);
+		if (_log.isDebugEnabled()) {
+			_log.debug("Registering theme loader for " + servletContextName);
 		}
 
 		ThemeLoaderFactory.init(servletContextName, servletContext, xmls);
@@ -106,8 +101,8 @@ public class ThemeLoaderHotDeployListener extends BaseHotDeployListener {
 			return;
 		}
 
-		if (_log.isInfoEnabled()) {
-			_log.info("Unregistering theme loader for " + servletContextName);
+		if (_log.isDebugEnabled()) {
+			_log.debug("Unregistering theme loader for " + servletContextName);
 		}
 
 		ServletContextPool.remove(servletContextName);
@@ -119,7 +114,7 @@ public class ThemeLoaderHotDeployListener extends BaseHotDeployListener {
 		}
 	}
 
-	private static Log _log = LogFactoryUtil.getLog(
+	private static final Log _log = LogFactoryUtil.getLog(
 		ThemeLoaderHotDeployListener.class);
 
 }

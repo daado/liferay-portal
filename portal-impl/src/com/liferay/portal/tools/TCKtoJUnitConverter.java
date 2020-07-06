@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,15 +14,15 @@
 
 package com.liferay.portal.tools;
 
+import com.liferay.petra.string.CharPool;
+import com.liferay.petra.string.StringBundler;
+import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.io.unsync.UnsyncBufferedReader;
 import com.liferay.portal.kernel.util.FileUtil;
 import com.liferay.portal.kernel.util.GetterUtil;
 import com.liferay.portal.kernel.util.HtmlUtil;
 import com.liferay.portal.kernel.util.SortedProperties;
-import com.liferay.portal.kernel.util.StringBundler;
-import com.liferay.portal.kernel.util.StringPool;
 import com.liferay.portal.kernel.util.StringUtil;
-import com.liferay.portal.util.InitUtil;
 
 import java.io.File;
 import java.io.FileReader;
@@ -36,7 +36,7 @@ import java.util.Properties;
 public class TCKtoJUnitConverter {
 
 	public static void main(String[] args) {
-		InitUtil.initWithSpring();
+		ToolDependencies.wireBasic();
 
 		if (args.length == 2) {
 			new TCKtoJUnitConverter(args[0], args[1]);
@@ -50,26 +50,30 @@ public class TCKtoJUnitConverter {
 		try {
 			_convert(new File(inputFile), new File(outputDir));
 		}
-		catch (Exception e) {
-			e.printStackTrace();
+		catch (Exception exception) {
+			exception.printStackTrace();
 		}
 	}
 
 	private void _convert(File inputFile, File outputDir) throws Exception {
-		UnsyncBufferedReader unsyncBufferedReader = new UnsyncBufferedReader(
-			new FileReader(inputFile));
+		try (UnsyncBufferedReader unsyncBufferedReader =
+				new UnsyncBufferedReader(new FileReader(inputFile))) {
 
-		String s = StringPool.BLANK;
+			String s = StringPool.BLANK;
 
-		while ((s = unsyncBufferedReader.readLine()) != null) {
-			if (s.startsWith("Test finished: ")) {
+			while ((s = unsyncBufferedReader.readLine()) != null) {
+				if (!s.startsWith("Test finished: ")) {
+					continue;
+				}
+
 				int x = s.indexOf(StringPool.POUND);
+
 				int y = s.lastIndexOf(StringPool.SLASH, x);
 
 				String className = s.substring(15, y);
 
 				className = StringUtil.replace(
-					className, StringPool.SLASH, StringPool.PERIOD);
+					className, CharPool.SLASH, CharPool.PERIOD);
 
 				y = s.indexOf(StringPool.COLON, y);
 
@@ -84,8 +88,6 @@ public class TCKtoJUnitConverter {
 				_convert(className, message, outputDir);
 			}
 		}
-
-		unsyncBufferedReader.close();
 	}
 
 	private void _convert(String className, String message, File outputDir)
@@ -135,11 +137,11 @@ public class TCKtoJUnitConverter {
 
 		Properties properties = new SortedProperties(System.getProperties());
 
-		Enumeration<String> keys =
+		Enumeration<String> enumeration =
 			(Enumeration<String>)properties.propertyNames();
 
-		while (keys.hasMoreElements()) {
-			String key = keys.nextElement();
+		while (enumeration.hasMoreElements()) {
+			String key = enumeration.nextElement();
 
 			String value = properties.getProperty(key);
 
@@ -175,7 +177,8 @@ public class TCKtoJUnitConverter {
 		sb.append("</testsuite>");
 
 		FileUtil.write(
-			outputDir + "/TEST-" + className + ".xml", sb.toString());
+			StringBundler.concat(outputDir, "/TEST-", className, ".xml"),
+			sb.toString());
 	}
 
 }

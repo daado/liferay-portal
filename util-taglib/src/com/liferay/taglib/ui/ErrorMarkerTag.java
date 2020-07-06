@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -24,6 +24,14 @@ import javax.servlet.http.HttpServletRequest;
  */
 public class ErrorMarkerTag extends IncludeTag {
 
+	public String getKey() {
+		return _key;
+	}
+
+	public String getValue() {
+		return _value;
+	}
+
 	public void setKey(String key) {
 		_key = key;
 	}
@@ -34,19 +42,23 @@ public class ErrorMarkerTag extends IncludeTag {
 
 	@Override
 	protected void cleanUp() {
+		super.cleanUp();
+
 		_key = null;
 		_value = null;
 	}
 
 	@Override
-	protected void setAttributes(HttpServletRequest request) {
+	protected void setAttributes(HttpServletRequest httpServletRequest) {
 		if (Validator.isNotNull(_key) && Validator.isNotNull(_value)) {
-			request.setAttribute("liferay-ui:error-marker:key", _key);
-			request.setAttribute("liferay-ui:error-marker:value", _value);
+			httpServletRequest.setAttribute(
+				"liferay-ui:error-marker:key", _key);
+			httpServletRequest.setAttribute(
+				"liferay-ui:error-marker:value", _value);
 		}
 		else {
-			request.removeAttribute("liferay-ui:error-marker:key");
-			request.removeAttribute("liferay-ui:error-marker:value");
+			httpServletRequest.removeAttribute("liferay-ui:error-marker:key");
+			httpServletRequest.removeAttribute("liferay-ui:error-marker:value");
 		}
 	}
 

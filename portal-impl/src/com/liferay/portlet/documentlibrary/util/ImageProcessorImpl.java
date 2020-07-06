@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,26 +14,31 @@
 
 package com.liferay.portlet.documentlibrary.util;
 
+import com.liferay.document.library.kernel.exception.NoSuchFileEntryException;
+import com.liferay.document.library.kernel.model.DLProcessorConstants;
+import com.liferay.document.library.kernel.store.DLStoreUtil;
+import com.liferay.document.library.kernel.util.DLPreviewableProcessor;
+import com.liferay.document.library.kernel.util.ImageProcessor;
+import com.liferay.exportimport.kernel.lar.PortletDataContext;
+import com.liferay.petra.string.StringBundler;
+import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.exception.PortalException;
-import com.liferay.portal.kernel.exception.SystemException;
 import com.liferay.portal.kernel.image.ImageBag;
+import com.liferay.portal.kernel.image.ImageTool;
 import com.liferay.portal.kernel.image.ImageToolUtil;
-import com.liferay.portal.kernel.lar.PortletDataContext;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
 import com.liferay.portal.kernel.messaging.DestinationNames;
+import com.liferay.portal.kernel.repository.event.FileVersionPreviewEventListener;
 import com.liferay.portal.kernel.repository.model.FileEntry;
 import com.liferay.portal.kernel.repository.model.FileVersion;
+import com.liferay.portal.kernel.util.ContentTypes;
 import com.liferay.portal.kernel.util.FileUtil;
+import com.liferay.portal.kernel.util.ServiceProxyFactory;
 import com.liferay.portal.kernel.util.SetUtil;
-import com.liferay.portal.kernel.util.StreamUtil;
-import com.liferay.portal.kernel.util.StringBundler;
-import com.liferay.portal.kernel.util.StringPool;
 import com.liferay.portal.kernel.util.Validator;
 import com.liferay.portal.kernel.xml.Element;
 import com.liferay.portal.util.PropsValues;
-import com.liferay.portlet.documentlibrary.NoSuchFileEntryException;
-import com.liferay.portlet.documentlibrary.store.DLStoreUtil;
 
 import java.awt.image.ColorModel;
 import java.awt.image.RenderedImage;
@@ -133,6 +138,11 @@ public class ImageProcessorImpl
 	}
 
 	@Override
+	public String getType() {
+		return DLProcessorConstants.IMAGE_PROCESSOR;
+	}
+
+	@Override
 	public boolean hasImages(FileVersion fileVersion) {
 		if (!PropsValues.DL_FILE_ENTRY_PREVIEW_ENABLED &&
 			!PropsValues.DL_FILE_ENTRY_THUMBNAIL_ENABLED) {
@@ -155,8 +165,8 @@ public class ImageProcessorImpl
 				_queueGeneration(null, fileVersion);
 			}
 		}
-		catch (Exception e) {
-			_log.error(e, e);
+		catch (Exception exception) {
+			_log.error(exception, exception);
 		}
 
 		return hasImages;
@@ -174,10 +184,6 @@ public class ImageProcessorImpl
 
 	@Override
 	public boolean isSupported(String mimeType) {
-		if (Validator.isNull(mimeType)) {
-			return false;
-		}
-
 		return _imageMimeTypes.contains(mimeType);
 	}
 
@@ -263,8 +269,6 @@ public class ImageProcessorImpl
 			FileVersion sourceFileVersion, FileVersion destinationFileVersion)
 		throws Exception {
 
-		InputStream inputStream = null;
-
 		try {
 			if (sourceFileVersion != null) {
 				copy(sourceFileVersion, destinationFileVersion);
@@ -278,53 +282,68 @@ public class ImageProcessorImpl
 				return;
 			}
 
-			inputStream = destinationFileVersion.getContentStream(false);
+			try (InputStream inputStream =
+					destinationFileVersion.getContentStream(false)) {
 
-			byte[] bytes = FileUtil.getBytes(inputStream);
+				byte[] bytes = FileUtil.getBytes(inputStream);
 
-			ImageBag imageBag = ImageToolUtil.read(bytes);
+				ImageBag imageBag = ImageToolUtil.read(bytes);
 
-			RenderedImage renderedImage = imageBag.getRenderedImage();
+				RenderedImage renderedImage = imageBag.getRenderedImage();
 
-			if (renderedImage == null) {
-				return;
-			}
+				if (renderedImage == null) {
+					_fileVersionPreviewEventListener.onFailure(
+						destinationFileVersion);
 
-			ColorModel colorModel = renderedImage.getColorModel();
-
-			if (colorModel.getNumColorComponents() == 4) {
-				Future<RenderedImage> future = ImageToolUtil.convertCMYKtoRGB(
-					bytes, imageBag.getType());
-
-				if (future == null) {
 					return;
 				}
 
-				String processIdentity = String.valueOf(
-					destinationFileVersion.getFileVersionId());
+				ColorModel colorModel = renderedImage.getColorModel();
 
-				futures.put(processIdentity, future);
+				if (colorModel.getNumColorComponents() == 4) {
+					Future<RenderedImage> future =
+						ImageToolUtil.convertCMYKtoRGB(
+							bytes, imageBag.getType());
 
-				RenderedImage convertedRenderedImage = future.get();
+					if (future == null) {
+						_fileVersionPreviewEventListener.onFailure(
+							destinationFileVersion);
 
-				if (convertedRenderedImage != null) {
-					renderedImage = convertedRenderedImage;
+						return;
+					}
+
+					String processIdentity = String.valueOf(
+						destinationFileVersion.getFileVersionId());
+
+					futures.put(processIdentity, future);
+
+					RenderedImage convertedRenderedImage = future.get();
+
+					if (convertedRenderedImage != null) {
+						renderedImage = convertedRenderedImage;
+					}
 				}
-			}
 
-			if (!_hasPreview(destinationFileVersion)) {
-				_storePreviewImage(destinationFileVersion, renderedImage);
-			}
+				if (!_hasPreview(destinationFileVersion)) {
+					_storePreviewImage(destinationFileVersion, renderedImage);
+				}
 
-			if (!hasThumbnails(destinationFileVersion)) {
-				storeThumbnailImages(destinationFileVersion, renderedImage);
+				if (!hasThumbnails(destinationFileVersion)) {
+					storeThumbnailImages(destinationFileVersion, renderedImage);
+				}
+
+				_fileVersionPreviewEventListener.onSuccess(
+					destinationFileVersion);
 			}
 		}
-		catch (NoSuchFileEntryException nsfee) {
+		catch (NoSuchFileEntryException noSuchFileEntryException) {
+			if (_log.isDebugEnabled()) {
+				_log.debug(noSuchFileEntryException, noSuchFileEntryException);
+			}
+
+			_fileVersionPreviewEventListener.onFailure(destinationFileVersion);
 		}
 		finally {
-			StreamUtil.cleanUp(inputStream);
-
 			_fileVersionIds.remove(destinationFileVersion.getFileVersionId());
 		}
 	}
@@ -336,20 +355,29 @@ public class ImageProcessorImpl
 			return type;
 		}
 
-		String extension = fileVersion.getExtension();
+		String mimeType = fileVersion.getMimeType();
 
-		if (extension.equals("jpeg")) {
-			type = "jpg";
+		if (mimeType.equals(ContentTypes.IMAGE_BMP)) {
+			type = ImageTool.TYPE_BMP;
+		}
+		else if (mimeType.equals(ContentTypes.IMAGE_GIF)) {
+			type = ImageTool.TYPE_GIF;
+		}
+		else if (mimeType.equals(ContentTypes.IMAGE_JPEG)) {
+			type = ImageTool.TYPE_JPEG;
+		}
+		else if (mimeType.equals(ContentTypes.IMAGE_PNG)) {
+			type = ImageTool.TYPE_PNG;
 		}
 		else if (!_previewGenerationRequired(fileVersion)) {
-			type = extension;
+			type = fileVersion.getExtension();
 		}
 
 		return type;
 	}
 
 	private boolean _hasPreview(FileVersion fileVersion)
-		throws PortalException, SystemException {
+		throws PortalException {
 
 		if (PropsValues.DL_FILE_ENTRY_PREVIEW_ENABLED &&
 			_previewGenerationRequired(fileVersion)) {
@@ -370,14 +398,13 @@ public class ImageProcessorImpl
 	}
 
 	private boolean _previewGenerationRequired(FileVersion fileVersion) {
-		String type = fileVersion.getExtension();
+		String mimeType = fileVersion.getMimeType();
 
-		if (type.equals("tiff") || type.equals("tif")) {
+		if (mimeType.contains("tiff") || mimeType.contains("tif")) {
 			return true;
 		}
-		else {
-			return false;
-		}
+
+		return false;
 	}
 
 	private void _queueGeneration(
@@ -408,13 +435,8 @@ public class ImageProcessorImpl
 		try {
 			file = FileUtil.createTempFile(type);
 
-			FileOutputStream fos = new FileOutputStream(file);
-
-			try {
+			try (FileOutputStream fos = new FileOutputStream(file)) {
 				ImageToolUtil.write(renderedImage, type, fos);
-			}
-			finally {
-				fos.close();
 			}
 
 			addFileToStore(
@@ -445,8 +467,10 @@ public class ImageProcessorImpl
 			sb.append(2);
 		}
 
-		sb.append(StringPool.PERIOD);
-		sb.append(type);
+		if (Validator.isNotNull(type)) {
+			sb.append(StringPool.PERIOD);
+			sb.append(type);
+		}
 
 		String filePath = sb.toString();
 
@@ -462,10 +486,17 @@ public class ImageProcessorImpl
 		}
 	}
 
-	private static Log _log = LogFactoryUtil.getLog(ImageProcessorImpl.class);
+	private static final Log _log = LogFactoryUtil.getLog(
+		ImageProcessorImpl.class);
 
-	private List<Long> _fileVersionIds = new Vector<Long>();
-	private Set<String> _imageMimeTypes = SetUtil.fromArray(
+	private static volatile FileVersionPreviewEventListener
+		_fileVersionPreviewEventListener =
+			ServiceProxyFactory.newServiceTrackedInstance(
+				FileVersionPreviewEventListener.class, ImageProcessorImpl.class,
+				"_fileVersionPreviewEventListener", false, false);
+
+	private final List<Long> _fileVersionIds = new Vector<>();
+	private final Set<String> _imageMimeTypes = SetUtil.fromArray(
 		PropsValues.DL_FILE_ENTRY_PREVIEW_IMAGE_MIME_TYPES);
 
 }

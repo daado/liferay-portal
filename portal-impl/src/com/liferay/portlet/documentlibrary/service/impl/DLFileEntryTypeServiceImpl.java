@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,20 +14,22 @@
 
 package com.liferay.portlet.documentlibrary.service.impl;
 
+import com.liferay.document.library.kernel.model.DLFileEntryType;
 import com.liferay.portal.kernel.exception.PortalException;
-import com.liferay.portal.kernel.exception.SystemException;
+import com.liferay.portal.kernel.security.permission.ActionKeys;
+import com.liferay.portal.kernel.security.permission.PermissionChecker;
+import com.liferay.portal.kernel.security.permission.resource.ModelResourcePermission;
+import com.liferay.portal.kernel.security.permission.resource.ModelResourcePermissionFactory;
+import com.liferay.portal.kernel.security.permission.resource.PortletResourcePermission;
+import com.liferay.portal.kernel.security.permission.resource.PortletResourcePermissionFactory;
+import com.liferay.portal.kernel.service.ServiceContext;
+import com.liferay.portal.kernel.util.HashMapBuilder;
 import com.liferay.portal.kernel.util.ListUtil;
 import com.liferay.portal.kernel.util.LocaleUtil;
 import com.liferay.portal.kernel.util.OrderByComparator;
-import com.liferay.portal.security.permission.ActionKeys;
-import com.liferay.portal.security.permission.PermissionChecker;
-import com.liferay.portal.service.ServiceContext;
-import com.liferay.portlet.documentlibrary.model.DLFileEntryType;
+import com.liferay.portlet.documentlibrary.constants.DLConstants;
 import com.liferay.portlet.documentlibrary.service.base.DLFileEntryTypeServiceBaseImpl;
-import com.liferay.portlet.documentlibrary.service.permission.DLFileEntryTypePermission;
-import com.liferay.portlet.documentlibrary.service.permission.DLPermission;
 
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
@@ -43,12 +45,32 @@ public class DLFileEntryTypeServiceImpl extends DLFileEntryTypeServiceBaseImpl {
 
 	@Override
 	public DLFileEntryType addFileEntryType(
+			long groupId, long dataDefinitionId, String fileEntryTypeKey,
+			Map<Locale, String> nameMap, Map<Locale, String> descriptionMap,
+			ServiceContext serviceContext)
+		throws PortalException {
+
+		_portletResourcePermission.check(
+			getPermissionChecker(), groupId, ActionKeys.ADD_DOCUMENT_TYPE);
+
+		return dlFileEntryTypeLocalService.addFileEntryType(
+			getUserId(), groupId, dataDefinitionId, fileEntryTypeKey, nameMap,
+			descriptionMap, serviceContext);
+	}
+
+	/**
+	 * @deprecated As of Athanasius (7.3.x), replaced by {@link
+	 * #addFileEntryType(long, String, Map, Map, long, ServiceContext)}
+	 */
+	@Deprecated
+	@Override
+	public DLFileEntryType addFileEntryType(
 			long groupId, String fileEntryTypeKey, Map<Locale, String> nameMap,
 			Map<Locale, String> descriptionMap, long[] ddmStructureIds,
 			ServiceContext serviceContext)
-		throws PortalException, SystemException {
+		throws PortalException {
 
-		DLPermission.check(
+		_portletResourcePermission.check(
 			getPermissionChecker(), groupId, ActionKeys.ADD_DOCUMENT_TYPE);
 
 		return dlFileEntryTypeLocalService.addFileEntryType(
@@ -56,19 +78,24 @@ public class DLFileEntryTypeServiceImpl extends DLFileEntryTypeServiceBaseImpl {
 			ddmStructureIds, serviceContext);
 	}
 
+	/**
+	 * @deprecated As of Athanasius (7.3.x), replaced by {@link
+	 * #addFileEntryType(long, String, Map, Map, long, ServiceContext)}
+	 */
+	@Deprecated
 	@Override
 	public DLFileEntryType addFileEntryType(
 			long groupId, String name, String description,
 			long[] ddmStructureIds, ServiceContext serviceContext)
-		throws PortalException, SystemException {
+		throws PortalException {
 
-		Map<Locale, String> nameMap = new HashMap<Locale, String>();
+		Map<Locale, String> nameMap = HashMapBuilder.put(
+			LocaleUtil.getSiteDefault(), name
+		).build();
 
-		nameMap.put(LocaleUtil.getSiteDefault(), name);
-
-		Map<Locale, String> descriptionMap = new HashMap<Locale, String>();
-
-		descriptionMap.put(LocaleUtil.getSiteDefault(), description);
+		Map<Locale, String> descriptionMap = HashMapBuilder.put(
+			LocaleUtil.getSiteDefault(), description
+		).build();
 
 		return addFileEntryType(
 			groupId, null, nameMap, descriptionMap, ddmStructureIds,
@@ -77,9 +104,9 @@ public class DLFileEntryTypeServiceImpl extends DLFileEntryTypeServiceBaseImpl {
 
 	@Override
 	public void deleteFileEntryType(long fileEntryTypeId)
-		throws PortalException, SystemException {
+		throws PortalException {
 
-		DLFileEntryTypePermission.check(
+		_dlFileEntryTypeModelResourcePermission.check(
 			getPermissionChecker(), fileEntryTypeId, ActionKeys.DELETE);
 
 		dlFileEntryTypeLocalService.deleteFileEntryType(fileEntryTypeId);
@@ -87,39 +114,36 @@ public class DLFileEntryTypeServiceImpl extends DLFileEntryTypeServiceBaseImpl {
 
 	@Override
 	public DLFileEntryType getFileEntryType(long fileEntryTypeId)
-		throws PortalException, SystemException {
+		throws PortalException {
 
-		DLFileEntryTypePermission.check(
+		_dlFileEntryTypeModelResourcePermission.check(
 			getPermissionChecker(), fileEntryTypeId, ActionKeys.VIEW);
 
 		return dlFileEntryTypeLocalService.getFileEntryType(fileEntryTypeId);
 	}
 
 	@Override
-	public List<DLFileEntryType> getFileEntryTypes(long[] groupIds)
-		throws SystemException {
-
+	public List<DLFileEntryType> getFileEntryTypes(long[] groupIds) {
 		return dlFileEntryTypePersistence.filterFindByGroupId(groupIds);
 	}
 
 	@Override
 	public List<DLFileEntryType> getFileEntryTypes(
-			long[] groupIds, int start, int end)
-		throws SystemException {
+		long[] groupIds, int start, int end) {
 
 		return dlFileEntryTypePersistence.filterFindByGroupId(
 			groupIds, start, end);
 	}
 
 	@Override
-	public int getFileEntryTypesCount(long[] groupIds) throws SystemException {
+	public int getFileEntryTypesCount(long[] groupIds) {
 		return dlFileEntryTypePersistence.filterCountByGroupId(groupIds);
 	}
 
 	@Override
 	public List<DLFileEntryType> getFolderFileEntryTypes(
 			long[] groupIds, long folderId, boolean inherited)
-		throws PortalException, SystemException {
+		throws PortalException {
 
 		return filterFileEntryTypes(
 			dlFileEntryTypeLocalService.getFolderFileEntryTypes(
@@ -128,10 +152,21 @@ public class DLFileEntryTypeServiceImpl extends DLFileEntryTypeServiceBaseImpl {
 
 	@Override
 	public List<DLFileEntryType> search(
-			long companyId, long[] groupIds, String keywords,
-			boolean includeBasicFileEntryType, int start, int end,
-			OrderByComparator orderByComparator)
-		throws SystemException {
+			long companyId, long folderId, long[] groupIds, String keywords,
+			boolean includeBasicFileEntryType, boolean inherited, int start,
+			int end)
+		throws PortalException {
+
+		return dlFileEntryTypeFinder.filterFindByKeywords(
+			companyId, folderId, groupIds, keywords, includeBasicFileEntryType,
+			inherited, start, end);
+	}
+
+	@Override
+	public List<DLFileEntryType> search(
+		long companyId, long[] groupIds, String keywords,
+		boolean includeBasicFileEntryType, int start, int end,
+		OrderByComparator<DLFileEntryType> orderByComparator) {
 
 		return dlFileEntryTypeFinder.filterFindByKeywords(
 			companyId, groupIds, keywords, includeBasicFileEntryType, start,
@@ -140,22 +175,49 @@ public class DLFileEntryTypeServiceImpl extends DLFileEntryTypeServiceBaseImpl {
 
 	@Override
 	public int searchCount(
-			long companyId, long[] groupIds, String keywords,
-			boolean includeBasicFileEntryType)
-		throws SystemException {
+		long companyId, long folderId, long[] groupIds, String keywords,
+		boolean includeBasicFileEntryType, boolean inherited) {
+
+		return dlFileEntryTypeFinder.filterCountByKeywords(
+			companyId, folderId, groupIds, keywords, includeBasicFileEntryType,
+			inherited);
+	}
+
+	@Override
+	public int searchCount(
+		long companyId, long[] groupIds, String keywords,
+		boolean includeBasicFileEntryType) {
 
 		return dlFileEntryTypeFinder.filterCountByKeywords(
 			companyId, groupIds, keywords, includeBasicFileEntryType);
 	}
 
 	@Override
+	public DLFileEntryType updateFileEntryType(
+			long fileEntryTypeId, Map<Locale, String> nameMap,
+			Map<Locale, String> descriptionMap)
+		throws PortalException {
+
+		_dlFileEntryTypeModelResourcePermission.check(
+			getPermissionChecker(), fileEntryTypeId, ActionKeys.UPDATE);
+
+		return dlFileEntryTypeLocalService.updateFileEntryType(
+			fileEntryTypeId, nameMap, descriptionMap);
+	}
+
+	/**
+	 * @deprecated As of Athanasius (7.3.x), replaced by {@link
+	 *             #updateFileEntryType(long, Map, Map)}
+	 */
+	@Deprecated
+	@Override
 	public void updateFileEntryType(
 			long fileEntryTypeId, Map<Locale, String> nameMap,
 			Map<Locale, String> descriptionMap, long[] ddmStructureIds,
 			ServiceContext serviceContext)
-		throws PortalException, SystemException {
+		throws PortalException {
 
-		DLFileEntryTypePermission.check(
+		_dlFileEntryTypeModelResourcePermission.check(
 			getPermissionChecker(), fileEntryTypeId, ActionKeys.UPDATE);
 
 		dlFileEntryTypeLocalService.updateFileEntryType(
@@ -163,19 +225,24 @@ public class DLFileEntryTypeServiceImpl extends DLFileEntryTypeServiceBaseImpl {
 			ddmStructureIds, serviceContext);
 	}
 
+	/**
+	 * @deprecated As of Athanasius (7.3.x), replaced by {@link
+	 * #updateFileEntryType(long, Map, Map)}
+	 */
+	@Deprecated
 	@Override
 	public void updateFileEntryType(
 			long fileEntryTypeId, String name, String description,
 			long[] ddmStructureIds, ServiceContext serviceContext)
-		throws PortalException, SystemException {
+		throws PortalException {
 
-		Map<Locale, String> nameMap = new HashMap<Locale, String>();
+		Map<Locale, String> nameMap = HashMapBuilder.put(
+			LocaleUtil.getSiteDefault(), name
+		).build();
 
-		nameMap.put(LocaleUtil.getSiteDefault(), name);
-
-		Map<Locale, String> descriptionMap = new HashMap<Locale, String>();
-
-		descriptionMap.put(LocaleUtil.getSiteDefault(), description);
+		Map<Locale, String> descriptionMap = HashMapBuilder.put(
+			LocaleUtil.getSiteDefault(), description
+		).build();
 
 		updateFileEntryType(
 			fileEntryTypeId, nameMap, descriptionMap, ddmStructureIds,
@@ -190,20 +257,32 @@ public class DLFileEntryTypeServiceImpl extends DLFileEntryTypeServiceBaseImpl {
 
 		fileEntryTypes = ListUtil.copy(fileEntryTypes);
 
-		Iterator<DLFileEntryType> itr = fileEntryTypes.iterator();
+		Iterator<DLFileEntryType> iterator = fileEntryTypes.iterator();
 
-		while (itr.hasNext()) {
-			DLFileEntryType fileEntryType = itr.next();
+		while (iterator.hasNext()) {
+			DLFileEntryType fileEntryType = iterator.next();
 
 			if ((fileEntryType.getFileEntryTypeId() > 0) &&
-				!DLFileEntryTypePermission.contains(
+				!_dlFileEntryTypeModelResourcePermission.contains(
 					permissionChecker, fileEntryType, ActionKeys.VIEW)) {
 
-				itr.remove();
+				iterator.remove();
 			}
 		}
 
 		return fileEntryTypes;
 	}
+
+	private static volatile ModelResourcePermission<DLFileEntryType>
+		_dlFileEntryTypeModelResourcePermission =
+			ModelResourcePermissionFactory.getInstance(
+				DLFileEntryTypeServiceImpl.class,
+				"_dlFileEntryTypeModelResourcePermission",
+				DLFileEntryType.class);
+	private static volatile PortletResourcePermission
+		_portletResourcePermission =
+			PortletResourcePermissionFactory.getInstance(
+				DLFileEntryTypeServiceImpl.class, "_portletResourcePermission",
+				DLConstants.RESOURCE_NAME);
 
 }

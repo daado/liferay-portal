@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -35,8 +35,8 @@ public class JavaFieldsParser {
 			return s;
 		}
 
-		List<String> replaceFrom = new ArrayList<String>();
-		List<String> replaceWith = new ArrayList<String>();
+		List<String> replaceFrom = new ArrayList<>();
+		List<String> replaceWith = new ArrayList<>();
 
 		while (true) {
 			if (x == -1) {
@@ -70,10 +70,8 @@ public class JavaFieldsParser {
 			try {
 				clazz = classLoader.loadClass(className);
 			}
-			catch (Exception e) {
-				if (_log.isWarnEnabled()) {
-					_log.warn("Unable to load class " + className);
-				}
+			catch (Exception exception) {
+				_log.error("Unable to load class " + className, exception);
 
 				break;
 			}
@@ -99,15 +97,18 @@ public class JavaFieldsParser {
 					_log.debug("Field value " + fieldValue);
 				}
 			}
-			catch (Exception e) {
-				if (_log.isWarnEnabled()) {
-					_log.warn("Unable to load field " + fieldName);
-				}
+			catch (Exception exception) {
+				_log.error("Unable to load field " + fieldName, exception);
 
 				break;
 			}
 
-			replaceFrom.add("${".concat(javaSnippet).concat("}"));
+			replaceFrom.add(
+				"${".concat(
+					javaSnippet
+				).concat(
+					"}"
+				));
 			replaceWith.add(fieldValue);
 
 			x = s.indexOf("${", y);
@@ -118,8 +119,8 @@ public class JavaFieldsParser {
 		}
 
 		return StringUtil.replace(
-			s, replaceFrom.toArray(new String[replaceFrom.size()]),
-			replaceWith.toArray(new String[replaceWith.size()]));
+			s, replaceFrom.toArray(new String[0]),
+			replaceWith.toArray(new String[0]));
 	}
 
 	private static String _getClassName(String javaSnippet) {
@@ -142,6 +143,7 @@ public class JavaFieldsParser {
 		return javaSnippet.substring(x + 1);
 	}
 
-	private static Log _log = LogFactoryUtil.getLog(JavaFieldsParser.class);
+	private static final Log _log = LogFactoryUtil.getLog(
+		JavaFieldsParser.class);
 
 }

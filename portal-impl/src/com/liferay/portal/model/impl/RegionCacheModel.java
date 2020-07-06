@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,10 +14,11 @@
 
 package com.liferay.portal.model.impl;
 
-import com.liferay.portal.kernel.util.StringBundler;
-import com.liferay.portal.kernel.util.StringPool;
-import com.liferay.portal.model.CacheModel;
-import com.liferay.portal.model.Region;
+import com.liferay.petra.lang.HashUtil;
+import com.liferay.petra.string.StringBundler;
+import com.liferay.portal.kernel.model.CacheModel;
+import com.liferay.portal.kernel.model.MVCCModel;
+import com.liferay.portal.kernel.model.Region;
 
 import java.io.Externalizable;
 import java.io.IOException;
@@ -28,15 +29,56 @@ import java.io.ObjectOutput;
  * The cache model class for representing Region in entity cache.
  *
  * @author Brian Wing Shun Chan
- * @see Region
  * @generated
  */
-public class RegionCacheModel implements CacheModel<Region>, Externalizable {
+public class RegionCacheModel
+	implements CacheModel<Region>, Externalizable, MVCCModel {
+
+	@Override
+	public boolean equals(Object object) {
+		if (this == object) {
+			return true;
+		}
+
+		if (!(object instanceof RegionCacheModel)) {
+			return false;
+		}
+
+		RegionCacheModel regionCacheModel = (RegionCacheModel)object;
+
+		if ((regionId == regionCacheModel.regionId) &&
+			(mvccVersion == regionCacheModel.mvccVersion)) {
+
+			return true;
+		}
+
+		return false;
+	}
+
+	@Override
+	public int hashCode() {
+		int hashCode = HashUtil.hash(0, regionId);
+
+		return HashUtil.hash(hashCode, mvccVersion);
+	}
+
+	@Override
+	public long getMvccVersion() {
+		return mvccVersion;
+	}
+
+	@Override
+	public void setMvccVersion(long mvccVersion) {
+		this.mvccVersion = mvccVersion;
+	}
+
 	@Override
 	public String toString() {
-		StringBundler sb = new StringBundler(11);
+		StringBundler sb = new StringBundler(13);
 
-		sb.append("{regionId=");
+		sb.append("{mvccVersion=");
+		sb.append(mvccVersion);
+		sb.append(", regionId=");
 		sb.append(regionId);
 		sb.append(", countryId=");
 		sb.append(countryId);
@@ -55,18 +97,19 @@ public class RegionCacheModel implements CacheModel<Region>, Externalizable {
 	public Region toEntityModel() {
 		RegionImpl regionImpl = new RegionImpl();
 
+		regionImpl.setMvccVersion(mvccVersion);
 		regionImpl.setRegionId(regionId);
 		regionImpl.setCountryId(countryId);
 
 		if (regionCode == null) {
-			regionImpl.setRegionCode(StringPool.BLANK);
+			regionImpl.setRegionCode("");
 		}
 		else {
 			regionImpl.setRegionCode(regionCode);
 		}
 
 		if (name == null) {
-			regionImpl.setName(StringPool.BLANK);
+			regionImpl.setName("");
 		}
 		else {
 			regionImpl.setName(name);
@@ -81,28 +124,34 @@ public class RegionCacheModel implements CacheModel<Region>, Externalizable {
 
 	@Override
 	public void readExternal(ObjectInput objectInput) throws IOException {
+		mvccVersion = objectInput.readLong();
+
 		regionId = objectInput.readLong();
+
 		countryId = objectInput.readLong();
 		regionCode = objectInput.readUTF();
 		name = objectInput.readUTF();
+
 		active = objectInput.readBoolean();
 	}
 
 	@Override
-	public void writeExternal(ObjectOutput objectOutput)
-		throws IOException {
+	public void writeExternal(ObjectOutput objectOutput) throws IOException {
+		objectOutput.writeLong(mvccVersion);
+
 		objectOutput.writeLong(regionId);
+
 		objectOutput.writeLong(countryId);
 
 		if (regionCode == null) {
-			objectOutput.writeUTF(StringPool.BLANK);
+			objectOutput.writeUTF("");
 		}
 		else {
 			objectOutput.writeUTF(regionCode);
 		}
 
 		if (name == null) {
-			objectOutput.writeUTF(StringPool.BLANK);
+			objectOutput.writeUTF("");
 		}
 		else {
 			objectOutput.writeUTF(name);
@@ -111,9 +160,11 @@ public class RegionCacheModel implements CacheModel<Region>, Externalizable {
 		objectOutput.writeBoolean(active);
 	}
 
+	public long mvccVersion;
 	public long regionId;
 	public long countryId;
 	public String regionCode;
 	public String name;
 	public boolean active;
+
 }

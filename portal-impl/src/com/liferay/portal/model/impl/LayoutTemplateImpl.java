@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,21 +14,26 @@
 
 package com.liferay.portal.model.impl;
 
+import com.liferay.petra.io.StreamUtil;
+import com.liferay.petra.string.CharPool;
+import com.liferay.petra.string.StringBundler;
+import com.liferay.petra.string.StringPool;
+import com.liferay.portal.kernel.language.LanguageUtil;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
+import com.liferay.portal.kernel.model.LayoutTemplate;
+import com.liferay.portal.kernel.model.Plugin;
 import com.liferay.portal.kernel.servlet.ServletContextPool;
-import com.liferay.portal.kernel.util.ContextPathUtil;
-import com.liferay.portal.kernel.util.HttpUtil;
-import com.liferay.portal.kernel.util.StringPool;
+import com.liferay.portal.kernel.util.LocaleUtil;
+import com.liferay.portal.kernel.util.PortalUtil;
+import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.util.Validator;
-import com.liferay.portal.model.LayoutTemplate;
-import com.liferay.portal.model.Plugin;
-import com.liferay.portal.util.PortalUtil;
 
 import java.io.IOException;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 import javax.servlet.ServletContext;
 
@@ -40,10 +45,11 @@ public class LayoutTemplateImpl
 	extends PluginBaseImpl implements LayoutTemplate {
 
 	public LayoutTemplateImpl() {
+		this(null, null);
 	}
 
 	public LayoutTemplateImpl(String layoutTemplateId) {
-		_layoutTemplateId = layoutTemplateId;
+		this(layoutTemplateId, null);
 	}
 
 	public LayoutTemplateImpl(String layoutTemplateId, String name) {
@@ -65,14 +71,13 @@ public class LayoutTemplateImpl
 			return false;
 		}
 
-		String layoutTemplateId = layoutTemplate.getLayoutTemplateId();
+		if (getLayoutTemplateId().equals(
+				layoutTemplate.getLayoutTemplateId())) {
 
-		if (getLayoutTemplateId().equals(layoutTemplateId)) {
 			return true;
 		}
-		else {
-			return false;
-		}
+
+		return false;
 	}
 
 	@Override
@@ -97,7 +102,7 @@ public class LayoutTemplateImpl
 			ServletContext servletContext = ServletContextPool.get(
 				servletContextName);
 
-			return ContextPathUtil.getContextPath(servletContext);
+			return servletContext.getContextPath();
 		}
 
 		return StringPool.SLASH.concat(servletContextName);
@@ -110,12 +115,19 @@ public class LayoutTemplateImpl
 
 	@Override
 	public String getName() {
-		if (Validator.isNull(_name)) {
-			return _layoutTemplateId;
-		}
-		else {
+		return getName(LocaleUtil.getDefault());
+	}
+
+	@Override
+	public String getName(Locale locale) {
+		if (Validator.isNotNull(_name)) {
 			return _name;
 		}
+
+		String layoutTemplateId = StringUtil.replace(
+			_layoutTemplateId, CharPool.UNDERLINE, CharPool.DASH);
+
+		return LanguageUtil.get(locale, "layout-template-" + layoutTemplateId);
 	}
 
 	@Override
@@ -140,13 +152,13 @@ public class LayoutTemplateImpl
 
 	@Override
 	public String getStaticResourcePath() {
-		String proxyPath = PortalUtil.getPathProxy();
-
 		String contextPath = getContextPath();
 
 		if (!isWARFile()) {
 			return contextPath;
 		}
+
+		String proxyPath = PortalUtil.getPathProxy();
 
 		return proxyPath.concat(contextPath);
 	}
@@ -171,9 +183,10 @@ public class LayoutTemplateImpl
 		if (_servletContext == null) {
 			if (_log.isDebugEnabled()) {
 				_log.debug(
-					"Cannot get latest content for " + _servletContextName +
-						" " + getTemplatePath() +
-							" because the servlet context is null");
+					StringBundler.concat(
+						"Cannot get latest content for ", _servletContextName,
+						" ", getTemplatePath(),
+						" because the servlet context is null"));
 			}
 
 			return _content;
@@ -181,62 +194,17 @@ public class LayoutTemplateImpl
 
 		if (_log.isDebugEnabled()) {
 			_log.debug(
-				"Getting latest content for " + _servletContextName + " " +
-					getTemplatePath());
+				StringBundler.concat(
+					"Getting latest content for ", _servletContextName, " ",
+					getTemplatePath()));
 		}
 
-		String content = HttpUtil.URLtoString(
-			_servletContext.getResource(getTemplatePath()));
+		String content = StreamUtil.toString(
+			_servletContext.getResourceAsStream(getTemplatePath()));
 
 		setContent(content);
 
 		return content;
-	}
-
-	@Override
-	public String getUncachedWapContent() {
-		if (_servletContext == null) {
-			if (_log.isDebugEnabled()) {
-				_log.debug(
-					"Cannot get latest WAP content for " + _servletContextName +
-						" " + getWapTemplatePath() +
-							" because the servlet context is null");
-			}
-
-			return _wapContent;
-		}
-
-		if (_log.isDebugEnabled()) {
-			_log.debug(
-				"Getting latest WAP content for " + _servletContextName + " " +
-					getWapTemplatePath());
-		}
-
-		String wapContent = null;
-
-		try {
-			wapContent = HttpUtil.URLtoString(
-				_servletContext.getResource(getWapTemplatePath()));
-		}
-		catch (Exception e) {
-			_log.error(
-				"Unable to get content at WAP template path " +
-					getWapTemplatePath() + ": " + e.getMessage());
-		}
-
-		setWapContent(wapContent);
-
-		return wapContent;
-	}
-
-	@Override
-	public String getWapContent() {
-		return _wapContent;
-	}
-
-	@Override
-	public String getWapTemplatePath() {
-		return _wapTemplatePath;
 	}
 
 	@Override
@@ -247,11 +215,6 @@ public class LayoutTemplateImpl
 	@Override
 	public boolean hasSetContent() {
 		return _setContent;
-	}
-
-	@Override
-	public boolean hasSetWapContent() {
-		return _setWapContent;
 	}
 
 	@Override
@@ -318,34 +281,20 @@ public class LayoutTemplateImpl
 		_thumbnailPath = thumbnailPath;
 	}
 
-	@Override
-	public void setWapContent(String wapContent) {
-		_setWapContent = true;
+	private static final Log _log = LogFactoryUtil.getLog(
+		LayoutTemplateImpl.class);
 
-		_wapContent = wapContent;
-	}
-
-	@Override
-	public void setWapTemplatePath(String wapTemplatePath) {
-		_wapTemplatePath = wapTemplatePath;
-	}
-
-	private static Log _log = LogFactoryUtil.getLog(LayoutTemplateImpl.class);
-
-	private List<String> _columns = new ArrayList<String>();
+	private List<String> _columns = new ArrayList<>();
 	private String _content;
-	private String _layoutTemplateId;
+	private final String _layoutTemplateId;
 	private String _name;
 	private transient ServletContext _servletContext;
 	private String _servletContextName = StringPool.BLANK;
 	private boolean _setContent;
-	private boolean _setWapContent;
 	private boolean _standard;
 	private String _templatePath;
 	private String _themeId;
 	private String _thumbnailPath;
-	private String _wapContent;
-	private String _wapTemplatePath;
 	private boolean _warFile;
 
 }

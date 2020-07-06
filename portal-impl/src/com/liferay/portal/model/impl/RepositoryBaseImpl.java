@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,9 +14,8 @@
 
 package com.liferay.portal.model.impl;
 
-import com.liferay.portal.kernel.exception.SystemException;
-import com.liferay.portal.model.Repository;
-import com.liferay.portal.service.RepositoryLocalServiceUtil;
+import com.liferay.portal.kernel.model.Repository;
+import com.liferay.portal.kernel.service.RepositoryLocalServiceUtil;
 
 /**
  * The extended model base implementation for the Repository service. Represents a row in the &quot;Repository&quot; database table, with each column mapped to a property of this class.
@@ -27,18 +26,19 @@ import com.liferay.portal.service.RepositoryLocalServiceUtil;
  *
  * @author Brian Wing Shun Chan
  * @see RepositoryImpl
- * @see com.liferay.portal.model.Repository
+ * @see Repository
  * @generated
  */
-public abstract class RepositoryBaseImpl extends RepositoryModelImpl
-	implements Repository {
+public abstract class RepositoryBaseImpl
+	extends RepositoryModelImpl implements Repository {
+
 	/*
 	 * NOTE FOR DEVELOPERS:
 	 *
-	 * Never modify or reference this class directly. All methods that expect a repository model instance should use the {@link Repository} interface instead.
+	 * Never modify or reference this class directly. All methods that expect a repository model instance should use the <code>Repository</code> interface instead.
 	 */
 	@Override
-	public void persist() throws SystemException {
+	public void persist() {
 		if (this.isNew()) {
 			RepositoryLocalServiceUtil.addRepository(this);
 		}
@@ -46,4 +46,5 @@ public abstract class RepositoryBaseImpl extends RepositoryModelImpl
 			RepositoryLocalServiceUtil.updateRepository(this);
 		}
 	}
+
 }

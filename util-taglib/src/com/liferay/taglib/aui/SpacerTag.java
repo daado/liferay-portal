@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,29 +14,13 @@
 
 package com.liferay.taglib.aui;
 
-import com.liferay.portal.kernel.servlet.taglib.TagSupport;
-import com.liferay.portal.kernel.util.StringPool;
-
-import javax.servlet.jsp.JspException;
-import javax.servlet.jsp.JspWriter;
+import com.liferay.taglib.aui.base.BaseSpacerTag;
 
 /**
  * @author Eduardo Lundgren
+ * @author Bruno Basto
+ * @author Nathan Cavanaugh
+ * @author Julio Camarero
  */
-public class SpacerTag extends TagSupport {
-
-	@Override
-	public int doStartTag() throws JspException {
-		try {
-			JspWriter jspWriter = pageContext.getOut();
-
-			jspWriter.write(StringPool.SPACE);
-		}
-		catch (Exception e) {
-			throw new JspException(e);
-		}
-
-		return super.doStartTag();
-	}
-
+public class SpacerTag extends BaseSpacerTag {
 }

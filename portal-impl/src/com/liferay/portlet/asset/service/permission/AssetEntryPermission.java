@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,15 +14,14 @@
 
 package com.liferay.portlet.asset.service.permission;
 
+import com.liferay.asset.kernel.AssetRendererFactoryRegistryUtil;
+import com.liferay.asset.kernel.model.AssetEntry;
+import com.liferay.asset.kernel.model.AssetRendererFactory;
+import com.liferay.asset.kernel.service.AssetEntryLocalServiceUtil;
 import com.liferay.portal.kernel.exception.PortalException;
-import com.liferay.portal.kernel.exception.SystemException;
-import com.liferay.portal.security.auth.PrincipalException;
-import com.liferay.portal.security.permission.PermissionChecker;
-import com.liferay.portal.util.PortalUtil;
-import com.liferay.portlet.asset.AssetRendererFactoryRegistryUtil;
-import com.liferay.portlet.asset.model.AssetEntry;
-import com.liferay.portlet.asset.model.AssetRendererFactory;
-import com.liferay.portlet.asset.service.AssetEntryLocalServiceUtil;
+import com.liferay.portal.kernel.security.auth.PrincipalException;
+import com.liferay.portal.kernel.security.permission.PermissionChecker;
+import com.liferay.portal.kernel.util.PortalUtil;
 
 /**
  * @author Samuel Kong
@@ -35,26 +34,30 @@ public class AssetEntryPermission {
 		throws PortalException {
 
 		if (!contains(permissionChecker, entry, actionId)) {
-			throw new PrincipalException();
+			throw new PrincipalException.MustHavePermission(
+				permissionChecker,
+				PortalUtil.getClassName(entry.getClassNameId()),
+				entry.getClassPK(), actionId);
 		}
 	}
 
 	public static void check(
 			PermissionChecker permissionChecker, long entryId, String actionId)
-		throws PortalException, SystemException {
+		throws PortalException {
 
-		if (!contains(permissionChecker, entryId, actionId)) {
-			throw new PrincipalException();
-		}
+		check(
+			permissionChecker, AssetEntryLocalServiceUtil.getEntry(entryId),
+			actionId);
 	}
 
 	public static void check(
 			PermissionChecker permissionChecker, String className, long classPK,
 			String actionId)
-		throws PortalException, SystemException {
+		throws PortalException {
 
 		if (!contains(permissionChecker, className, classPK, actionId)) {
-			throw new PrincipalException();
+			throw new PrincipalException.MustHavePermission(
+				permissionChecker, className, classPK, actionId);
 		}
 	}
 
@@ -65,7 +68,7 @@ public class AssetEntryPermission {
 
 		String className = PortalUtil.getClassName(entry.getClassNameId());
 
-		AssetRendererFactory assetRendererFactory =
+		AssetRendererFactory<?> assetRendererFactory =
 			AssetRendererFactoryRegistryUtil.getAssetRendererFactoryByClassName(
 				className);
 
@@ -73,29 +76,39 @@ public class AssetEntryPermission {
 			return assetRendererFactory.hasPermission(
 				permissionChecker, entry.getClassPK(), actionId);
 		}
-		catch (Exception e) {
-			throw new PrincipalException(e);
+		catch (Exception exception) {
+			throw new PrincipalException.MustHavePermission(
+				permissionChecker, className, entry.getClassPK(), exception,
+				actionId);
 		}
 	}
 
 	public static boolean contains(
 			PermissionChecker permissionChecker, long entryId, String actionId)
-		throws PortalException, SystemException {
+		throws PortalException {
 
-		AssetEntry entry = AssetEntryLocalServiceUtil.getEntry(entryId);
-
-		return contains(permissionChecker, entry, actionId);
+		return contains(
+			permissionChecker, AssetEntryLocalServiceUtil.getEntry(entryId),
+			actionId);
 	}
 
 	public static boolean contains(
 			PermissionChecker permissionChecker, String className, long classPK,
 			String actionId)
-		throws PortalException, SystemException {
+		throws PortalException {
 
-		AssetEntry entry = AssetEntryLocalServiceUtil.getEntry(
-			className, classPK);
+		AssetRendererFactory<?> assetRendererFactory =
+			AssetRendererFactoryRegistryUtil.getAssetRendererFactoryByClassName(
+				className);
 
-		return contains(permissionChecker, entry, actionId);
+		try {
+			return assetRendererFactory.hasPermission(
+				permissionChecker, classPK, actionId);
+		}
+		catch (Exception exception) {
+			throw new PrincipalException.MustHavePermission(
+				permissionChecker, className, classPK, exception, actionId);
+		}
 	}
 
 }

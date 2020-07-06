@@ -1,6 +1,6 @@
 <%--
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -37,11 +37,13 @@ for (String servletContextName : ServletContextPool.keySet()) {
 			invokerPortletName = portletConfig.getPortletName();
 		}
 
-		String portletName = PortalUtil.getJsSafePortletId(invokerPortletName);
-
-		String path = StringPool.SLASH.concat(portletName).concat("/invoke");
+		String path = StringPool.SLASH.concat(invokerPortletName).concat("/invoke");
 
 		RequestDispatcher requestDispatcher = servletContext.getRequestDispatcher(path);
+
+		if (requestDispatcher == null) {
+			continue;
+		}
 
 		request.setAttribute(WebKeys.EXTEND_SESSION, Boolean.TRUE);
 
@@ -58,5 +60,5 @@ for (String servletContextName : ServletContextPool.keySet()) {
 %>
 
 <%!
-private static Log _log = LogFactoryUtil.getLog("portal-web.docroot.html.portal.extend_session_jsp");
+private static Log _log = LogFactoryUtil.getLog("portal_web.docroot.html.portal.extend_session_jsp");
 %>

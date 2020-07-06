@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -25,6 +25,82 @@ import javax.servlet.http.HttpServletRequest;
  * @author Brian Wing Shun Chan
  */
 public class InputFieldTag extends IncludeTag {
+
+	public Object getBean() {
+		return _bean;
+	}
+
+	public String getCssClass() {
+		return _cssClass;
+	}
+
+	public String getDateTogglerCheckboxLabel() {
+		return _dateTogglerCheckboxLabel;
+	}
+
+	public String getDefaultLanguageId() {
+		return _defaultLanguageId;
+	}
+
+	public Object getDefaultValue() {
+		return _defaultValue;
+	}
+
+	public String getField() {
+		return _field;
+	}
+
+	public String getFieldParam() {
+		return _fieldParam;
+	}
+
+	public Format getFormat() {
+		return _format;
+	}
+
+	public String getFormName() {
+		return _formName;
+	}
+
+	public String getId() {
+		return _id;
+	}
+
+	public String getLanguageId() {
+		return _languageId;
+	}
+
+	public Class<?> getModel() {
+		return _model;
+	}
+
+	public String getPlaceholder() {
+		return _placeholder;
+	}
+
+	public boolean isAutoComplete() {
+		return _autoComplete;
+	}
+
+	public boolean isAutoFocus() {
+		return _autoFocus;
+	}
+
+	public boolean isAutoSize() {
+		return _autoSize;
+	}
+
+	public boolean isDisabled() {
+		return _disabled;
+	}
+
+	public boolean isIgnoreRequestValue() {
+		return _ignoreRequestValue;
+	}
+
+	public void setAutoComplete(boolean autoComplete) {
+		_autoComplete = autoComplete;
+	}
 
 	public void setAutoFocus(boolean autoFocus) {
 		_autoFocus = autoFocus;
@@ -96,6 +172,9 @@ public class InputFieldTag extends IncludeTag {
 
 	@Override
 	protected void cleanUp() {
+		super.cleanUp();
+
+		_autoComplete = true;
 		_autoFocus = false;
 		_autoSize = false;
 		_bean = null;
@@ -121,7 +200,7 @@ public class InputFieldTag extends IncludeTag {
 	}
 
 	@Override
-	protected void setAttributes(HttpServletRequest request) {
+	protected void setAttributes(HttpServletRequest httpServletRequest) {
 		String fieldParam = _fieldParam;
 
 		if (Validator.isNull(fieldParam)) {
@@ -134,37 +213,49 @@ public class InputFieldTag extends IncludeTag {
 			id = fieldParam;
 		}
 
-		request.setAttribute(
+		httpServletRequest.setAttribute(
+			"liferay-ui:input-field:autoComplete",
+			String.valueOf(_autoComplete));
+		httpServletRequest.setAttribute(
 			"liferay-ui:input-field:autoFocus", String.valueOf(_autoFocus));
-		request.setAttribute(
+		httpServletRequest.setAttribute(
 			"liferay-ui:input-field:autoSize", String.valueOf(_autoSize));
-		request.setAttribute("liferay-ui:input-field:bean", _bean);
-		request.setAttribute("liferay-ui:input-field:cssClass", _cssClass);
-		request.setAttribute(
+		httpServletRequest.setAttribute("liferay-ui:input-field:bean", _bean);
+		httpServletRequest.setAttribute(
+			"liferay-ui:input-field:cssClass", _cssClass);
+		httpServletRequest.setAttribute(
 			"liferay-ui:input-field:dateTogglerCheckboxLabel",
 			_dateTogglerCheckboxLabel);
-		request.setAttribute(
+		httpServletRequest.setAttribute(
 			"liferay-ui:input-field:defaultLanguageId", _defaultLanguageId);
-		request.setAttribute(
+		httpServletRequest.setAttribute(
 			"liferay-ui:input-field:defaultValue", _defaultValue);
-		request.setAttribute(
+		httpServletRequest.setAttribute(
 			"liferay-ui:input-field:disabled", String.valueOf(_disabled));
-		request.setAttribute("liferay-ui:input-field:field", _field);
-		request.setAttribute("liferay-ui:input-field:fieldParam", fieldParam);
-		request.setAttribute("liferay-ui:input-field:id", id);
-		request.setAttribute("liferay-ui:input-field:format", _format);
-		request.setAttribute("liferay-ui:input-field:formName", _formName);
-		request.setAttribute(
+		httpServletRequest.setAttribute(
+			"liferay-ui:input-field:dynamicAttributes", getDynamicAttributes());
+		httpServletRequest.setAttribute("liferay-ui:input-field:field", _field);
+		httpServletRequest.setAttribute(
+			"liferay-ui:input-field:fieldParam", fieldParam);
+		httpServletRequest.setAttribute(
+			"liferay-ui:input-field:format", _format);
+		httpServletRequest.setAttribute(
+			"liferay-ui:input-field:formName", _formName);
+		httpServletRequest.setAttribute("liferay-ui:input-field:id", id);
+		httpServletRequest.setAttribute(
 			"liferay-ui:input-field:ignoreRequestValue",
 			String.valueOf(_ignoreRequestValue));
-		request.setAttribute("liferay-ui:input-field:languageId", _languageId);
-		request.setAttribute("liferay-ui:input-field:model", _model.getName());
-		request.setAttribute(
+		httpServletRequest.setAttribute(
+			"liferay-ui:input-field:languageId", _languageId);
+		httpServletRequest.setAttribute(
+			"liferay-ui:input-field:model", _model.getName());
+		httpServletRequest.setAttribute(
 			"liferay-ui:input-field:placeholder", _placeholder);
 	}
 
 	private static final String _PAGE = "/html/taglib/ui/input_field/page.jsp";
 
+	private boolean _autoComplete = true;
 	private boolean _autoFocus;
 	private boolean _autoSize;
 	private Object _bean;

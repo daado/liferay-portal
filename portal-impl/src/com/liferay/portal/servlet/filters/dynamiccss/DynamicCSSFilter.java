@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,27 +14,30 @@
 
 package com.liferay.portal.servlet.filters.dynamiccss;
 
-import com.liferay.portal.kernel.cache.key.CacheKeyGenerator;
-import com.liferay.portal.kernel.cache.key.CacheKeyGeneratorUtil;
+import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
 import com.liferay.portal.kernel.servlet.BufferCacheServletResponse;
 import com.liferay.portal.kernel.servlet.HttpHeaders;
+import com.liferay.portal.kernel.servlet.PortalWebResourcesUtil;
+import com.liferay.portal.kernel.servlet.ResourceUtil;
 import com.liferay.portal.kernel.servlet.ServletResponseUtil;
 import com.liferay.portal.kernel.util.ContentTypes;
 import com.liferay.portal.kernel.util.FileUtil;
 import com.liferay.portal.kernel.util.GetterUtil;
-import com.liferay.portal.kernel.util.HttpUtil;
 import com.liferay.portal.kernel.util.JavaConstants;
-import com.liferay.portal.kernel.util.StringPool;
+import com.liferay.portal.kernel.util.ObjectValuePair;
+import com.liferay.portal.kernel.util.ParamUtil;
+import com.liferay.portal.kernel.util.PortalUtil;
 import com.liferay.portal.kernel.util.StringUtil;
+import com.liferay.portal.kernel.util.URLUtil;
 import com.liferay.portal.servlet.filters.IgnoreModuleRequestFilter;
+import com.liferay.portal.servlet.filters.util.CacheFileNameGenerator;
 import com.liferay.portal.util.PropsUtil;
 
 import java.io.File;
 
 import java.net.URL;
-import java.net.URLConnection;
 
 import javax.servlet.FilterChain;
 import javax.servlet.FilterConfig;
@@ -63,107 +66,109 @@ public class DynamicCSSFilter extends IgnoreModuleRequestFilter {
 		_tempDir = new File(tempDir, _TEMP_DIR);
 
 		_tempDir.mkdirs();
-
-		DynamicCSSUtil.init();
 	}
 
-	protected String getCacheFileName(HttpServletRequest request) {
-		CacheKeyGenerator cacheKeyGenerator =
-			CacheKeyGeneratorUtil.getCacheKeyGenerator(
-				DynamicCSSFilter.class.getName());
+	protected String getCacheFileName(HttpServletRequest httpServletRequest) {
+		String cacheFileName = CacheFileNameGenerator.getCacheFileName(
+			httpServletRequest, DynamicCSSFilter.class.getName());
 
-		cacheKeyGenerator.append(HttpUtil.getProtocol(request.isSecure()));
-		cacheKeyGenerator.append(StringPool.UNDERLINE);
-		cacheKeyGenerator.append(request.getRequestURI());
-
-		String queryString = request.getQueryString();
-
-		if (queryString != null) {
-			cacheKeyGenerator.append(sterilizeQueryString(queryString));
+		if (PortalUtil.isRightToLeft(httpServletRequest)) {
+			return cacheFileName + _CACHE_FILE_NAME_RTL;
 		}
 
-		return String.valueOf(cacheKeyGenerator.finish());
+		return cacheFileName;
 	}
 
 	protected Object getDynamicContent(
-			HttpServletRequest request, HttpServletResponse response,
-			FilterChain filterChain)
+			HttpServletRequest httpServletRequest,
+			HttpServletResponse httpServletResponse, FilterChain filterChain)
 		throws Exception {
 
-		String requestURI = request.getRequestURI();
+		String requestPath = getRequestPath(httpServletRequest);
 
-		String requestPath = requestURI;
+		String originalRequestPath = httpServletRequest.getRequestURI();
 
-		String contextPath = request.getContextPath();
+		if (originalRequestPath.endsWith(_CSS_EXTENSION) &&
+			PortalUtil.isRightToLeft(httpServletRequest)) {
 
-		if (!contextPath.equals(StringPool.SLASH)) {
-			requestPath = requestPath.substring(contextPath.length());
+			int pos = originalRequestPath.lastIndexOf(StringPool.PERIOD);
+
+			originalRequestPath =
+				originalRequestPath.substring(0, pos) + "_rtl" +
+					originalRequestPath.substring(pos);
 		}
 
-		URL resourceURL = _servletContext.getResource(requestPath);
+		ObjectValuePair<ServletContext, URL> objectValuePair =
+			ResourceUtil.getObjectValuePair(
+				originalRequestPath, requestPath, _servletContext);
 
-		if (resourceURL == null) {
+		if (objectValuePair == null) {
 			return null;
 		}
 
-		URLConnection urlConnection = resourceURL.openConnection();
+		URL resourceURL = objectValuePair.getValue();
 
-		String cacheCommonFileName = getCacheFileName(request);
+		String cacheCommonFileName = getCacheFileName(httpServletRequest);
 
 		File cacheContentTypeFile = new File(
-			_tempDir, cacheCommonFileName + "_E_CONTENT_TYPE");
+			_tempDir, cacheCommonFileName + "_E_CTYPE");
 		File cacheDataFile = new File(
 			_tempDir, cacheCommonFileName + "_E_DATA");
 
+		long lastModified = getLastModified(httpServletRequest, resourceURL);
+
 		if (cacheDataFile.exists() &&
-			(cacheDataFile.lastModified() >= urlConnection.getLastModified())) {
+			(cacheDataFile.lastModified() == lastModified)) {
 
 			if (cacheContentTypeFile.exists()) {
 				String contentType = FileUtil.read(cacheContentTypeFile);
 
-				response.setContentType(contentType);
+				httpServletResponse.setContentType(contentType);
 			}
 
 			return cacheDataFile;
 		}
+
+		ServletContext servletContext = objectValuePair.getKey();
 
 		String dynamicContent = null;
 
 		String content = null;
 
 		try {
-			if (requestPath.endsWith(_CSS_EXTENSION)) {
+			if (originalRequestPath.endsWith(_CSS_EXTENSION)) {
 				if (_log.isInfoEnabled()) {
-					_log.info("Parsing SASS on CSS " + requestPath);
+					_log.info("Replacing tokens on CSS " + originalRequestPath);
 				}
 
-				content = StringUtil.read(urlConnection.getInputStream());
+				content = StringUtil.read(resourceURL.openStream());
 
-				dynamicContent = DynamicCSSUtil.parseSass(
-					_servletContext, request, requestPath, content);
+				dynamicContent = DynamicCSSUtil.replaceToken(
+					servletContext, httpServletRequest, content);
 
-				response.setContentType(ContentTypes.TEXT_CSS);
+				httpServletResponse.setContentType(ContentTypes.TEXT_CSS_UTF8);
 
-				FileUtil.write(cacheContentTypeFile, ContentTypes.TEXT_CSS);
+				FileUtil.write(
+					cacheContentTypeFile, ContentTypes.TEXT_CSS_UTF8);
 			}
-			else if (requestPath.endsWith(_JSP_EXTENSION)) {
+			else if (originalRequestPath.endsWith(_JSP_EXTENSION)) {
 				if (_log.isInfoEnabled()) {
-					_log.info("Parsing SASS on JSP or servlet " + requestPath);
+					_log.info(
+						"Replacing tokens on JSP or servlet " +
+							originalRequestPath);
 				}
 
 				BufferCacheServletResponse bufferCacheServletResponse =
-					new BufferCacheServletResponse(response);
+					new BufferCacheServletResponse(httpServletResponse);
 
 				processFilter(
-					DynamicCSSFilter.class, request, bufferCacheServletResponse,
-					filterChain);
-
-				bufferCacheServletResponse.finishResponse();
+					DynamicCSSFilter.class.getName(), httpServletRequest,
+					bufferCacheServletResponse, filterChain);
 
 				content = bufferCacheServletResponse.getString();
 
-				dynamicContent = DynamicCSSUtil.parseSass(
-					_servletContext, request, requestPath, content);
+				dynamicContent = DynamicCSSUtil.replaceToken(
+					servletContext, httpServletRequest, content);
 
 				FileUtil.write(
 					cacheContentTypeFile,
@@ -173,14 +178,16 @@ public class DynamicCSSFilter extends IgnoreModuleRequestFilter {
 				return null;
 			}
 		}
-		catch (Exception e) {
-			_log.error("Unable to parse SASS on CSS " + requestPath, e);
+		catch (Exception exception) {
+			_log.error(
+				"Unable to replace tokens in CSS " + originalRequestPath,
+				exception);
 
 			if (_log.isDebugEnabled()) {
 				_log.debug(content);
 			}
 
-			response.setHeader(
+			httpServletResponse.setHeader(
 				HttpHeaders.CACHE_CONTROL,
 				HttpHeaders.CACHE_CONTROL_NO_CACHE_VALUE);
 		}
@@ -192,37 +199,73 @@ public class DynamicCSSFilter extends IgnoreModuleRequestFilter {
 			dynamicContent = content;
 		}
 
+		cacheDataFile.setLastModified(lastModified);
+
 		return dynamicContent;
+	}
+
+	protected long getLastModified(
+			HttpServletRequest httpServletRequest, URL resourceURL)
+		throws Exception {
+
+		long resourceLastModified = URLUtil.getLastModifiedTime(resourceURL);
+
+		long requestLastModified = ParamUtil.getLong(
+			httpServletRequest, "t", -1);
+
+		return Math.max(resourceLastModified, requestLastModified);
+	}
+
+	protected String getRequestPath(HttpServletRequest httpServletRequest) {
+		String requestPath = httpServletRequest.getRequestURI();
+
+		String contextPath = httpServletRequest.getContextPath();
+
+		if (!contextPath.equals(StringPool.SLASH)) {
+			requestPath = requestPath.substring(contextPath.length());
+		}
+
+		return requestPath;
+	}
+
+	@Override
+	protected boolean isModuleRequest(HttpServletRequest httpServletRequest) {
+		if (PortalWebResourcesUtil.hasContextPath(
+				httpServletRequest.getRequestURI())) {
+
+			return false;
+		}
+
+		return super.isModuleRequest(httpServletRequest);
 	}
 
 	@Override
 	protected void processFilter(
-			HttpServletRequest request, HttpServletResponse response,
-			FilterChain filterChain)
+			HttpServletRequest httpServletRequest,
+			HttpServletResponse httpServletResponse, FilterChain filterChain)
 		throws Exception {
 
 		Object parsedContent = getDynamicContent(
-			request, response, filterChain);
+			httpServletRequest, httpServletResponse, filterChain);
 
 		if (parsedContent == null) {
 			processFilter(
-				DynamicCSSFilter.class, request, response, filterChain);
+				DynamicCSSFilter.class.getName(), httpServletRequest,
+				httpServletResponse, filterChain);
 		}
 		else {
 			if (parsedContent instanceof File) {
-				ServletResponseUtil.write(response, (File)parsedContent);
+				ServletResponseUtil.write(
+					httpServletResponse, (File)parsedContent);
 			}
 			else if (parsedContent instanceof String) {
-				ServletResponseUtil.write(response, (String)parsedContent);
+				ServletResponseUtil.write(
+					httpServletResponse, (String)parsedContent);
 			}
 		}
 	}
 
-	protected String sterilizeQueryString(String queryString) {
-		return StringUtil.replace(
-			queryString, new String[] {StringPool.SLASH, StringPool.BACK_SLASH},
-			new String[] {StringPool.UNDERLINE, StringPool.UNDERLINE});
-	}
+	private static final String _CACHE_FILE_NAME_RTL = "_rtl";
 
 	private static final String _CSS_EXTENSION = ".css";
 
@@ -230,7 +273,8 @@ public class DynamicCSSFilter extends IgnoreModuleRequestFilter {
 
 	private static final String _TEMP_DIR = "css";
 
-	private static Log _log = LogFactoryUtil.getLog(DynamicCSSFilter.class);
+	private static final Log _log = LogFactoryUtil.getLog(
+		DynamicCSSFilter.class);
 
 	private ServletContext _servletContext;
 	private File _tempDir;

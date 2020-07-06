@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,10 +14,10 @@
 
 package com.liferay.portal.util;
 
+import com.liferay.petra.process.ConsumerOutputProcessor;
+import com.liferay.petra.process.ProcessUtil;
+import com.liferay.petra.string.StringBundler;
 import com.liferay.portal.kernel.util.OSDetector;
-import com.liferay.portal.kernel.util.StringBundler;
-import com.liferay.portal.kernel.util.StringPool;
-import com.liferay.portal.kernel.util.Validator;
 
 import java.net.HttpURLConnection;
 import java.net.URL;
@@ -29,63 +29,48 @@ public class BrowserLauncher implements Runnable {
 
 	@Override
 	public void run() {
-		if (Validator.isNull(PropsValues.BROWSER_LAUNCHER_URL)) {
-			return;
-		}
+		try {
+			URL url = new URL(PropsValues.BROWSER_LAUNCHER_URL);
 
-		for (int i = 0; i < 5; i++) {
-			try {
-				Thread.sleep(3000);
-			}
-			catch (InterruptedException ie) {
-			}
+			HttpURLConnection urlc = (HttpURLConnection)url.openConnection();
 
-			try {
-				URL url = new URL(PropsValues.BROWSER_LAUNCHER_URL);
+			urlc.setConnectTimeout(0);
+			urlc.setReadTimeout(0);
+			urlc.setRequestMethod("HEAD");
 
-				HttpURLConnection urlc =
-					(HttpURLConnection)url.openConnection();
+			int responseCode = urlc.getResponseCode();
 
-				int responseCode = urlc.getResponseCode();
-
-				if (responseCode == HttpURLConnection.HTTP_OK) {
-					try {
-						launchBrowser();
-					}
-					catch (Exception e2) {
-					}
-
-					break;
+			if (responseCode == HttpURLConnection.HTTP_OK) {
+				try {
+					launchBrowser();
+				}
+				catch (Exception exception) {
 				}
 			}
-			catch (Exception e1) {
-			}
+		}
+		catch (Exception exception) {
 		}
 	}
 
 	protected void launchBrowser() throws Exception {
-		Runtime runtime = Runtime.getRuntime();
-
 		if (OSDetector.isApple()) {
-			launchBrowserApple(runtime);
+			launchBrowserApple(null);
 		}
 		else if (OSDetector.isWindows()) {
-			launchBrowserWindows(runtime);
+			launchBrowserWindows(null);
 		}
 		else {
-			launchBrowserUnix(runtime);
+			launchBrowserUnix(null);
 		}
 	}
 
 	protected void launchBrowserApple(Runtime runtime) throws Exception {
-		runtime.exec("open " + PropsValues.BROWSER_LAUNCHER_URL);
+		ProcessUtil.execute(
+			ConsumerOutputProcessor.INSTANCE, "open",
+			PropsValues.BROWSER_LAUNCHER_URL);
 	}
 
 	protected void launchBrowserUnix(Runtime runtime) throws Exception {
-		if (_BROWSERS.length == 0) {
-			runtime.exec(new String[] {"sh", "-c", StringPool.BLANK});
-		}
-
 		StringBundler sb = new StringBundler(_BROWSERS.length * 5 - 1);
 
 		for (int i = 0; i < _BROWSERS.length; i++) {
@@ -99,15 +84,21 @@ public class BrowserLauncher implements Runnable {
 			sb.append("\" ");
 		}
 
-		runtime.exec(new String[] {"sh", "-c", sb.toString()});
+		ProcessUtil.execute(
+			ConsumerOutputProcessor.INSTANCE, "sh", "-c", sb.toString());
 	}
 
 	protected void launchBrowserWindows(Runtime runtime) throws Exception {
-		runtime.exec("cmd.exe /c start " + PropsValues.BROWSER_LAUNCHER_URL);
+		ProcessUtil.execute(
+			ConsumerOutputProcessor.INSTANCE, "cmd.exe", "/c", "start",
+			PropsValues.BROWSER_LAUNCHER_URL);
 	}
 
+	/**
+	 * Order matters. See LPS-48525.
+	 */
 	private static final String[] _BROWSERS = {
-		"firefox", "mozilla", "konqueror", "opera"
+		"xdg-open", "firefox", "mozilla", "konqueror", "opera"
 	};
 
 }

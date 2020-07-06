@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -33,22 +33,26 @@ import javax.servlet.http.HttpServletResponse;
 public class FragmentFilter extends BasePortalFilter {
 
 	public static final String SKIP_FILTER =
-		FragmentFilter.class.getName() + "SKIP_FILTER";
+		FragmentFilter.class.getName() + "#SKIP_FILTER";
 
 	@Override
 	public boolean isFilterEnabled(
-		HttpServletRequest request, HttpServletResponse response) {
+		HttpServletRequest httpServletRequest,
+		HttpServletResponse httpServletResponse) {
 
-		if (isFragment(request, response) && !isAlreadyFiltered(request)) {
+		if (isFragment(httpServletRequest, httpServletResponse) &&
+			!isAlreadyFiltered(httpServletRequest)) {
+
 			return true;
 		}
-		else {
-			return false;
-		}
+
+		return false;
 	}
 
-	protected String getContent(HttpServletRequest request, String content) {
-		String fragmentId = ParamUtil.getString(request, "p_f_id");
+	protected String getContent(
+		HttpServletRequest httpServletRequest, String content) {
+
+		String fragmentId = ParamUtil.getString(httpServletRequest, "p_f_id");
 
 		int x = content.indexOf("<!-- Begin fragment " + fragmentId + " -->");
 		int y = content.indexOf("<!-- End fragment " + fragmentId + " -->");
@@ -62,56 +66,55 @@ public class FragmentFilter extends BasePortalFilter {
 		return content.substring(x + 1, y);
 	}
 
-	protected boolean isAlreadyFiltered(HttpServletRequest request) {
-		if (request.getAttribute(SKIP_FILTER) != null) {
+	protected boolean isAlreadyFiltered(HttpServletRequest httpServletRequest) {
+		if (httpServletRequest.getAttribute(SKIP_FILTER) != null) {
 			return true;
 		}
-		else {
-			return false;
-		}
+
+		return false;
 	}
 
 	protected boolean isFragment(
-		HttpServletRequest request, HttpServletResponse response) {
+		HttpServletRequest httpServletRequest,
+		HttpServletResponse httpServletResponse) {
 
-		String fragmentId = ParamUtil.getString(request, "p_f_id");
+		String fragmentId = ParamUtil.getString(httpServletRequest, "p_f_id");
 
 		if (Validator.isNotNull(fragmentId)) {
 			return true;
 		}
-		else {
-			return false;
-		}
+
+		return false;
 	}
 
 	@Override
 	protected void processFilter(
-			HttpServletRequest request, HttpServletResponse response,
-			FilterChain filterChain)
+			HttpServletRequest httpServletRequest,
+			HttpServletResponse httpServletResponse, FilterChain filterChain)
 		throws Exception {
 
-		request.setAttribute(SKIP_FILTER, Boolean.TRUE);
+		httpServletRequest.setAttribute(SKIP_FILTER, Boolean.TRUE);
 
 		if (_log.isDebugEnabled()) {
-			String completeURL = HttpUtil.getCompleteURL(request);
+			String completeURL = HttpUtil.getCompleteURL(httpServletRequest);
 
 			_log.debug("Fragmenting " + completeURL);
 		}
 
 		BufferCacheServletResponse bufferCacheServletResponse =
-			new BufferCacheServletResponse(response);
+			new BufferCacheServletResponse(httpServletResponse);
 
 		processFilter(
-			FragmentFilter.class, request, bufferCacheServletResponse,
-			filterChain);
+			FragmentFilter.class.getName(), httpServletRequest,
+			bufferCacheServletResponse, filterChain);
 
 		String content = bufferCacheServletResponse.getString();
 
-		content = getContent(request, content);
+		content = getContent(httpServletRequest, content);
 
-		ServletResponseUtil.write(response, content);
+		ServletResponseUtil.write(httpServletResponse, content);
 	}
 
-	private static Log _log = LogFactoryUtil.getLog(FragmentFilter.class);
+	private static final Log _log = LogFactoryUtil.getLog(FragmentFilter.class);
 
 }

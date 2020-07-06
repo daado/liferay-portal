@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -15,13 +15,16 @@
 package com.liferay.taglib.util;
 
 import com.liferay.portal.kernel.servlet.DynamicServletRequest;
-import com.liferay.portal.kernel.servlet.taglib.BaseBodyTagSupport;
+import com.liferay.portal.kernel.util.Validator;
 import com.liferay.portal.kernel.util.WebKeys;
+import com.liferay.taglib.BaseBodyTagSupport;
+import com.liferay.taglib.servlet.AutoClosePageContextRegistry;
 
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
 import javax.servlet.ServletContext;
 import javax.servlet.http.HttpServletRequest;
@@ -37,8 +40,12 @@ public class ParamAndPropertyAncestorTagImpl
 
 	@Override
 	public void addParam(String name, String value) {
+		if (Validator.isNull(name)) {
+			throw new IllegalArgumentException();
+		}
+
 		if (_dynamicServletRequest == null) {
-			_dynamicServletRequest = new DynamicServletRequest(request);
+			_dynamicServletRequest = new DynamicServletRequest(getRequest());
 
 			request = _dynamicServletRequest;
 		}
@@ -52,7 +59,7 @@ public class ParamAndPropertyAncestorTagImpl
 			params.remove(name);
 
 			if (_removedParameterNames == null) {
-				_removedParameterNames = new HashSet<String>();
+				_removedParameterNames = new HashSet<>();
 			}
 
 			_removedParameterNames.add(name);
@@ -62,7 +69,7 @@ public class ParamAndPropertyAncestorTagImpl
 
 		String[] values = params.get(name);
 
-		if (values == null) {
+		if (!_copyCurrentRenderParameters || (values == null)) {
 			values = new String[] {value};
 		}
 		else {
@@ -81,12 +88,12 @@ public class ParamAndPropertyAncestorTagImpl
 	@Override
 	public void addProperty(String name, String value) {
 		if (_properties == null) {
-			_properties = new LinkedHashMap<String, String[]>();
+			_properties = new LinkedHashMap<>();
 		}
 
 		String[] values = _properties.get(name);
 
-		if (values == null) {
+		if (!_copyCurrentRenderParameters || (values == null)) {
 			values = new String[] {value};
 		}
 		else {
@@ -129,9 +136,8 @@ public class ParamAndPropertyAncestorTagImpl
 		if (_dynamicServletRequest != null) {
 			return _dynamicServletRequest.getDynamicParameterMap();
 		}
-		else {
-			return null;
-		}
+
+		return null;
 	}
 
 	public Map<String, String[]> getProperties() {
@@ -140,6 +146,15 @@ public class ParamAndPropertyAncestorTagImpl
 
 	public Set<String> getRemovedParameterNames() {
 		return _removedParameterNames;
+	}
+
+	@Override
+	public HttpServletRequest getRequest() {
+		if (_dynamicServletRequest != null) {
+			return _dynamicServletRequest;
+		}
+
+		return super.getRequest();
 	}
 
 	public boolean isAllowEmptyParam() {
@@ -154,6 +169,7 @@ public class ParamAndPropertyAncestorTagImpl
 		servletContext = null;
 
 		_allowEmptyParam = false;
+		_copyCurrentRenderParameters = true;
 		_properties = null;
 		_removedParameterNames = null;
 	}
@@ -162,27 +178,63 @@ public class ParamAndPropertyAncestorTagImpl
 		_allowEmptyParam = allowEmptyParam;
 	}
 
+	public void setCopyCurrentRenderParameters(
+		boolean copyCurrentRenderParameters) {
+
+		_copyCurrentRenderParameters = copyCurrentRenderParameters;
+	}
+
 	@Override
 	public void setPageContext(PageContext pageContext) {
 		super.setPageContext(pageContext);
 
-		request = (HttpServletRequest)pageContext.getRequest();
+		HttpServletRequest httpServletRequest =
+			(HttpServletRequest)pageContext.getRequest();
 
-		servletContext = (ServletContext)request.getAttribute(WebKeys.CTX);
+		request = httpServletRequest;
+
+		servletContext = (ServletContext)httpServletRequest.getAttribute(
+			WebKeys.CTX);
 
 		if (servletContext == null) {
 			servletContext = pageContext.getServletContext();
 		}
+
+		AutoClosePageContextRegistry.registerCloseCallback(
+			pageContext,
+			() -> _atomicReferenceFieldUpdater.compareAndSet(
+				ParamAndPropertyAncestorTagImpl.this, httpServletRequest,
+				null));
 	}
 
 	public void setServletContext(ServletContext servletContext) {
 		this.servletContext = servletContext;
 	}
 
-	protected HttpServletRequest request;
+	protected ServletContext getServletContext() {
+		return servletContext;
+	}
+
+	/**
+	 * @deprecated As of Mueller (7.2.x), replaced by {@link #getRequest()}
+	 */
+	@Deprecated
+	protected volatile HttpServletRequest request;
+
+	/**
+	 * @deprecated As of Mueller (7.2.x), replaced by {@link
+	 *             #getServletContext()}
+	 */
+	@Deprecated
 	protected ServletContext servletContext;
 
+	private static final AtomicReferenceFieldUpdater
+		_atomicReferenceFieldUpdater = AtomicReferenceFieldUpdater.newUpdater(
+			ParamAndPropertyAncestorTagImpl.class, HttpServletRequest.class,
+			"request");
+
 	private boolean _allowEmptyParam;
+	private boolean _copyCurrentRenderParameters = true;
 	private DynamicServletRequest _dynamicServletRequest;
 	private Map<String, String[]> _properties;
 	private Set<String> _removedParameterNames;

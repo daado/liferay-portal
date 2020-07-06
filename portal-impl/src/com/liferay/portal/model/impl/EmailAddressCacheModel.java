@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,10 +14,11 @@
 
 package com.liferay.portal.model.impl;
 
-import com.liferay.portal.kernel.util.StringBundler;
-import com.liferay.portal.kernel.util.StringPool;
-import com.liferay.portal.model.CacheModel;
-import com.liferay.portal.model.EmailAddress;
+import com.liferay.petra.lang.HashUtil;
+import com.liferay.petra.string.StringBundler;
+import com.liferay.portal.kernel.model.CacheModel;
+import com.liferay.portal.kernel.model.EmailAddress;
+import com.liferay.portal.kernel.model.MVCCModel;
 
 import java.io.Externalizable;
 import java.io.IOException;
@@ -30,16 +31,57 @@ import java.util.Date;
  * The cache model class for representing EmailAddress in entity cache.
  *
  * @author Brian Wing Shun Chan
- * @see EmailAddress
  * @generated
  */
-public class EmailAddressCacheModel implements CacheModel<EmailAddress>,
-	Externalizable {
+public class EmailAddressCacheModel
+	implements CacheModel<EmailAddress>, Externalizable, MVCCModel {
+
+	@Override
+	public boolean equals(Object object) {
+		if (this == object) {
+			return true;
+		}
+
+		if (!(object instanceof EmailAddressCacheModel)) {
+			return false;
+		}
+
+		EmailAddressCacheModel emailAddressCacheModel =
+			(EmailAddressCacheModel)object;
+
+		if ((emailAddressId == emailAddressCacheModel.emailAddressId) &&
+			(mvccVersion == emailAddressCacheModel.mvccVersion)) {
+
+			return true;
+		}
+
+		return false;
+	}
+
+	@Override
+	public int hashCode() {
+		int hashCode = HashUtil.hash(0, emailAddressId);
+
+		return HashUtil.hash(hashCode, mvccVersion);
+	}
+
+	@Override
+	public long getMvccVersion() {
+		return mvccVersion;
+	}
+
+	@Override
+	public void setMvccVersion(long mvccVersion) {
+		this.mvccVersion = mvccVersion;
+	}
+
 	@Override
 	public String toString() {
-		StringBundler sb = new StringBundler(25);
+		StringBundler sb = new StringBundler(27);
 
-		sb.append("{uuid=");
+		sb.append("{mvccVersion=");
+		sb.append(mvccVersion);
+		sb.append(", uuid=");
 		sb.append(uuid);
 		sb.append(", emailAddressId=");
 		sb.append(emailAddressId);
@@ -72,8 +114,10 @@ public class EmailAddressCacheModel implements CacheModel<EmailAddress>,
 	public EmailAddress toEntityModel() {
 		EmailAddressImpl emailAddressImpl = new EmailAddressImpl();
 
+		emailAddressImpl.setMvccVersion(mvccVersion);
+
 		if (uuid == null) {
-			emailAddressImpl.setUuid(StringPool.BLANK);
+			emailAddressImpl.setUuid("");
 		}
 		else {
 			emailAddressImpl.setUuid(uuid);
@@ -84,7 +128,7 @@ public class EmailAddressCacheModel implements CacheModel<EmailAddress>,
 		emailAddressImpl.setUserId(userId);
 
 		if (userName == null) {
-			emailAddressImpl.setUserName(StringPool.BLANK);
+			emailAddressImpl.setUserName("");
 		}
 		else {
 			emailAddressImpl.setUserName(userName);
@@ -108,7 +152,7 @@ public class EmailAddressCacheModel implements CacheModel<EmailAddress>,
 		emailAddressImpl.setClassPK(classPK);
 
 		if (address == null) {
-			emailAddressImpl.setAddress(StringPool.BLANK);
+			emailAddressImpl.setAddress("");
 		}
 		else {
 			emailAddressImpl.setAddress(address);
@@ -124,36 +168,47 @@ public class EmailAddressCacheModel implements CacheModel<EmailAddress>,
 
 	@Override
 	public void readExternal(ObjectInput objectInput) throws IOException {
+		mvccVersion = objectInput.readLong();
 		uuid = objectInput.readUTF();
+
 		emailAddressId = objectInput.readLong();
+
 		companyId = objectInput.readLong();
+
 		userId = objectInput.readLong();
 		userName = objectInput.readUTF();
 		createDate = objectInput.readLong();
 		modifiedDate = objectInput.readLong();
+
 		classNameId = objectInput.readLong();
+
 		classPK = objectInput.readLong();
 		address = objectInput.readUTF();
-		typeId = objectInput.readInt();
+
+		typeId = objectInput.readLong();
+
 		primary = objectInput.readBoolean();
 	}
 
 	@Override
-	public void writeExternal(ObjectOutput objectOutput)
-		throws IOException {
+	public void writeExternal(ObjectOutput objectOutput) throws IOException {
+		objectOutput.writeLong(mvccVersion);
+
 		if (uuid == null) {
-			objectOutput.writeUTF(StringPool.BLANK);
+			objectOutput.writeUTF("");
 		}
 		else {
 			objectOutput.writeUTF(uuid);
 		}
 
 		objectOutput.writeLong(emailAddressId);
+
 		objectOutput.writeLong(companyId);
+
 		objectOutput.writeLong(userId);
 
 		if (userName == null) {
-			objectOutput.writeUTF(StringPool.BLANK);
+			objectOutput.writeUTF("");
 		}
 		else {
 			objectOutput.writeUTF(userName);
@@ -161,20 +216,24 @@ public class EmailAddressCacheModel implements CacheModel<EmailAddress>,
 
 		objectOutput.writeLong(createDate);
 		objectOutput.writeLong(modifiedDate);
+
 		objectOutput.writeLong(classNameId);
+
 		objectOutput.writeLong(classPK);
 
 		if (address == null) {
-			objectOutput.writeUTF(StringPool.BLANK);
+			objectOutput.writeUTF("");
 		}
 		else {
 			objectOutput.writeUTF(address);
 		}
 
-		objectOutput.writeInt(typeId);
+		objectOutput.writeLong(typeId);
+
 		objectOutput.writeBoolean(primary);
 	}
 
+	public long mvccVersion;
 	public String uuid;
 	public long emailAddressId;
 	public long companyId;
@@ -185,6 +244,7 @@ public class EmailAddressCacheModel implements CacheModel<EmailAddress>,
 	public long classNameId;
 	public long classPK;
 	public String address;
-	public int typeId;
+	public long typeId;
 	public boolean primary;
+
 }

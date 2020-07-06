@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -18,6 +18,8 @@ import com.liferay.portal.kernel.deploy.auto.AutoDeployException;
 import com.liferay.portal.kernel.deploy.auto.AutoDeployer;
 import com.liferay.portal.kernel.deploy.auto.context.AutoDeploymentContext;
 
+import java.io.IOException;
+
 /**
  * @author Brian Wing Shun Chan
  */
@@ -31,9 +33,14 @@ public class ThreadSafeAutoDeployer implements AutoDeployer {
 	public int autoDeploy(AutoDeploymentContext autoDeploymentContext)
 		throws AutoDeployException {
 
-		AutoDeployer cloneAutoDeployer = _autoDeployer.cloneAutoDeployer();
+		try (AutoDeployer cloneAutoDeployer =
+				_autoDeployer.cloneAutoDeployer()) {
 
-		return cloneAutoDeployer.autoDeploy(autoDeploymentContext);
+			return cloneAutoDeployer.autoDeploy(autoDeploymentContext);
+		}
+		catch (IOException ioException) {
+			throw new AutoDeployException(ioException);
+		}
 	}
 
 	@Override
@@ -41,6 +48,11 @@ public class ThreadSafeAutoDeployer implements AutoDeployer {
 		throw new UnsupportedOperationException();
 	}
 
-	private AutoDeployer _autoDeployer;
+	@Override
+	public void close() throws IOException {
+		_autoDeployer.close();
+	}
+
+	private final AutoDeployer _autoDeployer;
 
 }

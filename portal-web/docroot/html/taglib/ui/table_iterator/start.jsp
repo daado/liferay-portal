@@ -1,6 +1,6 @@
 <%--
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -16,12 +16,13 @@
 
 <%@ include file="/html/taglib/ui/table_iterator/init.jsp" %>
 
-<table border="0" cellpadding="0" cellspacing="0"
-
-<c:if test="<%= Validator.isNotNull(width) %>">
-	width="<%= width %>"
-</c:if>
-
+<table
+	border="0"
+	cellpadding="0"
+	cellspacing="0"
+	<c:if test="<%= Validator.isNotNull(width) %>">
+		width="<%= width %>"
+	</c:if>
 >
 <tr>
 	<td class="lrf-<%= rowValign %>">

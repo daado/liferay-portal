@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -26,30 +26,49 @@ import javax.servlet.http.HttpServletRequestWrapper;
  */
 public class LiferayServletRequest extends HttpServletRequestWrapper {
 
-	public LiferayServletRequest(HttpServletRequest request) {
-		super(request);
+	public LiferayServletRequest(HttpServletRequest httpServletRequest) {
+		super(httpServletRequest);
 
-		_request = request;
+		_httpServletRequest = httpServletRequest;
+	}
+
+	public void cleanUp() {
+		if (_lis != null) {
+			_lis.cleanUp();
+		}
 	}
 
 	@Override
 	public ServletInputStream getInputStream() throws IOException {
 		if (_lis == null) {
-			_lis = new LiferayInputStream(_request);
-
-			return _lis;
+			_lis = new LiferayInputStream(_httpServletRequest);
 		}
-		else {
+
+		if (_finishedReadingOriginalStream) {
 
 			// Return the cached input stream the second time the user requests
 			// the input stream, otherwise, it will return an empty input stream
 			// because it has already been parsed
 
-			return _lis.getCachedInputStream();
+			if (_cachedInputStream == null) {
+				_cachedInputStream = _lis.getCachedInputStream();
+			}
+
+			return _cachedInputStream;
 		}
+
+		return _lis;
 	}
 
-	private LiferayInputStream _lis = null;
-	private HttpServletRequest _request;
+	public void setFinishedReadingOriginalStream(
+		boolean finishedReadingOriginalStream) {
+
+		_finishedReadingOriginalStream = finishedReadingOriginalStream;
+	}
+
+	private ServletInputStream _cachedInputStream;
+	private boolean _finishedReadingOriginalStream;
+	private final HttpServletRequest _httpServletRequest;
+	private LiferayInputStream _lis;
 
 }

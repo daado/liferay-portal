@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -29,13 +29,11 @@ public class Distance {
 		lat2 = (Math.PI * lat2) / 180;
 		lon2 = (Math.PI * lon2) / 180;
 
-		double miles =
-			3963.4 *
-			Math.acos(
-				(Math.sin(lat1) * Math.sin(lat2)) +
+		double acos = Math.acos(
+			(Math.sin(lat1) * Math.sin(lat2)) +
 				(Math.cos(lat1) * Math.cos(lat2) * Math.cos(lon1 - lon2)));
 
-		return miles;
+		return 3963.4 * acos;
 	}
 
 	public static double kmToMiles(double km) {

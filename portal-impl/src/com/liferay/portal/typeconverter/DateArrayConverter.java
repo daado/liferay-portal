@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -50,18 +50,16 @@ public class DateArrayConverter implements TypeConverter<Date[]> {
 
 		Class<?> componentType = type.getComponentType();
 
-		if (componentType.isPrimitive()) {
-			if (type == long[].class) {
-				long[] values = (long[])value;
+		if (componentType.isPrimitive() && (type == long[].class)) {
+			long[] values = (long[])value;
 
-				Date[] results = new Date[values.length];
+			Date[] results = new Date[values.length];
 
-				for (int i = 0; i < values.length; i++) {
-					results[i] = _convertBean.toDate(values[i]);
-				}
-
-				return results;
+			for (int i = 0; i < values.length; i++) {
+				results[i] = _convertBean.toDate(values[i]);
 			}
+
+			return results;
 		}
 
 		return convertArray((Object[])value);
@@ -77,6 +75,6 @@ public class DateArrayConverter implements TypeConverter<Date[]> {
 		return results;
 	}
 
-	private ConvertBean _convertBean;
+	private final ConvertBean _convertBean;
 
 }

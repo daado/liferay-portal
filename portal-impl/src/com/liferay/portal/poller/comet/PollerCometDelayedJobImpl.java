@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -57,9 +57,9 @@ public class PollerCometDelayedJobImpl
 				try {
 					pollerCometDelayedTask.executeTask();
 				}
-				catch (Exception e) {
+				catch (Exception exception) {
 					if (_log.isWarnEnabled()) {
-						_log.warn("Unable to do task" + e);
+						_log.warn("Unable to do task" + exception);
 					}
 				}
 			}
@@ -68,11 +68,11 @@ public class PollerCometDelayedJobImpl
 		}
 	}
 
-	private static Log _log = LogFactoryUtil.getLog(
+	private static final Log _log = LogFactoryUtil.getLog(
 		PollerCometDelayedJobImpl.class);
 
-	private List<PollerCometDelayedTask> _pollerCometDelayedTasks =
-		new LinkedList<PollerCometDelayedTask>();
+	private final List<PollerCometDelayedTask> _pollerCometDelayedTasks =
+		new LinkedList<>();
 	private Timer _timer;
 
 	private class PollerCometTimerTask extends TimerTask {
@@ -86,9 +86,9 @@ public class PollerCometDelayedJobImpl
 					try {
 						pollerCometDelayedTask.executeTask();
 					}
-					catch (Exception e) {
+					catch (Exception exception) {
 						if (_log.isWarnEnabled()) {
-							_log.warn("Unable to do task" + e);
+							_log.warn("Unable to do task" + exception);
 						}
 					}
 				}
@@ -96,6 +96,7 @@ public class PollerCometDelayedJobImpl
 				_pollerCometDelayedTasks.clear();
 			}
 		}
+
 	}
 
 }

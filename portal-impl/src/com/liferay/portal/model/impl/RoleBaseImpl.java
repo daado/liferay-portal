@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,9 +14,8 @@
 
 package com.liferay.portal.model.impl;
 
-import com.liferay.portal.kernel.exception.SystemException;
-import com.liferay.portal.model.Role;
-import com.liferay.portal.service.RoleLocalServiceUtil;
+import com.liferay.portal.kernel.model.Role;
+import com.liferay.portal.kernel.service.RoleLocalServiceUtil;
 
 /**
  * The extended model base implementation for the Role service. Represents a row in the &quot;Role_&quot; database table, with each column mapped to a property of this class.
@@ -27,17 +26,18 @@ import com.liferay.portal.service.RoleLocalServiceUtil;
  *
  * @author Brian Wing Shun Chan
  * @see RoleImpl
- * @see com.liferay.portal.model.Role
+ * @see Role
  * @generated
  */
 public abstract class RoleBaseImpl extends RoleModelImpl implements Role {
+
 	/*
 	 * NOTE FOR DEVELOPERS:
 	 *
-	 * Never modify or reference this class directly. All methods that expect a role model instance should use the {@link Role} interface instead.
+	 * Never modify or reference this class directly. All methods that expect a role model instance should use the <code>Role</code> interface instead.
 	 */
 	@Override
-	public void persist() throws SystemException {
+	public void persist() {
 		if (this.isNew()) {
 			RoleLocalServiceUtil.addRole(this);
 		}
@@ -45,4 +45,5 @@ public abstract class RoleBaseImpl extends RoleModelImpl implements Role {
 			RoleLocalServiceUtil.updateRole(this);
 		}
 	}
+
 }

@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -72,10 +72,6 @@ public class Log4jLogImpl implements Log {
 	@Override
 	public void fatal(Throwable t) {
 		_logger.log(_logWrapperClassName, Level.FATAL, null, t);
-	}
-
-	public Logger getWrappedLogger() {
-		return _logger;
 	}
 
 	@Override
@@ -158,7 +154,7 @@ public class Log4jLogImpl implements Log {
 		_logger.log(_logWrapperClassName, Level.WARN, null, t);
 	}
 
-	private Logger _logger;
+	private final Logger _logger;
 	private String _logWrapperClassName = LogWrapper.class.getName();
 
 }

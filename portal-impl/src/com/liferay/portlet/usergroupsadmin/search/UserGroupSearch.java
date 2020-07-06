@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -17,17 +17,19 @@ package com.liferay.portlet.usergroupsadmin.search;
 import com.liferay.portal.kernel.dao.search.SearchContainer;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
+import com.liferay.portal.kernel.model.User;
+import com.liferay.portal.kernel.model.UserGroup;
+import com.liferay.portal.kernel.portlet.PortalPreferences;
+import com.liferay.portal.kernel.portlet.PortletPreferencesFactoryUtil;
+import com.liferay.portal.kernel.portlet.PortletProvider;
+import com.liferay.portal.kernel.portlet.PortletProviderUtil;
+import com.liferay.portal.kernel.util.HashMapBuilder;
 import com.liferay.portal.kernel.util.OrderByComparator;
 import com.liferay.portal.kernel.util.ParamUtil;
 import com.liferay.portal.kernel.util.Validator;
-import com.liferay.portal.model.UserGroup;
-import com.liferay.portal.util.PortletKeys;
-import com.liferay.portlet.PortalPreferences;
-import com.liferay.portlet.PortletPreferencesFactoryUtil;
-import com.liferay.portlet.usersadmin.util.UsersAdminUtil;
+import com.liferay.users.admin.kernel.util.UsersAdminUtil;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -39,19 +41,20 @@ import javax.portlet.PortletURL;
  */
 public class UserGroupSearch extends SearchContainer<UserGroup> {
 
-	static List<String> headerNames = new ArrayList<String>();
-	static Map<String, String> orderableHeaders = new HashMap<String, String>();
-
-	static {
-		headerNames.add("name");
-		headerNames.add("description");
-
-		orderableHeaders.put("name", "name");
-		orderableHeaders.put("description", "description");
-	}
-
 	public static final String EMPTY_RESULTS_MESSAGE =
 		"no-user-groups-were-found";
+
+	public static List<String> headerNames = new ArrayList<String>() {
+		{
+			add("name");
+			add("description");
+		}
+	};
+	public static Map<String, String> orderableHeaders = HashMapBuilder.put(
+		"description", "description"
+	).put(
+		"name", "name"
+	).build();
 
 	public UserGroupSearch(
 		PortletRequest portletRequest, PortletURL iteratorURL) {
@@ -78,27 +81,25 @@ public class UserGroupSearch extends SearchContainer<UserGroup> {
 				portletRequest, "orderByCol");
 			String orderByType = ParamUtil.getString(
 				portletRequest, "orderByType");
+			String portletId = PortletProviderUtil.getPortletId(
+				User.class.getName(), PortletProvider.Action.VIEW);
 
 			if (Validator.isNotNull(orderByCol) &&
 				Validator.isNotNull(orderByType)) {
 
 				preferences.setValue(
-					PortletKeys.USERS_ADMIN, "user-groups-order-by-col",
-					orderByCol);
+					portletId, "user-groups-order-by-col", orderByCol);
 				preferences.setValue(
-					PortletKeys.USERS_ADMIN, "user-groups-order-by-type",
-					orderByType);
+					portletId, "user-groups-order-by-type", orderByType);
 			}
 			else {
 				orderByCol = preferences.getValue(
-					PortletKeys.USERS_ADMIN, "user-groups-order-by-col",
-					"name");
+					portletId, "user-groups-order-by-col", "name");
 				orderByType = preferences.getValue(
-					PortletKeys.USERS_ADMIN, "user-groups-order-by-type",
-					"asc");
+					portletId, "user-groups-order-by-type", "asc");
 			}
 
-			OrderByComparator orderByComparator =
+			OrderByComparator<UserGroup> orderByComparator =
 				UsersAdminUtil.getUserGroupOrderByComparator(
 					orderByCol, orderByType);
 
@@ -107,11 +108,12 @@ public class UserGroupSearch extends SearchContainer<UserGroup> {
 			setOrderByType(orderByType);
 			setOrderByComparator(orderByComparator);
 		}
-		catch (Exception e) {
-			_log.error(e);
+		catch (Exception exception) {
+			_log.error("Unable to initialize user group search", exception);
 		}
 	}
 
-	private static Log _log = LogFactoryUtil.getLog(UserGroupSearch.class);
+	private static final Log _log = LogFactoryUtil.getLog(
+		UserGroupSearch.class);
 
 }

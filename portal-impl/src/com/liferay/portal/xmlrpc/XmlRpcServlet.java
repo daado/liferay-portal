@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,12 +14,13 @@
 
 package com.liferay.portal.xmlrpc;
 
+import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
 import com.liferay.portal.kernel.servlet.ServletResponseUtil;
 import com.liferay.portal.kernel.util.ContentTypes;
 import com.liferay.portal.kernel.util.HttpUtil;
-import com.liferay.portal.kernel.util.StringPool;
+import com.liferay.portal.kernel.util.PortalUtil;
 import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.util.Tuple;
 import com.liferay.portal.kernel.xmlrpc.Method;
@@ -32,9 +33,7 @@ import com.liferay.portal.util.PortalInstances;
 import java.io.IOException;
 import java.io.InputStream;
 
-import java.util.HashMap;
-import java.util.Map;
-
+import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -45,69 +44,31 @@ import javax.servlet.http.HttpServletResponse;
  */
 public class XmlRpcServlet extends HttpServlet {
 
-	public static void registerMethod(Method method) {
-		if (method == null) {
-			return;
-		}
+	@Override
+	protected void doGet(
+			HttpServletRequest httpServletRequest,
+			HttpServletResponse httpServletResponse)
+		throws IOException, ServletException {
 
-		String token = method.getToken();
-		String methodName = method.getMethodName();
-
-		Map<String, Method> tokenMethods = _methodRegistry.get(token);
-
-		if (tokenMethods == null) {
-			tokenMethods = new HashMap<String, Method>();
-
-			_methodRegistry.put(token, tokenMethods);
-		}
-
-		Method registeredMethod = tokenMethods.get(methodName);
-
-		if (registeredMethod != null) {
-			if (_log.isWarnEnabled()) {
-				_log.warn(
-					"There is already an XML-RPC method registered with name " +
-						methodName + " at " + token);
-			}
-		}
-		else {
-			tokenMethods.put(methodName, method);
-		}
-	}
-
-	public static void unregisterMethod(Method method) {
-		if (method == null) {
-			return;
-		}
-
-		String token = method.getToken();
-		String methodName = method.getMethodName();
-
-		Map<String, Method> tokenMethods = _methodRegistry.get(token);
-
-		if (tokenMethods == null) {
-			return;
-		}
-
-		tokenMethods.remove(methodName);
-
-		if (tokenMethods.isEmpty()) {
-			_methodRegistry.remove(token);
-		}
+		PortalUtil.sendError(
+			HttpServletResponse.SC_NOT_FOUND,
+			new IllegalArgumentException("The GET method is not supported"),
+			httpServletRequest, httpServletResponse);
 	}
 
 	@Override
 	protected void doPost(
-		HttpServletRequest request, HttpServletResponse response) {
+		HttpServletRequest httpServletRequest,
+		HttpServletResponse httpServletResponse) {
 
 		Response xmlRpcResponse = null;
 
 		try {
-			long companyId = PortalInstances.getCompanyId(request);
+			long companyId = PortalInstances.getCompanyId(httpServletRequest);
 
-			String token = getToken(request);
+			String token = getToken(httpServletRequest);
 
-			InputStream is = request.getInputStream();
+			InputStream is = httpServletRequest.getInputStream();
 
 			String xml = StringUtil.read(is);
 
@@ -118,16 +79,16 @@ public class XmlRpcServlet extends HttpServlet {
 
 			xmlRpcResponse = invokeMethod(companyId, token, methodName, args);
 		}
-		catch (IOException ioe) {
+		catch (IOException ioException) {
 			xmlRpcResponse = XmlRpcUtil.createFault(
 				XmlRpcConstants.NOT_WELL_FORMED, "XML is not well formed");
 
 			if (_log.isDebugEnabled()) {
-				_log.debug(ioe, ioe);
+				_log.debug(ioException, ioException);
 			}
 		}
-		catch (XmlRpcException xmlrpce) {
-			_log.error(xmlrpce, xmlrpce);
+		catch (XmlRpcException xmlRpcException) {
+			_log.error(xmlRpcException, xmlRpcException);
 		}
 
 		if (xmlRpcResponse == null) {
@@ -135,36 +96,26 @@ public class XmlRpcServlet extends HttpServlet {
 				XmlRpcConstants.SYSTEM_ERROR, "Unknown error occurred");
 		}
 
-		response.setCharacterEncoding(StringPool.UTF8);
-		response.setContentType(ContentTypes.TEXT_XML);
-		response.setStatus(HttpServletResponse.SC_OK);
+		httpServletResponse.setCharacterEncoding(StringPool.UTF8);
+		httpServletResponse.setContentType(ContentTypes.TEXT_XML);
+		httpServletResponse.setStatus(HttpServletResponse.SC_OK);
 
 		try {
-			ServletResponseUtil.write(response, xmlRpcResponse.toXml());
+			ServletResponseUtil.write(
+				httpServletResponse, xmlRpcResponse.toXml());
 		}
-		catch (Exception e) {
+		catch (Exception exception) {
 			if (_log.isWarnEnabled()) {
-				_log.warn(e, e);
+				_log.warn(exception, exception);
 			}
 
-			response.setStatus(HttpServletResponse.SC_PRECONDITION_FAILED);
+			httpServletResponse.setStatus(
+				HttpServletResponse.SC_PRECONDITION_FAILED);
 		}
 	}
 
-	protected Method getMethod(String token, String methodName) {
-		Method method = null;
-
-		Map<String, Method> tokenMethods = _methodRegistry.get(token);
-
-		if (tokenMethods != null) {
-			method = tokenMethods.get(methodName);
-		}
-
-		return method;
-	}
-
-	protected String getToken(HttpServletRequest request) {
-		String token = request.getPathInfo();
+	protected String getToken(HttpServletRequest httpServletRequest) {
+		String token = httpServletRequest.getPathInfo();
 
 		return HttpUtil.fixPath(token);
 	}
@@ -173,7 +124,7 @@ public class XmlRpcServlet extends HttpServlet {
 			long companyId, String token, String methodName, Object[] arguments)
 		throws XmlRpcException {
 
-		Method method = getMethod(token, methodName);
+		Method method = XmlRpcMethodUtil.getMethod(token, methodName);
 
 		if (method == null) {
 			return XmlRpcUtil.createFault(
@@ -190,9 +141,6 @@ public class XmlRpcServlet extends HttpServlet {
 		return method.execute(companyId);
 	}
 
-	private static Log _log = LogFactoryUtil.getLog(XmlRpcServlet.class);
-
-	private static Map<String, Map<String, Method>> _methodRegistry =
-		new HashMap<String, Map<String, Method>>();
+	private static final Log _log = LogFactoryUtil.getLog(XmlRpcServlet.class);
 
 }

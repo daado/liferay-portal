@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,10 +14,11 @@
 
 package com.liferay.portlet.announcements.model.impl;
 
-import com.liferay.portal.kernel.util.StringBundler;
-import com.liferay.portal.model.CacheModel;
-
-import com.liferay.portlet.announcements.model.AnnouncementsFlag;
+import com.liferay.announcements.kernel.model.AnnouncementsFlag;
+import com.liferay.petra.lang.HashUtil;
+import com.liferay.petra.string.StringBundler;
+import com.liferay.portal.kernel.model.CacheModel;
+import com.liferay.portal.kernel.model.MVCCModel;
 
 import java.io.Externalizable;
 import java.io.IOException;
@@ -30,17 +31,60 @@ import java.util.Date;
  * The cache model class for representing AnnouncementsFlag in entity cache.
  *
  * @author Brian Wing Shun Chan
- * @see AnnouncementsFlag
  * @generated
  */
-public class AnnouncementsFlagCacheModel implements CacheModel<AnnouncementsFlag>,
-	Externalizable {
+public class AnnouncementsFlagCacheModel
+	implements CacheModel<AnnouncementsFlag>, Externalizable, MVCCModel {
+
+	@Override
+	public boolean equals(Object object) {
+		if (this == object) {
+			return true;
+		}
+
+		if (!(object instanceof AnnouncementsFlagCacheModel)) {
+			return false;
+		}
+
+		AnnouncementsFlagCacheModel announcementsFlagCacheModel =
+			(AnnouncementsFlagCacheModel)object;
+
+		if ((flagId == announcementsFlagCacheModel.flagId) &&
+			(mvccVersion == announcementsFlagCacheModel.mvccVersion)) {
+
+			return true;
+		}
+
+		return false;
+	}
+
+	@Override
+	public int hashCode() {
+		int hashCode = HashUtil.hash(0, flagId);
+
+		return HashUtil.hash(hashCode, mvccVersion);
+	}
+
+	@Override
+	public long getMvccVersion() {
+		return mvccVersion;
+	}
+
+	@Override
+	public void setMvccVersion(long mvccVersion) {
+		this.mvccVersion = mvccVersion;
+	}
+
 	@Override
 	public String toString() {
-		StringBundler sb = new StringBundler(11);
+		StringBundler sb = new StringBundler(15);
 
-		sb.append("{flagId=");
+		sb.append("{mvccVersion=");
+		sb.append(mvccVersion);
+		sb.append(", flagId=");
 		sb.append(flagId);
+		sb.append(", companyId=");
+		sb.append(companyId);
 		sb.append(", userId=");
 		sb.append(userId);
 		sb.append(", createDate=");
@@ -56,9 +100,12 @@ public class AnnouncementsFlagCacheModel implements CacheModel<AnnouncementsFlag
 
 	@Override
 	public AnnouncementsFlag toEntityModel() {
-		AnnouncementsFlagImpl announcementsFlagImpl = new AnnouncementsFlagImpl();
+		AnnouncementsFlagImpl announcementsFlagImpl =
+			new AnnouncementsFlagImpl();
 
+		announcementsFlagImpl.setMvccVersion(mvccVersion);
 		announcementsFlagImpl.setFlagId(flagId);
+		announcementsFlagImpl.setCompanyId(companyId);
 		announcementsFlagImpl.setUserId(userId);
 
 		if (createDate == Long.MIN_VALUE) {
@@ -78,26 +125,42 @@ public class AnnouncementsFlagCacheModel implements CacheModel<AnnouncementsFlag
 
 	@Override
 	public void readExternal(ObjectInput objectInput) throws IOException {
+		mvccVersion = objectInput.readLong();
+
 		flagId = objectInput.readLong();
+
+		companyId = objectInput.readLong();
+
 		userId = objectInput.readLong();
 		createDate = objectInput.readLong();
+
 		entryId = objectInput.readLong();
+
 		value = objectInput.readInt();
 	}
 
 	@Override
-	public void writeExternal(ObjectOutput objectOutput)
-		throws IOException {
+	public void writeExternal(ObjectOutput objectOutput) throws IOException {
+		objectOutput.writeLong(mvccVersion);
+
 		objectOutput.writeLong(flagId);
+
+		objectOutput.writeLong(companyId);
+
 		objectOutput.writeLong(userId);
 		objectOutput.writeLong(createDate);
+
 		objectOutput.writeLong(entryId);
+
 		objectOutput.writeInt(value);
 	}
 
+	public long mvccVersion;
 	public long flagId;
+	public long companyId;
 	public long userId;
 	public long createDate;
 	public long entryId;
 	public int value;
+
 }

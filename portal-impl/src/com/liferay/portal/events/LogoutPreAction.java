@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -27,12 +27,16 @@ import javax.servlet.http.HttpServletResponse;
 public class LogoutPreAction extends Action {
 
 	@Override
-	public void run(HttpServletRequest request, HttpServletResponse response) {
+	public void run(
+		HttpServletRequest httpServletRequest,
+		HttpServletResponse httpServletResponse) {
+
 		if (_log.isDebugEnabled()) {
-			_log.debug("Running " + request.getRemoteUser());
+			_log.debug("Running " + httpServletRequest.getRemoteUser());
 		}
 	}
 
-	private static Log _log = LogFactoryUtil.getLog(LogoutPreAction.class);
+	private static final Log _log = LogFactoryUtil.getLog(
+		LogoutPreAction.class);
 
 }

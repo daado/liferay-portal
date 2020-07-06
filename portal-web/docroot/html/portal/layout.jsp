@@ -1,6 +1,6 @@
 <%--
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -15,6 +15,12 @@
 --%>
 
 <%@ include file="/html/portal/init.jsp" %>
+
+<c:if test="<%= SessionErrors.contains(request, NoSuchLayoutException.class) %>">
+	<div class="container pb-3 pt-3">
+		<%@ include file="/html/portal/status.jsp" %>
+	</div>
+</c:if>
 
 <%
 StringBundler sb = (StringBundler)request.getAttribute(WebKeys.LAYOUT_CONTENT);

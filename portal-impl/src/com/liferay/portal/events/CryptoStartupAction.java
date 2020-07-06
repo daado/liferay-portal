@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -32,12 +32,14 @@ public class CryptoStartupAction extends SimpleAction {
 		try {
 			Mac.getInstance("HmacSHA1");
 		}
-		catch (NoSuchAlgorithmException nsae) {
+		catch (NoSuchAlgorithmException noSuchAlgorithmException) {
 			_log.error(
-				"Unable to get Mac instance for algorithm HmacSHA1", nsae);
+				"Unable to get Mac instance for algorithm HmacSHA1",
+				noSuchAlgorithmException);
 		}
 	}
 
-	private static Log _log = LogFactoryUtil.getLog(CryptoStartupAction.class);
+	private static final Log _log = LogFactoryUtil.getLog(
+		CryptoStartupAction.class);
 
 }

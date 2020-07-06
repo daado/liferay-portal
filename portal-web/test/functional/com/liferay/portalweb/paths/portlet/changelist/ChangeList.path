@@ -1,0 +1,79 @@
+<html>
+<head>
+<title>ChangeList</title>
+</head>
+<body>
+<table cellpadding="1" cellspacing="1" border="1">
+<thead>
+<tr><td rowspan="1" colspan="3">ChangeList</td></tr>
+</thead>
+<tbody>
+<tr>
+	<td>CHANGE_LIST_INDICATOR_BUTTON</td>
+	<td>//button[contains(@class,'dropdown-toggle change-tracking-indicator-button')]</td>
+	<td></td>
+</tr>
+<tr>
+	<td>CHANGE_LIST_INDICATOR_TITLE</td>
+	<td>//button[contains(@class,'change-tracking-indicator-title')] and contains(.,'${key_publicationName}')</td>
+	<td></td>
+</tr>
+<tr>
+	<td>HISTORY_PUBLICATION_STATUS</td>
+	<td>//td[contains(.,'${key_publicationName}')]//following-sibling::td/span[contains(@class,'label-success')]//span</td>
+	<td></td>
+</tr>
+<tr>
+	<td>INDICATOR</td>
+	<td>//li[contains(@class,'nav-item')]//span/*[name()='svg'][contains(@class,'change-list')]</td>
+	<td></td>
+</tr>
+<tr>
+	<td>MANGE_PUBLICATIONS_PAGE_TITLE</td>
+	<td>//span[contains(@data-qa-id,'headerTitle')]</td>
+	<td></td>
+</tr>
+<tr>
+	<td>MANGE_PUBLICATIONS_NAVBAR_TITLE</td>
+	<td>//li[contains(@class,'nav-item')]/a[contains(.,'${key_navBarTitle}')]</td>
+	<td></td>
+</tr>
+<tr>
+	<td>PUBLICATION_NAME</td>
+	<td>//input[contains(@name,'name')]</td>
+	<td></td>
+</tr>
+<tr>
+	<td>PUBLICATION_DESCRIPTION</td>
+	<td>//textarea[contains(@name,'description')]</td>
+	<td></td>
+</tr>
+<tr>
+	<td>PUBLISH_BUTTON</td>
+	<td>//a[contains(@id,'ChangeListsPortlet')]/span[contains(.,'Publish')]</td>
+	<td></td>
+</tr>
+<tr>
+	<td>PUBLISHED_PUBLICATIONS_NAME</td>
+	<td>//div[contains(@class,'change-list-name') and contains(.,'${key_publicationName}')]</td>
+	<td></td>
+</tr>
+<tr>
+	<td>PUBLICATIONS_PUBLISHED_BY</td>
+	<td>//td[contains(@class,'published-by')]/span[contains(@title,'${key_publicationPublishedBy}')]</td>
+	<td></td>
+</tr>
+<tr>
+	<td>SELECT_PUBLICATION_NAME</td>
+	<td>//a[contains(.,'${key_publicationName}')]</td>
+	<td></td>
+</tr>
+<tr>
+	<td>PRODUCTION_CARD_TITLE</td>
+	<td>//span[contains(@class,'work-on-production')]</td>
+	<td></td>
+</tr>
+</tbody>
+</table>
+</body>
+</html>

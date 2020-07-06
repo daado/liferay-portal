@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -64,19 +64,18 @@ public class TransactionAttributeBuilder {
 		ruleBasedTransactionAttribute.setReadOnly(readOnly);
 		ruleBasedTransactionAttribute.setTimeout(timeout);
 
-		List<RollbackRuleAttribute> rollbackRuleAttributes =
-			new ArrayList<RollbackRuleAttribute>();
+		List<RollbackRuleAttribute> rollbackRuleAttributes = new ArrayList<>();
 
-		for (int i = 0; i < rollbackForClasses.length; i++) {
+		for (Class<?> rollbackForClass : rollbackForClasses) {
 			RollbackRuleAttribute rollbackRuleAttribute =
-				new RollbackRuleAttribute(rollbackForClasses[i]);
+				new RollbackRuleAttribute(rollbackForClass);
 
 			rollbackRuleAttributes.add(rollbackRuleAttribute);
 		}
 
-		for (int i = 0; i < rollbackForClassNames.length; i++) {
+		for (String rollbackForClassName : rollbackForClassNames) {
 			RollbackRuleAttribute rollbackRuleAttribute =
-				new RollbackRuleAttribute(rollbackForClassNames[i]);
+				new RollbackRuleAttribute(rollbackForClassName);
 
 			rollbackRuleAttributes.add(rollbackRuleAttribute);
 		}

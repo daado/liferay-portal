@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,14 +14,17 @@
 
 package com.liferay.portal.tools.deploy;
 
+import com.liferay.petra.string.StringBundler;
+import com.liferay.portal.kernel.log.Log;
+import com.liferay.portal.kernel.log.LogFactoryUtil;
+import com.liferay.portal.kernel.model.Plugin;
 import com.liferay.portal.kernel.plugin.PluginPackage;
-import com.liferay.portal.kernel.util.StringBundler;
 import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.util.Validator;
-import com.liferay.portal.model.Plugin;
-import com.liferay.portal.util.InitUtil;
+import com.liferay.portal.tools.ToolDependencies;
 
 import java.io.File;
+import java.io.IOException;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -33,10 +36,10 @@ import java.util.Map;
 public class ThemeDeployer extends BaseDeployer {
 
 	public static void main(String[] args) {
-		InitUtil.initWithSpring();
+		ToolDependencies.wireDeployers();
 
-		List<String> wars = new ArrayList<String>();
-		List<String> jars = new ArrayList<String>();
+		List<String> wars = new ArrayList<>();
+		List<String> jars = new ArrayList<>();
 
 		for (String arg : args) {
 			if (arg.endsWith(".war")) {
@@ -47,7 +50,13 @@ public class ThemeDeployer extends BaseDeployer {
 			}
 		}
 
-		new ThemeDeployer(wars, jars);
+		try (ThemeDeployer themeDeployer = new ThemeDeployer(wars, jars)) {
+		}
+		catch (IOException ioException) {
+			if (_log.isWarnEnabled()) {
+				_log.warn(ioException, ioException);
+			}
+		}
 	}
 
 	public ThemeDeployer() {
@@ -134,5 +143,7 @@ public class ThemeDeployer extends BaseDeployer {
 
 		return filterMap;
 	}
+
+	private static final Log _log = LogFactoryUtil.getLog(ThemeDeployer.class);
 
 }

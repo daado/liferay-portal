@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,17 +14,19 @@
 
 package com.liferay.portlet.documentlibrary.service.impl;
 
+import com.liferay.document.library.kernel.exception.FileShortcutPermissionException;
+import com.liferay.document.library.kernel.model.DLFileShortcut;
 import com.liferay.portal.kernel.exception.PortalException;
-import com.liferay.portal.kernel.exception.SystemException;
-import com.liferay.portal.security.auth.PrincipalException;
-import com.liferay.portal.security.permission.ActionKeys;
-import com.liferay.portal.service.ServiceContext;
-import com.liferay.portlet.documentlibrary.FileShortcutPermissionException;
-import com.liferay.portlet.documentlibrary.model.DLFileShortcut;
+import com.liferay.portal.kernel.repository.model.FileEntry;
+import com.liferay.portal.kernel.repository.model.FileShortcut;
+import com.liferay.portal.kernel.repository.model.Folder;
+import com.liferay.portal.kernel.security.auth.PrincipalException;
+import com.liferay.portal.kernel.security.permission.ActionKeys;
+import com.liferay.portal.kernel.security.permission.resource.ModelResourcePermission;
+import com.liferay.portal.kernel.security.permission.resource.ModelResourcePermissionFactory;
+import com.liferay.portal.kernel.security.permission.resource.ModelResourcePermissionUtil;
+import com.liferay.portal.kernel.service.ServiceContext;
 import com.liferay.portlet.documentlibrary.service.base.DLFileShortcutServiceBaseImpl;
-import com.liferay.portlet.documentlibrary.service.permission.DLFileEntryPermission;
-import com.liferay.portlet.documentlibrary.service.permission.DLFileShortcutPermission;
-import com.liferay.portlet.documentlibrary.service.permission.DLFolderPermission;
 
 /**
  * @author Brian Wing Shun Chan
@@ -33,30 +35,30 @@ public class DLFileShortcutServiceImpl extends DLFileShortcutServiceBaseImpl {
 
 	@Override
 	public DLFileShortcut addFileShortcut(
-			long groupId, long folderId, long toFileEntryId,
+			long groupId, long repositoryId, long folderId, long toFileEntryId,
 			ServiceContext serviceContext)
-		throws PortalException, SystemException {
+		throws PortalException {
 
-		DLFolderPermission.check(
-			getPermissionChecker(), groupId, folderId, ActionKeys.ADD_SHORTCUT);
+		ModelResourcePermissionUtil.check(
+			_folderModelResourcePermission, getPermissionChecker(), groupId,
+			folderId, ActionKeys.ADD_SHORTCUT);
 
 		try {
-			DLFileEntryPermission.check(
+			_fileEntryModelResourcePermission.check(
 				getPermissionChecker(), toFileEntryId, ActionKeys.VIEW);
 		}
-		catch (PrincipalException pe) {
-			throw new FileShortcutPermissionException();
+		catch (PrincipalException principalException) {
+			throw new FileShortcutPermissionException(principalException);
 		}
 
 		return dlFileShortcutLocalService.addFileShortcut(
-			getUserId(), groupId, folderId, toFileEntryId, serviceContext);
+			getUserId(), groupId, repositoryId, folderId, toFileEntryId,
+			serviceContext);
 	}
 
 	@Override
-	public void deleteFileShortcut(long fileShortcutId)
-		throws PortalException, SystemException {
-
-		DLFileShortcutPermission.check(
+	public void deleteFileShortcut(long fileShortcutId) throws PortalException {
+		_fileShortcutModelResourcePermission.check(
 			getPermissionChecker(), fileShortcutId, ActionKeys.DELETE);
 
 		dlFileShortcutLocalService.deleteFileShortcut(fileShortcutId);
@@ -64,9 +66,9 @@ public class DLFileShortcutServiceImpl extends DLFileShortcutServiceBaseImpl {
 
 	@Override
 	public DLFileShortcut getFileShortcut(long fileShortcutId)
-		throws PortalException, SystemException {
+		throws PortalException {
 
-		DLFileShortcutPermission.check(
+		_fileShortcutModelResourcePermission.check(
 			getPermissionChecker(), fileShortcutId, ActionKeys.VIEW);
 
 		return dlFileShortcutLocalService.getFileShortcut(fileShortcutId);
@@ -74,24 +76,60 @@ public class DLFileShortcutServiceImpl extends DLFileShortcutServiceBaseImpl {
 
 	@Override
 	public DLFileShortcut updateFileShortcut(
-			long fileShortcutId, long folderId, long toFileEntryId,
-			ServiceContext serviceContext)
-		throws PortalException, SystemException {
+			long fileShortcutId, long repositoryId, long folderId,
+			long toFileEntryId, ServiceContext serviceContext)
+		throws PortalException {
 
-		DLFileShortcutPermission.check(
+		_fileShortcutModelResourcePermission.check(
 			getPermissionChecker(), fileShortcutId, ActionKeys.UPDATE);
 
 		try {
-			DLFileEntryPermission.check(
+			_fileEntryModelResourcePermission.check(
 				getPermissionChecker(), toFileEntryId, ActionKeys.VIEW);
 		}
-		catch (PrincipalException pe) {
-			throw new FileShortcutPermissionException();
+		catch (PrincipalException principalException) {
+			throw new FileShortcutPermissionException(principalException);
 		}
 
 		return dlFileShortcutLocalService.updateFileShortcut(
-			getUserId(), fileShortcutId, folderId, toFileEntryId,
+			getUserId(), fileShortcutId, repositoryId, folderId, toFileEntryId,
 			serviceContext);
 	}
+
+	@Override
+	public void updateFileShortcuts(
+			long oldToFileEntryId, long newToFileEntryId)
+		throws PortalException {
+
+		try {
+			_fileEntryModelResourcePermission.check(
+				getPermissionChecker(), oldToFileEntryId, ActionKeys.VIEW);
+
+			_fileEntryModelResourcePermission.check(
+				getPermissionChecker(), newToFileEntryId, ActionKeys.VIEW);
+		}
+		catch (PrincipalException principalException) {
+			throw new FileShortcutPermissionException(principalException);
+		}
+
+		dlFileShortcutLocalService.updateFileShortcuts(
+			oldToFileEntryId, newToFileEntryId);
+	}
+
+	private static volatile ModelResourcePermission<FileEntry>
+		_fileEntryModelResourcePermission =
+			ModelResourcePermissionFactory.getInstance(
+				DLFileShortcutServiceImpl.class,
+				"_fileEntryModelResourcePermission", FileEntry.class);
+	private static volatile ModelResourcePermission<FileShortcut>
+		_fileShortcutModelResourcePermission =
+			ModelResourcePermissionFactory.getInstance(
+				DLFileShortcutServiceImpl.class,
+				"_fileShortcutModelResourcePermission", FileShortcut.class);
+	private static volatile ModelResourcePermission<Folder>
+		_folderModelResourcePermission =
+			ModelResourcePermissionFactory.getInstance(
+				DLFileShortcutServiceImpl.class,
+				"_folderModelResourcePermission", Folder.class);
 
 }

@@ -1,6 +1,6 @@
 <%--
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -17,7 +17,7 @@
 <%@ include file="/html/taglib/init.jsp" %>
 
 <%
-boolean accordion = false;
+boolean accordion = GetterUtil.getBoolean((String)request.getAttribute("liferay-ui:panel:accordion"));
 boolean collapsible = GetterUtil.getBoolean((String)request.getAttribute("liferay-ui:panel:collapsible"));
 String cssClass = GetterUtil.getString((String)request.getAttribute("liferay-ui:panel:cssClass"));
 String defaultState = (String)request.getAttribute("liferay-ui:panel:defaultState");

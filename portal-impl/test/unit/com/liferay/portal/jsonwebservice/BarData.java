@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -47,7 +47,7 @@ public class BarData {
 		_value = value;
 	}
 
-	private int[] _array = new int[] {1, 2, 3};
+	private int[] _array = {1, 2, 3};
 	private String _secret = "secret";
 	private String _value = "value";
 

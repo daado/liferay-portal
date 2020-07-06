@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -25,22 +25,29 @@ public class SectionTei extends TagExtraInfo {
 
 	@Override
 	public VariableInfo[] getVariableInfo(TagData tagData) {
-		return _variableInfo;
+		return Concealer._variableInfo;
 	}
 
-	private static VariableInfo[] _variableInfo = new VariableInfo[] {
-		new VariableInfo(
-			"sectionParam", String.class.getName(), true, VariableInfo.NESTED),
-		new VariableInfo(
-			"sectionName", String.class.getName(), true, VariableInfo.NESTED),
-		new VariableInfo(
-			"sectionSelected", Boolean.class.getName(), true,
-			VariableInfo.NESTED),
-		new VariableInfo(
-			"sectionScroll", String.class.getName(), true, VariableInfo.NESTED),
-		new VariableInfo(
-			"sectionRedirectParams", String.class.getName(), true,
-			VariableInfo.NESTED)
-	};
+	private static class Concealer {
+
+		private static final VariableInfo[] _variableInfo = {
+			new VariableInfo(
+				"sectionParam", String.class.getName(), true,
+				VariableInfo.NESTED),
+			new VariableInfo(
+				"sectionName", String.class.getName(), true,
+				VariableInfo.NESTED),
+			new VariableInfo(
+				"sectionSelected", Boolean.class.getName(), true,
+				VariableInfo.NESTED),
+			new VariableInfo(
+				"sectionScroll", String.class.getName(), true,
+				VariableInfo.NESTED),
+			new VariableInfo(
+				"sectionRedirectParams", String.class.getName(), true,
+				VariableInfo.NESTED)
+		};
+
+	}
 
 }

@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,17 +14,19 @@
 
 package com.liferay.taglib.ui;
 
-import com.liferay.portal.kernel.util.HtmlUtil;
-import com.liferay.portal.kernel.util.Tuple;
-import com.liferay.portlet.messageboards.model.MBMessage;
+import com.liferay.portal.kernel.comment.Comment;
+import com.liferay.portal.kernel.repository.model.FileEntry;
+import com.liferay.portal.kernel.search.RelatedSearchResult;
 import com.liferay.taglib.util.IncludeTag;
 
 import java.util.List;
 
+import javax.servlet.ServletContext;
 import javax.servlet.http.HttpServletRequest;
 
 /**
  * @author Eudaldo Alonso
+ * @author Tibor Lipusz
  */
 public class AppViewSearchEntryTag extends IncludeTag {
 
@@ -33,20 +35,102 @@ public class AppViewSearchEntryTag extends IncludeTag {
 		return EVAL_BODY_INCLUDE;
 	}
 
+	public String getActionJsp() {
+		return _actionJsp;
+	}
+
+	public List<RelatedSearchResult<Comment>> getCommentRelatedSearchResults() {
+		return _commentRelatedSearchResults;
+	}
+
+	public String getContainerName() {
+		return _containerName;
+	}
+
+	public String getContainerType() {
+		return _containerType;
+	}
+
+	public String getCssClass() {
+		return _cssClass;
+	}
+
+	public String getDescription() {
+		return _description;
+	}
+
+	public List<RelatedSearchResult<FileEntry>>
+		getFileEntryRelatedSearchResults() {
+
+		return _fileEntryRelatedSearchResults;
+	}
+
+	public String[] getQueryTerms() {
+		return _queryTerms;
+	}
+
+	public String getRowCheckerId() {
+		return _rowCheckerId;
+	}
+
+	public String getRowCheckerName() {
+		return _rowCheckerName;
+	}
+
+	public int getStatus() {
+		return _status;
+	}
+
+	public String getThumbnailSrc() {
+		return _thumbnailSrc;
+	}
+
+	public String getTitle() {
+		return _title;
+	}
+
+	public String getUrl() {
+		return _url;
+	}
+
+	public List<String> getVersions() {
+		return _versions;
+	}
+
+	public boolean isEscape() {
+		return _escape;
+	}
+
+	public boolean isHighlightEnabled() {
+		return _highlightEnabled;
+	}
+
+	public boolean isLocked() {
+		return _locked;
+	}
+
+	public boolean isShowCheckbox() {
+		return _showCheckbox;
+	}
+
 	public void setActionJsp(String actionJsp) {
 		_actionJsp = actionJsp;
 	}
 
-	public void setContainerIcon(String containerIcon) {
-		_containerIcon = containerIcon;
+	public void setActionJspServletContext(
+		ServletContext actionJspServletContext) {
+
+		_actionJspServletContext = actionJspServletContext;
+	}
+
+	public void setCommentRelatedSearchResults(
+		List<RelatedSearchResult<Comment>> commentRelatedSearchResults) {
+
+		_commentRelatedSearchResults = commentRelatedSearchResults;
 	}
 
 	public void setContainerName(String containerName) {
 		_containerName = containerName;
-	}
-
-	public void setContainerSrc(String containerSrc) {
-		_containerSrc = containerSrc;
 	}
 
 	public void setContainerType(String containerType) {
@@ -58,19 +142,25 @@ public class AppViewSearchEntryTag extends IncludeTag {
 	}
 
 	public void setDescription(String description) {
-		_description = HtmlUtil.unescape(description);
+		_description = description;
 	}
 
-	public void setFileEntryTuples(List<Tuple> fileEntryTuples) {
-		_fileEntryTuples = fileEntryTuples;
+	public void setEscape(boolean escape) {
+		_escape = escape;
+	}
+
+	public void setFileEntryRelatedSearchResults(
+		List<RelatedSearchResult<FileEntry>> fileEntryRelatedSearchResults) {
+
+		_fileEntryRelatedSearchResults = fileEntryRelatedSearchResults;
+	}
+
+	public void setHighlightEnabled(boolean highlightEnabled) {
+		_highlightEnabled = highlightEnabled;
 	}
 
 	public void setLocked(boolean locked) {
 		_locked = locked;
-	}
-
-	public void setMbMessages(List<MBMessage> mbMessages) {
-		_mbMessages = mbMessages;
 	}
 
 	public void setQueryTerms(String[] queryTerms) {
@@ -98,7 +188,7 @@ public class AppViewSearchEntryTag extends IncludeTag {
 	}
 
 	public void setTitle(String title) {
-		_title = HtmlUtil.unescape(title);
+		_title = title;
 	}
 
 	public void setUrl(String url) {
@@ -111,16 +201,19 @@ public class AppViewSearchEntryTag extends IncludeTag {
 
 	@Override
 	protected void cleanUp() {
+		super.cleanUp();
+
 		_actionJsp = null;
-		_containerIcon = null;
+		_actionJspServletContext = null;
+		_commentRelatedSearchResults = null;
 		_containerName = null;
-		_containerSrc = null;
 		_containerType = null;
 		_cssClass = null;
 		_description = null;
-		_fileEntryTuples = null;
+		_escape = true;
+		_fileEntryRelatedSearchResults = null;
+		_highlightEnabled = false;
 		_locked = false;
-		_mbMessages = null;
 		_queryTerms = null;
 		_rowCheckerId = null;
 		_rowCheckerName = null;
@@ -130,6 +223,14 @@ public class AppViewSearchEntryTag extends IncludeTag {
 		_title = null;
 		_url = null;
 		_versions = null;
+	}
+
+	protected ServletContext getActionJspServletContext() {
+		if (_actionJspServletContext != null) {
+			return _actionJspServletContext;
+		}
+
+		return getServletContext();
 	}
 
 	@Override
@@ -143,43 +244,50 @@ public class AppViewSearchEntryTag extends IncludeTag {
 	}
 
 	@Override
-	protected void setAttributes(HttpServletRequest request) {
-		request.setAttribute(
+	protected void setAttributes(HttpServletRequest httpServletRequest) {
+		httpServletRequest.setAttribute(
+			"liferay-ui:app-view-entry:actionJspServletContext",
+			getActionJspServletContext());
+		httpServletRequest.setAttribute(
 			"liferay-ui:app-view-search-entry:actionJsp", _actionJsp);
-		request.setAttribute(
-			"liferay-ui:app-view-search-entry:containerIcon", _containerIcon);
-		request.setAttribute(
+		httpServletRequest.setAttribute(
+			"liferay-ui:app-view-search-entry:commentRelatedSearchResults",
+			_commentRelatedSearchResults);
+		httpServletRequest.setAttribute(
 			"liferay-ui:app-view-search-entry:containerName", _containerName);
-		request.setAttribute(
-			"liferay-ui:app-view-search-entry:containerSrc", _containerSrc);
-		request.setAttribute(
+		httpServletRequest.setAttribute(
 			"liferay-ui:app-view-search-entry:containerType", _containerType);
-		request.setAttribute(
+		httpServletRequest.setAttribute(
 			"liferay-ui:app-view-search-entry:cssClass", _cssClass);
-		request.setAttribute(
+		httpServletRequest.setAttribute(
 			"liferay-ui:app-view-search-entry:description", _description);
-		request.setAttribute(
-			"liferay-ui:app-view-search-entry:fileEntryTuples",
-			_fileEntryTuples);
-		request.setAttribute(
+		httpServletRequest.setAttribute(
+			"liferay-ui:app-view-search-entry:escape", _escape);
+		httpServletRequest.setAttribute(
+			"liferay-ui:app-view-search-entry:fileEntryRelatedSearchResults",
+			_fileEntryRelatedSearchResults);
+		httpServletRequest.setAttribute(
+			"liferay-ui:app-view-search-entry:highlightEnabled",
+			_highlightEnabled);
+		httpServletRequest.setAttribute(
 			"liferay-ui:app-view-search-entry:locked", _locked);
-		request.setAttribute(
-			"liferay-ui:app-view-search-entry:mbMessages", _mbMessages);
-		request.setAttribute(
+		httpServletRequest.setAttribute(
 			"liferay-ui:app-view-search-entry:queryTerms", _queryTerms);
-		request.setAttribute(
+		httpServletRequest.setAttribute(
 			"liferay-ui:app-view-search-entry:rowCheckerId", _rowCheckerId);
-		request.setAttribute(
+		httpServletRequest.setAttribute(
 			"liferay-ui:app-view-search-entry:rowCheckerName", _rowCheckerName);
-		request.setAttribute(
+		httpServletRequest.setAttribute(
 			"liferay-ui:app-view-search-entry:showCheckbox", _showCheckbox);
-		request.setAttribute(
+		httpServletRequest.setAttribute(
 			"liferay-ui:app-view-search-entry:status", _status);
-		request.setAttribute(
+		httpServletRequest.setAttribute(
 			"liferay-ui:app-view-search-entry:thumbnailSrc", _thumbnailSrc);
-		request.setAttribute("liferay-ui:app-view-search-entry:title", _title);
-		request.setAttribute("liferay-ui:app-view-search-entry:url", _url);
-		request.setAttribute(
+		httpServletRequest.setAttribute(
+			"liferay-ui:app-view-search-entry:title", _title);
+		httpServletRequest.setAttribute(
+			"liferay-ui:app-view-search-entry:url", _url);
+		httpServletRequest.setAttribute(
 			"liferay-ui:app-view-search-entry:versions", _versions);
 	}
 
@@ -189,20 +297,21 @@ public class AppViewSearchEntryTag extends IncludeTag {
 		"/html/taglib/ui/app_view_search_entry/page.jsp";
 
 	private String _actionJsp;
-	private String _containerIcon;
+	private ServletContext _actionJspServletContext;
+	private List<RelatedSearchResult<Comment>> _commentRelatedSearchResults;
 	private String _containerName;
-	private String _containerSrc;
 	private String _containerType;
 	private String _cssClass;
 	private String _description;
-	private List<Tuple> _fileEntryTuples;
+	private boolean _escape = true;
+	private List<RelatedSearchResult<FileEntry>> _fileEntryRelatedSearchResults;
+	private boolean _highlightEnabled;
 	private boolean _locked;
-	private List<MBMessage> _mbMessages;
 	private String[] _queryTerms;
 	private String _rowCheckerId;
 	private String _rowCheckerName;
-	private boolean _showCheckbox = false;
-	private int _status = 0;
+	private boolean _showCheckbox;
+	private int _status;
 	private String _thumbnailSrc;
 	private String _title;
 	private String _url;

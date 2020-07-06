@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -27,16 +27,18 @@ public class QNameImpl implements QName {
 	}
 
 	@Override
-	public boolean equals(Object obj) {
-		if (this == obj) {
+	public boolean equals(Object object) {
+		if (this == object) {
 			return true;
 		}
 
-		if (!(obj instanceof QNameImpl)) {
+		if (!(object instanceof QNameImpl)) {
 			return false;
 		}
 
-		org.dom4j.QName qName = ((QNameImpl)obj).getWrappedQName();
+		QNameImpl qNameImpl = (QNameImpl)object;
+
+		org.dom4j.QName qName = qNameImpl.getWrappedQName();
 
 		return _qName.equals(qName);
 	}
@@ -58,9 +60,8 @@ public class QNameImpl implements QName {
 		if (namespace == null) {
 			return null;
 		}
-		else {
-			return new NamespaceImpl(namespace);
-		}
+
+		return new NamespaceImpl(namespace);
 	}
 
 	@Override
@@ -92,6 +93,6 @@ public class QNameImpl implements QName {
 		return _qName.toString();
 	}
 
-	private org.dom4j.QName _qName;
+	private final org.dom4j.QName _qName;
 
 }

@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -24,41 +24,24 @@ import java.util.concurrent.ConcurrentMap;
 public class WebAppPool {
 
 	public static void clear() {
-		_instance._webAppPool.clear();
+		_webAppPool.clear();
 	}
 
 	public static Object get(Long webAppId, String key) {
-		return _instance._get(webAppId, key);
-	}
-
-	public static void put(Long webAppId, String key, Object obj) {
-		_instance._put(webAppId, key, obj);
-	}
-
-	public static Object remove(Long webAppId, String key) {
-		return _instance._remove(webAppId, key);
-	}
-
-	private WebAppPool() {
-		_webAppPool = new ConcurrentHashMap<Long, Map<String, Object>>();
-	}
-
-	private Object _get(Long webAppId, String key) {
 		Map<String, Object> map = _webAppPool.get(webAppId);
 
 		if (map == null) {
 			return null;
 		}
-		else {
-			return map.get(key);
-		}
+
+		return map.get(key);
 	}
 
-	private void _put(Long webAppId, String key, Object obj) {
+	public static void put(Long webAppId, String key, Object object) {
 		Map<String, Object> map = _webAppPool.get(webAppId);
 
 		if (map == null) {
-			map = new ConcurrentHashMap<String, Object>();
+			map = new ConcurrentHashMap<>();
 
 			Map<String, Object> previousMap = _webAppPool.putIfAbsent(
 				webAppId, map);
@@ -68,22 +51,20 @@ public class WebAppPool {
 			}
 		}
 
-		map.put(key, obj);
+		map.put(key, object);
 	}
 
-	private Object _remove(Long webAppId, String key) {
+	public static Object remove(Long webAppId, String key) {
 		Map<String, Object> map = _webAppPool.get(webAppId);
 
 		if (map == null) {
 			return null;
 		}
-		else {
-			return map.remove(key);
-		}
+
+		return map.remove(key);
 	}
 
-	private static WebAppPool _instance = new WebAppPool();
-
-	private ConcurrentMap<Long, Map<String, Object>> _webAppPool;
+	private static final ConcurrentMap<Long, Map<String, Object>> _webAppPool =
+		new ConcurrentHashMap<>();
 
 }

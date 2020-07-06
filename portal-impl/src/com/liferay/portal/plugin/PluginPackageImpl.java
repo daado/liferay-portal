@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,13 +14,13 @@
 
 package com.liferay.portal.plugin;
 
+import com.liferay.petra.string.StringBundler;
+import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.plugin.License;
 import com.liferay.portal.kernel.plugin.PluginPackage;
 import com.liferay.portal.kernel.plugin.RemotePluginPackageRepository;
 import com.liferay.portal.kernel.plugin.Screenshot;
 import com.liferay.portal.kernel.util.GetterUtil;
-import com.liferay.portal.kernel.util.StringBundler;
-import com.liferay.portal.kernel.util.StringPool;
 import com.liferay.portal.kernel.util.Validator;
 
 import java.io.Serializable;
@@ -69,16 +69,16 @@ public class PluginPackageImpl
 	}
 
 	@Override
-	public boolean equals(Object obj) {
-		if (this == obj) {
+	public boolean equals(Object object) {
+		if (this == object) {
 			return true;
 		}
 
-		if (!(obj instanceof PluginPackage)) {
+		if (!(object instanceof PluginPackage)) {
 			return false;
 		}
 
-		PluginPackage pluginPackage = (PluginPackage)obj;
+		PluginPackage pluginPackage = (PluginPackage)object;
 
 		EqualsBuilder equalsBuilder = new EqualsBuilder();
 
@@ -121,11 +121,18 @@ public class PluginPackageImpl
 
 	@Override
 	public String getDownloadURL() {
-		String useDownloadURL = getRepository().getSettings().getProperty(
-			RemotePluginPackageRepository.SETTING_USE_DOWNLOAD_URL);
+		RemotePluginPackageRepository remotePluginPackageRepository =
+			getRepository();
 
-		if (!GetterUtil.getBoolean(useDownloadURL, true)) {
-			return getArtifactURL();
+		if (remotePluginPackageRepository != null) {
+			Properties settings = remotePluginPackageRepository.getSettings();
+
+			String useDownloadURL = settings.getProperty(
+				RemotePluginPackageRepository.SETTING_USE_DOWNLOAD_URL);
+
+			if (!GetterUtil.getBoolean(useDownloadURL, true)) {
+				return getArtifactURL();
+			}
 		}
 
 		if (Validator.isNotNull(_downloadURL)) {
@@ -201,9 +208,8 @@ public class PluginPackageImpl
 		if (_repository != null) {
 			return _repository.getRepositoryURL();
 		}
-		else {
-			return RemotePluginPackageRepository.LOCAL_URL;
-		}
+
+		return RemotePluginPackageRepository.LOCAL_URL;
 	}
 
 	@Override
@@ -372,19 +378,19 @@ public class PluginPackageImpl
 	private String _context;
 	private Properties _deploymentSettings;
 	private String _downloadURL;
-	private List<License> _licenses = new ArrayList<License>();
-	private List<String> _liferayVersions = new ArrayList<String>();
+	private List<License> _licenses = new ArrayList<>();
+	private List<String> _liferayVersions = new ArrayList<>();
 	private String _longDescription = StringPool.BLANK;
 	private Date _modifiedDate;
-	private ModuleId _moduleId;
+	private final ModuleId _moduleId;
 	private String _name;
 	private String _pageURL;
 	private String _recommendedDeploymentContext;
 	private RemotePluginPackageRepository _repository;
 	private List<String> _requiredDeploymentContexts = Collections.emptyList();
-	private List<Screenshot> _screenshots = new ArrayList<Screenshot>();
+	private List<Screenshot> _screenshots = new ArrayList<>();
 	private String _shortDescription = StringPool.BLANK;
-	private List<String> _tags = new ArrayList<String>();
-	private List<String> _types = new ArrayList<String>();
+	private List<String> _tags = new ArrayList<>();
+	private List<String> _types = new ArrayList<>();
 
 }

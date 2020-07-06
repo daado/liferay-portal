@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,8 +14,8 @@
 
 package com.liferay.taglib.ui;
 
-import com.liferay.portal.kernel.util.StringPool;
-import com.liferay.portal.util.SessionClicks;
+import com.liferay.petra.string.StringPool;
+import com.liferay.portal.kernel.util.SessionClicks;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.jsp.JspException;
@@ -28,24 +28,15 @@ import javax.servlet.jsp.tagext.TagSupport;
  */
 public class ToggleValueTag extends TagSupport {
 
-	/**
-	 * @deprecated As of 6.1.0
-	 */
-	public static void doTag(
-			String id, PageContext pageContext, HttpServletRequest request)
-		throws Exception {
-
-		doTag(id, "block", pageContext);
-	}
-
 	public static void doTag(
 			String id, String defaultValue, PageContext pageContext)
 		throws Exception {
 
-		HttpServletRequest request =
+		HttpServletRequest httpServletRequest =
 			(HttpServletRequest)pageContext.getRequest();
 
-		String value = SessionClicks.get(request, id, StringPool.BLANK);
+		String value = SessionClicks.get(
+			httpServletRequest, id, StringPool.BLANK);
 
 		if (value.equals(StringPool.BLANK)) {
 			value = defaultValue;
@@ -63,8 +54,8 @@ public class ToggleValueTag extends TagSupport {
 
 			return EVAL_PAGE;
 		}
-		catch (Exception e) {
-			throw new JspException(e);
+		catch (Exception exception) {
+			throw new JspException(exception);
 		}
 	}
 

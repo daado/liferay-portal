@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -49,6 +49,9 @@ public class SimpleHTTPSender extends HTTPSender {
 		if (Validator.isNotNull(regexp)) {
 			_pattern = Pattern.compile(regexp);
 		}
+		else {
+			_pattern = null;
+		}
 	}
 
 	@Override
@@ -92,8 +95,8 @@ public class SimpleHTTPSender extends HTTPSender {
 			_writeToConnection(urlConnection, messageContext);
 			_readFromConnection(urlConnection, messageContext);
 		}
-		catch (Exception e) {
-			throw AxisFault.makeFault(e);
+		catch (Exception exception) {
+			throw AxisFault.makeFault(exception);
 		}
 		finally {
 			Authenticator.setDefault(null);
@@ -114,12 +117,12 @@ public class SimpleHTTPSender extends HTTPSender {
 
 		inputStream = new UnsyncBufferedInputStream(inputStream, 8192);
 
-		String contentType = urlConnection.getContentType();
 		String contentLocation = urlConnection.getHeaderField(
 			"Content-Location");
 
 		Message message = new Message(
-			inputStream, false, contentType, contentLocation);
+			inputStream, false, urlConnection.getContentType(),
+			contentLocation);
 
 		message.setMessageType(Message.RESPONSE);
 
@@ -152,8 +155,9 @@ public class SimpleHTTPSender extends HTTPSender {
 		outputStream.flush();
 	}
 
-	private static Log _log = LogFactoryUtil.getLog(SimpleHTTPSender.class);
+	private static final Log _log = LogFactoryUtil.getLog(
+		SimpleHTTPSender.class);
 
-	private Pattern _pattern;
+	private final Pattern _pattern;
 
 }

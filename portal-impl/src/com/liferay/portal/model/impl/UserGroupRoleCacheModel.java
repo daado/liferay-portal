@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,9 +14,11 @@
 
 package com.liferay.portal.model.impl;
 
-import com.liferay.portal.kernel.util.StringBundler;
-import com.liferay.portal.model.CacheModel;
-import com.liferay.portal.model.UserGroupRole;
+import com.liferay.petra.lang.HashUtil;
+import com.liferay.petra.string.StringBundler;
+import com.liferay.portal.kernel.model.CacheModel;
+import com.liferay.portal.kernel.model.MVCCModel;
+import com.liferay.portal.kernel.model.UserGroupRole;
 
 import java.io.Externalizable;
 import java.io.IOException;
@@ -27,16 +29,63 @@ import java.io.ObjectOutput;
  * The cache model class for representing UserGroupRole in entity cache.
  *
  * @author Brian Wing Shun Chan
- * @see UserGroupRole
  * @generated
  */
-public class UserGroupRoleCacheModel implements CacheModel<UserGroupRole>,
-	Externalizable {
+public class UserGroupRoleCacheModel
+	implements CacheModel<UserGroupRole>, Externalizable, MVCCModel {
+
+	@Override
+	public boolean equals(Object object) {
+		if (this == object) {
+			return true;
+		}
+
+		if (!(object instanceof UserGroupRoleCacheModel)) {
+			return false;
+		}
+
+		UserGroupRoleCacheModel userGroupRoleCacheModel =
+			(UserGroupRoleCacheModel)object;
+
+		if ((userGroupRoleId == userGroupRoleCacheModel.userGroupRoleId) &&
+			(mvccVersion == userGroupRoleCacheModel.mvccVersion)) {
+
+			return true;
+		}
+
+		return false;
+	}
+
+	@Override
+	public int hashCode() {
+		int hashCode = HashUtil.hash(0, userGroupRoleId);
+
+		return HashUtil.hash(hashCode, mvccVersion);
+	}
+
+	@Override
+	public long getMvccVersion() {
+		return mvccVersion;
+	}
+
+	@Override
+	public void setMvccVersion(long mvccVersion) {
+		this.mvccVersion = mvccVersion;
+	}
+
 	@Override
 	public String toString() {
-		StringBundler sb = new StringBundler(7);
+		StringBundler sb = new StringBundler(15);
 
-		sb.append("{userId=");
+		sb.append("{mvccVersion=");
+		sb.append(mvccVersion);
+		sb.append(", ctCollectionId=");
+		sb.append(ctCollectionId);
+		sb.append(", userGroupRoleId=");
+		sb.append(userGroupRoleId);
+		sb.append(", companyId=");
+		sb.append(companyId);
+		sb.append(", userId=");
 		sb.append(userId);
 		sb.append(", groupId=");
 		sb.append(groupId);
@@ -51,6 +100,10 @@ public class UserGroupRoleCacheModel implements CacheModel<UserGroupRole>,
 	public UserGroupRole toEntityModel() {
 		UserGroupRoleImpl userGroupRoleImpl = new UserGroupRoleImpl();
 
+		userGroupRoleImpl.setMvccVersion(mvccVersion);
+		userGroupRoleImpl.setCtCollectionId(ctCollectionId);
+		userGroupRoleImpl.setUserGroupRoleId(userGroupRoleId);
+		userGroupRoleImpl.setCompanyId(companyId);
 		userGroupRoleImpl.setUserId(userId);
 		userGroupRoleImpl.setGroupId(groupId);
 		userGroupRoleImpl.setRoleId(roleId);
@@ -62,20 +115,44 @@ public class UserGroupRoleCacheModel implements CacheModel<UserGroupRole>,
 
 	@Override
 	public void readExternal(ObjectInput objectInput) throws IOException {
+		mvccVersion = objectInput.readLong();
+
+		ctCollectionId = objectInput.readLong();
+
+		userGroupRoleId = objectInput.readLong();
+
+		companyId = objectInput.readLong();
+
 		userId = objectInput.readLong();
+
 		groupId = objectInput.readLong();
+
 		roleId = objectInput.readLong();
 	}
 
 	@Override
-	public void writeExternal(ObjectOutput objectOutput)
-		throws IOException {
+	public void writeExternal(ObjectOutput objectOutput) throws IOException {
+		objectOutput.writeLong(mvccVersion);
+
+		objectOutput.writeLong(ctCollectionId);
+
+		objectOutput.writeLong(userGroupRoleId);
+
+		objectOutput.writeLong(companyId);
+
 		objectOutput.writeLong(userId);
+
 		objectOutput.writeLong(groupId);
+
 		objectOutput.writeLong(roleId);
 	}
 
+	public long mvccVersion;
+	public long ctCollectionId;
+	public long userGroupRoleId;
+	public long companyId;
 	public long userId;
 	public long groupId;
 	public long roleId;
+
 }

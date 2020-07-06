@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,29 +14,31 @@
 
 package com.liferay.portlet.social.util;
 
+import com.liferay.petra.string.StringBundler;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
 import com.liferay.portal.kernel.util.GetterUtil;
 import com.liferay.portal.kernel.util.ListUtil;
 import com.liferay.portal.kernel.util.ProxyFactory;
 import com.liferay.portal.kernel.util.Tuple;
-import com.liferay.portal.kernel.util.UniqueList;
 import com.liferay.portal.kernel.util.Validator;
 import com.liferay.portal.kernel.xml.Document;
 import com.liferay.portal.kernel.xml.DocumentException;
 import com.liferay.portal.kernel.xml.DocumentType;
 import com.liferay.portal.kernel.xml.Element;
-import com.liferay.portal.kernel.xml.SAXReaderUtil;
+import com.liferay.portal.kernel.xml.UnsecureSAXReaderUtil;
 import com.liferay.portal.util.JavaFieldsParser;
-import com.liferay.portlet.social.model.SocialAchievement;
-import com.liferay.portlet.social.model.SocialActivityCounterConstants;
-import com.liferay.portlet.social.model.SocialActivityCounterDefinition;
-import com.liferay.portlet.social.model.SocialActivityDefinition;
-import com.liferay.portlet.social.model.SocialActivityProcessor;
+import com.liferay.social.kernel.model.SocialAchievement;
+import com.liferay.social.kernel.model.SocialActivityCounterConstants;
+import com.liferay.social.kernel.model.SocialActivityCounterDefinition;
+import com.liferay.social.kernel.model.SocialActivityDefinition;
+import com.liferay.social.kernel.model.SocialActivityProcessor;
+import com.liferay.social.kernel.util.SocialConfiguration;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -67,7 +69,7 @@ public class SocialConfigurationImpl implements SocialConfiguration {
 	public List<String> getActivityCounterNames(
 		int ownerType, boolean transientCounter) {
 
-		List<String> activityCounterNames = new UniqueList<String>();
+		Set<String> activityCounterNames = new LinkedHashSet<>();
 
 		for (Map<Integer, SocialActivityDefinition> activityDefinitions :
 				_activityDefinitions.values()) {
@@ -83,7 +85,7 @@ public class SocialConfigurationImpl implements SocialConfiguration {
 						((ownerType ==
 							SocialActivityCounterConstants.TYPE_ALL) ||
 						 (ownerType ==
-							activityCounterDefinition.getOwnerType()))) {
+							 activityCounterDefinition.getOwnerType()))) {
 
 						activityCounterNames.add(
 							activityCounterDefinition.getName());
@@ -92,7 +94,7 @@ public class SocialConfigurationImpl implements SocialConfiguration {
 			}
 		}
 
-		return activityCounterNames;
+		return new ArrayList<>(activityCounterNames);
 	}
 
 	@Override
@@ -127,15 +129,14 @@ public class SocialConfigurationImpl implements SocialConfiguration {
 	public String[] getActivityModelNames() {
 		Set<String> activityModelNames = _activityDefinitions.keySet();
 
-		return activityModelNames.toArray(
-			new String[activityModelNames.size()]);
+		return activityModelNames.toArray(new String[0]);
 	}
 
 	@Override
 	public List<Object> read(ClassLoader classLoader, String[] xmls)
 		throws Exception {
 
-		List<Object> objects = new ArrayList<Object>();
+		List<Object> objects = new ArrayList<>();
 
 		for (String xml : xmls) {
 			_read(classLoader, xml, objects);
@@ -166,7 +167,7 @@ public class SocialConfigurationImpl implements SocialConfiguration {
 
 		xml = JavaFieldsParser.parse(classLoader, xml);
 
-		Document document = SAXReaderUtil.read(xml);
+		Document document = UnsecureSAXReaderUtil.read(xml);
 
 		DocumentType documentType = document.getDocumentType();
 
@@ -293,8 +294,7 @@ public class SocialConfigurationImpl implements SocialConfiguration {
 			_activityDefinitions.get(modelName);
 
 		if (activityDefinitions == null) {
-			activityDefinitions =
-				new HashMap<Integer, SocialActivityDefinition>();
+			activityDefinitions = new HashMap<>();
 
 			_activityDefinitions.put(modelName, activityDefinitions);
 		}
@@ -492,8 +492,9 @@ public class SocialConfigurationImpl implements SocialConfiguration {
 		if (activityCounterDefinition.getOwnerType() == 0) {
 			if (_log.isWarnEnabled()) {
 				_log.warn(
-					"Invalid owner type " + ownerType + " for model " +
-						activityDefinition.getModelName());
+					StringBundler.concat(
+						"Invalid owner type ", ownerType, " for model ",
+						activityDefinition.getModelName()));
 			}
 
 			return;
@@ -506,11 +507,10 @@ public class SocialConfigurationImpl implements SocialConfiguration {
 		objects.add(tuple);
 	}
 
-	private static Log _log = LogFactoryUtil.getLog(
+	private static final Log _log = LogFactoryUtil.getLog(
 		SocialConfigurationImpl.class);
 
-	private Map<String, Map<Integer, SocialActivityDefinition>>
-		_activityDefinitions =
-			new HashMap<String, Map<Integer, SocialActivityDefinition>>();
+	private final Map<String, Map<Integer, SocialActivityDefinition>>
+		_activityDefinitions = new HashMap<>();
 
 }

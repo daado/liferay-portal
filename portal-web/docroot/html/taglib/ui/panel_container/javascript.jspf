@@ -1,6 +1,6 @@
 <%--
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,13 +14,28 @@
  */
 --%>
 
-<aui:script use="aui-toggler,liferay-store">
+<aui:script use="aui-toggler">
 	var togglerDelegate;
 
 	Liferay.component(
 		'<%= namespace + id %>',
 		function() {
 			if (!togglerDelegate) {
+				var data = {};
+
+				var sendData = A.debounce(
+					function() {
+						Object.entries(data).forEach(
+							function(key, value) {
+								Liferay.Util.Session.set(key, value);
+							}
+						);
+
+						data = {};
+					},
+					100
+				);
+
 				togglerDelegate = new A.TogglerDelegate(
 					{
 						animated: true,
@@ -35,16 +50,14 @@
 								var persistId = header.getData('persist-id');
 
 								if (persistId && !event.silent) {
-									var data = {};
-
 									data[persistId] = event.newVal ? 'open' : 'closed';
-
-									Liferay.Store(data);
 								}
+
+								sendData();
 							}
 						},
 						transition: {
-							duration: .3
+							duration: 0.3
 						}
 					}
 				);

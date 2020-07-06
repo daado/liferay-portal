@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,21 +14,22 @@
 
 package com.liferay.portal.dao.orm.hibernate;
 
+import com.liferay.petra.string.StringBundler;
 import com.liferay.portal.kernel.dao.orm.CacheMode;
 import com.liferay.portal.kernel.dao.orm.LockMode;
 import com.liferay.portal.kernel.dao.orm.ORMException;
 import com.liferay.portal.kernel.dao.orm.Query;
 import com.liferay.portal.kernel.dao.orm.ScrollableResults;
-import com.liferay.portal.kernel.security.pacl.DoPrivileged;
-import com.liferay.portal.kernel.security.pacl.NotPrivileged;
 import com.liferay.portal.kernel.util.ListUtil;
-import com.liferay.portal.kernel.util.UnmodifiableList;
 
 import java.io.Serializable;
+
+import java.math.BigDecimal;
 
 import java.sql.Timestamp;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 
@@ -38,49 +39,50 @@ import org.hibernate.LockOptions;
  * @author Brian Wing Shun Chan
  * @author Shuyang Zhou
  */
-@DoPrivileged
 public class QueryImpl implements Query {
 
 	public QueryImpl(org.hibernate.Query query, boolean strictName) {
 		_query = query;
 		_strictName = strictName;
 
-		if (!_strictName) {
-			_names = query.getNamedParameters();
+		String[] names = null;
 
-			Arrays.sort(_names);
+		if (!_strictName) {
+			names = query.getNamedParameters();
+
+			Arrays.sort(names);
 		}
+
+		_names = names;
 	}
 
-	@NotPrivileged
 	@Override
 	public int executeUpdate() throws ORMException {
 		try {
 			return _query.executeUpdate();
 		}
-		catch (Exception e) {
-			throw ExceptionTranslator.translate(e);
+		catch (Exception exception) {
+			throw ExceptionTranslator.translate(exception);
 		}
 	}
 
-	@NotPrivileged
 	@Override
 	public Iterator<?> iterate() throws ORMException {
 		return iterate(true);
 	}
 
-	@NotPrivileged
 	@Override
 	public Iterator<?> iterate(boolean unmodifiable) throws ORMException {
 		try {
-			return list(unmodifiable).iterator();
+			List<?> list = list(unmodifiable);
+
+			return list.iterator();
 		}
-		catch (Exception e) {
-			throw ExceptionTranslator.translate(e);
+		catch (Exception exception) {
+			throw ExceptionTranslator.translate(exception);
 		}
 	}
 
-	@NotPrivileged
 	@Override
 	public Object iterateNext() throws ORMException {
 		Iterator<?> iterator = iterate(false);
@@ -92,19 +94,16 @@ public class QueryImpl implements Query {
 		return null;
 	}
 
-	@NotPrivileged
 	@Override
 	public List<?> list() throws ORMException {
 		return list(false, false);
 	}
 
-	@NotPrivileged
 	@Override
 	public List<?> list(boolean unmodifiable) throws ORMException {
 		return list(true, unmodifiable);
 	}
 
-	@NotPrivileged
 	@Override
 	public List<?> list(boolean copy, boolean unmodifiable)
 		throws ORMException {
@@ -113,7 +112,7 @@ public class QueryImpl implements Query {
 			List<?> list = _query.list();
 
 			if (unmodifiable) {
-				list = new UnmodifiableList<Object>(list);
+				list = Collections.unmodifiableList(list);
 			}
 			else if (copy) {
 				list = ListUtil.copy(list);
@@ -121,20 +120,37 @@ public class QueryImpl implements Query {
 
 			return list;
 		}
-		catch (Exception e) {
-			throw ExceptionTranslator.translate(e);
+		catch (Exception exception) {
+			throw ExceptionTranslator.translate(exception);
 		}
 	}
 
-	@NotPrivileged
 	@Override
 	public ScrollableResults scroll() throws ORMException {
 		try {
 			return new ScrollableResultsImpl(_query.scroll());
 		}
-		catch (Exception e) {
-			throw ExceptionTranslator.translate(e);
+		catch (Exception exception) {
+			throw ExceptionTranslator.translate(exception);
 		}
+	}
+
+	@Override
+	public Query setBigDecimal(int pos, BigDecimal value) {
+		_query.setBigDecimal(pos, value);
+
+		return this;
+	}
+
+	@Override
+	public Query setBigDecimal(String name, BigDecimal value) {
+		if (!_strictName && (Arrays.binarySearch(_names, name) < 0)) {
+			return this;
+		}
+
+		_query.setBigDecimal(name, value);
+
+		return this;
 	}
 
 	@Override
@@ -348,19 +364,33 @@ public class QueryImpl implements Query {
 		return this;
 	}
 
-	@NotPrivileged
+	@Override
+	public String toString() {
+		StringBundler sb = new StringBundler(7);
+
+		sb.append("{names=");
+		sb.append(Arrays.toString(_names));
+		sb.append(", _query=");
+		sb.append(String.valueOf(_query));
+		sb.append(", _strictName=");
+		sb.append(_strictName);
+		sb.append("}");
+
+		return sb.toString();
+	}
+
 	@Override
 	public Object uniqueResult() throws ORMException {
 		try {
 			return _query.uniqueResult();
 		}
-		catch (Exception e) {
-			throw ExceptionTranslator.translate(e);
+		catch (Exception exception) {
+			throw ExceptionTranslator.translate(exception);
 		}
 	}
 
-	private String[] _names;
-	private org.hibernate.Query _query;
-	private boolean _strictName;
+	private final String[] _names;
+	private final org.hibernate.Query _query;
+	private final boolean _strictName;
 
 }

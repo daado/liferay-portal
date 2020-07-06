@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,25 +14,25 @@
 
 package com.liferay.portal.module.framework;
 
+import com.liferay.petra.reflect.ReflectionUtil;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
 import com.liferay.portal.kernel.util.FileUtil;
 import com.liferay.portal.kernel.util.InstanceFactory;
 import com.liferay.portal.kernel.util.MethodKey;
-import com.liferay.portal.kernel.util.ReflectionUtil;
-import com.liferay.portal.kernel.util.StringUtil;
-import com.liferay.portal.security.lang.DoPrivilegedUtil;
-import com.liferay.portal.util.ClassLoaderUtil;
+import com.liferay.portal.kernel.util.PortalClassLoaderUtil;
 import com.liferay.portal.util.FileImpl;
 import com.liferay.portal.util.PropsValues;
 
 import java.io.File;
+import java.io.IOException;
 
 import java.lang.reflect.Method;
 
+import java.net.URI;
 import java.net.URL;
-import java.net.URLConnection;
 
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -48,35 +48,69 @@ public class ModuleFrameworkAdapterHelper {
 		}
 
 		try {
-			File coreDir = new File(
-				PropsValues.LIFERAY_WEB_PORTAL_CONTEXT_TEMPDIR, "osgi");
+			if (FileUtil.getFile() == null) {
+				FileUtil fileUtil = new FileUtil();
 
-			_initDir(
-				"com/liferay/portal/deploy/dependencies/osgi/core",
-				coreDir.getAbsolutePath());
-			_initDir(
-				"com/liferay/portal/deploy/dependencies/osgi/portal",
-				PropsValues.MODULE_FRAMEWORK_PORTAL_DIR);
+				fileUtil.setFile(new FileImpl());
+			}
+
+			File coreDir = new File(
+				PropsValues.MODULE_FRAMEWORK_BASE_DIR, "core");
 
 			File[] files = coreDir.listFiles();
 
-			URL[] urls = new URL[files.length];
-
-			for (int i = 0; i < urls.length; i++) {
-				urls[i] = new URL("file", null, files[i].getAbsolutePath());
+			if (files == null) {
+				throw new IllegalStateException(
+					"Missing " + coreDir.getCanonicalPath());
 			}
 
+			URL[] urls = new URL[files.length];
+			String[] packageNames = new String[files.length + 4];
+
+			for (int i = 0; i < urls.length; i++) {
+				File file = files[i];
+
+				URI uri = file.toURI();
+
+				urls[i] = uri.toURL();
+
+				String name = file.getName();
+
+				if (name.endsWith(".jar")) {
+					name = name.substring(0, name.length() - 3);
+				}
+
+				if (name.endsWith(".api.")) {
+					name = name.substring(0, name.length() - 4);
+				}
+
+				if (name.endsWith(".impl.")) {
+					name = name.substring(0, name.length() - 5);
+
+					name = name.concat("internal.");
+				}
+
+				packageNames[i] = name;
+			}
+
+			packageNames[files.length] = "org.apache.felix.resolver.";
+			packageNames[files.length + 1] = "org.eclipse.core.";
+			packageNames[files.length + 2] = "org.eclipse.equinox.";
+			packageNames[files.length + 3] = "org.osgi.";
+
+			Arrays.sort(packageNames);
+
 			_classLoader = new ModuleFrameworkClassLoader(
-				urls, ClassLoaderUtil.getPortalClassLoader());
+				urls, PortalClassLoaderUtil.getClassLoader(), packageNames);
 
 			return _classLoader;
 		}
-		catch (Exception e) {
+		catch (IOException ioException) {
 			_log.error(
-				"Unable to configure the class loader for the module " +
-					"framework");
+				"Unable to configure the class loader for the module framework",
+				ioException);
 
-			throw new RuntimeException(e);
+			return ReflectionUtil.throwException(ioException);
 		}
 	}
 
@@ -85,33 +119,26 @@ public class ModuleFrameworkAdapterHelper {
 			_adaptedObject = InstanceFactory.newInstance(
 				getClassLoader(), className);
 		}
-		catch (Exception e) {
+		catch (Exception exception) {
 			_log.error("Unable to load the module framework");
 
-			throw new RuntimeException(e);
+			throw new RuntimeException(exception);
 		}
 	}
 
 	public Object exec(
-		String methodName, Class<?>[] parameterTypes, Object...parameters) {
+		String methodName, Class<?>[] parameterTypes, Object... parameters) {
 
 		try {
 			Method method = searchMethod(methodName, parameterTypes);
 
 			return method.invoke(_adaptedObject, parameters);
 		}
-		catch (Exception e) {
-			_log.error(e, e);
+		catch (Exception exception) {
+			_log.error(exception, exception);
 
-			throw new RuntimeException(e);
+			throw new RuntimeException(exception);
 		}
-	}
-
-	public Object execute(String methodName, Object...parameters) {
-		Class<?>[] parameterTypes = ReflectionUtil.getParameterTypes(
-			parameters);
-
-		return exec(methodName, parameterTypes, parameters);
 	}
 
 	protected Method searchMethod(String methodName, Class<?>[] parameterTypes)
@@ -132,52 +159,12 @@ public class ModuleFrameworkAdapterHelper {
 		return method;
 	}
 
-	private static void _initDir(String sourcePath, String destinationPath)
-		throws Exception {
-
-		if (FileUtil.getFile() == null) {
-			FileUtil fileUtil = new FileUtil();
-
-			fileUtil.setFile(DoPrivilegedUtil.wrap(new FileImpl()));
-		}
-
-		if (!FileUtil.exists(destinationPath)) {
-			FileUtil.mkdirs(destinationPath);
-		}
-
-		ClassLoader classLoader = ClassLoaderUtil.getPortalClassLoader();
-
-		URL url = classLoader.getResource(sourcePath + "/jars.txt");
-
-		URLConnection urlConnection = url.openConnection();
-
-		String[] jarFileNames = StringUtil.split(
-			StringUtil.read(urlConnection.getInputStream()));
-
-		for (String jarFileName : jarFileNames) {
-			File destinationFile = new File(destinationPath, jarFileName);
-
-			long lastModified = urlConnection.getLastModified();
-
-			if ((destinationFile.lastModified() < lastModified) ||
-				(lastModified == 0)) {
-
-				byte[] bytes = FileUtil.getBytes(
-					classLoader.getResourceAsStream(
-						sourcePath + "/" + jarFileName));
-
-				FileUtil.write(destinationFile, bytes);
-			}
-		}
-	}
-
-	private static Log _log = LogFactoryUtil.getLog(
+	private static final Log _log = LogFactoryUtil.getLog(
 		ModuleFrameworkAdapterHelper.class);
 
 	private static ClassLoader _classLoader;
-	private static Map<MethodKey, Method> _methods =
-		new HashMap<MethodKey, Method>();
+	private static final Map<MethodKey, Method> _methods = new HashMap<>();
 
-	private Object _adaptedObject;
+	private final Object _adaptedObject;
 
 }

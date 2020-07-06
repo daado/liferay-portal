@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,24 +14,20 @@
 
 package com.liferay.portlet.expando.model.impl;
 
-import com.liferay.portlet.expando.model.ExpandoTableConstants;
+import com.liferay.expando.kernel.model.ExpandoTableConstants;
 
 /**
  * @author Brian Wing Shun Chan
  */
 public class ExpandoTableImpl extends ExpandoTableBaseImpl {
 
-	public ExpandoTableImpl() {
-	}
-
 	@Override
 	public boolean isDefaultTable() {
 		if (getName().equals(ExpandoTableConstants.DEFAULT_TABLE_NAME)) {
 			return true;
 		}
-		else {
-			return false;
-		}
+
+		return false;
 	}
 
 }

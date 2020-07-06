@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -26,7 +26,7 @@ import com.liferay.portal.kernel.log.LogFactoryUtil;
 public class UtilLocator {
 
 	public static UtilLocator getInstance() {
-		return _instance;
+		return _utilLocator;
 	}
 
 	public Object findUtil(String utilName) {
@@ -35,8 +35,8 @@ public class UtilLocator {
 		try {
 			bean = PortalBeanLocatorUtil.locate(_getUtilName(utilName));
 		}
-		catch (Exception e) {
-			_log.error(e, e);
+		catch (Exception exception) {
+			_log.error(exception, exception);
 		}
 
 		return bean;
@@ -49,8 +49,8 @@ public class UtilLocator {
 			bean = PortletBeanLocatorUtil.locate(
 				servletContextName, _getUtilName(utilName));
 		}
-		catch (Exception e) {
-			_log.error(e, e);
+		catch (Exception exception) {
+			_log.error(exception, exception);
 		}
 
 		return bean;
@@ -67,8 +67,8 @@ public class UtilLocator {
 		return utilName;
 	}
 
-	private static Log _log = LogFactoryUtil.getLog(UtilLocator.class);
+	private static final Log _log = LogFactoryUtil.getLog(UtilLocator.class);
 
-	private static UtilLocator _instance = new UtilLocator();
+	private static final UtilLocator _utilLocator = new UtilLocator();
 
 }

@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,65 +14,50 @@
 
 package com.liferay.portal.security.auth;
 
-import com.liferay.portal.kernel.security.pacl.DoPrivileged;
-import com.liferay.portal.kernel.util.CharPool;
-import com.liferay.portal.kernel.util.SetUtil;
+import com.liferay.portal.kernel.model.Portlet;
+import com.liferay.portal.kernel.portlet.LiferayPortletURL;
+import com.liferay.portal.kernel.portlet.PortletIdCodec;
+import com.liferay.portal.kernel.security.auth.BaseAuthTokenWhitelist;
+import com.liferay.portal.kernel.util.DigesterUtil;
+import com.liferay.portal.kernel.util.PropsKeys;
 import com.liferay.portal.kernel.util.Validator;
-import com.liferay.portal.model.Portlet;
-import com.liferay.portal.model.PortletConstants;
-import com.liferay.portal.service.PortletLocalServiceUtil;
 import com.liferay.portal.util.PropsValues;
-import com.liferay.util.Encryptor;
 
 import java.util.Collections;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+
+import javax.servlet.http.HttpServletRequest;
 
 /**
  * @author Raymond Augé
  * @author Tomas Polesovsky
  */
-@DoPrivileged
-public class AuthTokenWhitelistImpl implements AuthTokenWhitelist {
+public class AuthTokenWhitelistImpl extends BaseAuthTokenWhitelist {
 
 	public AuthTokenWhitelistImpl() {
-		resetOriginCSRFWhitelist();
-		resetPortletCSRFWhitelist();
-		resetPortletCSRFWhitelistActions();
-		resetPortletInvocationWhitelist();
-		resetPortletInvocationWhitelistActions();
-	}
+		trackWhitelistServices(
+			PropsKeys.AUTH_TOKEN_IGNORE_ORIGINS, _originCSRFWhitelist);
 
-	@Override
-	public Set<String> getOriginCSRFWhitelist() {
-		return _originCSRFWhitelist;
-	}
+		registerPortalProperty(PropsKeys.AUTH_TOKEN_IGNORE_ORIGINS);
 
-	@Override
-	public Set<String> getPortletCSRFWhitelist() {
-		return _portletCSRFWhitelist;
-	}
+		trackWhitelistServices(
+			PropsKeys.AUTH_TOKEN_IGNORE_PORTLETS, _portletCSRFWhitelist);
 
-	@Override
-	public Set<String> getPortletCSRFWhitelistActions() {
-		return _portletCSRFWhitelistActions;
-	}
+		registerPortalProperty(PropsKeys.AUTH_TOKEN_IGNORE_PORTLETS);
 
-	@Override
-	public Set<String> getPortletInvocationWhitelist() {
-		return _portletInvocationWhitelist;
-	}
+		trackWhitelistServices(
+			PropsKeys.PORTLET_ADD_DEFAULT_RESOURCE_CHECK_WHITELIST,
+			_portletInvocationWhitelist);
 
-	@Override
-	public Set<String> getPortletInvocationWhitelistActions() {
-		return _portletInvocationWhitelistActions;
+		registerPortalProperty(
+			PropsKeys.PORTLET_ADD_DEFAULT_RESOURCE_CHECK_WHITELIST);
 	}
 
 	@Override
 	public boolean isOriginCSRFWhitelisted(long companyId, String origin) {
-		Set<String> whitelist = getOriginCSRFWhitelist();
-
-		for (String whitelistedOrigins : whitelist) {
-			if (origin.startsWith(whitelistedOrigins)) {
+		for (String whitelistedOrigin : _originCSRFWhitelist) {
+			if (origin.startsWith(whitelistedOrigin)) {
 				return true;
 			}
 		}
@@ -82,51 +67,34 @@ public class AuthTokenWhitelistImpl implements AuthTokenWhitelist {
 
 	@Override
 	public boolean isPortletCSRFWhitelisted(
-		long companyId, String portletId, String strutsAction) {
+		HttpServletRequest httpServletRequest, Portlet portlet) {
 
-		String rootPortletId = PortletConstants.getRootPortletId(portletId);
-
-		Set<String> whitelist = getPortletCSRFWhitelist();
-
-		if (whitelist.contains(rootPortletId)) {
-			return true;
-		}
-
-		if (Validator.isNotNull(strutsAction)) {
-			Set<String> whitelistActions = getPortletCSRFWhitelistActions();
-
-			if (whitelistActions.contains(strutsAction) &&
-				isValidStrutsAction(companyId, rootPortletId, strutsAction)) {
-
-				return true;
-			}
-		}
-
-		return false;
+		return _portletCSRFWhitelist.contains(portlet.getRootPortletId());
 	}
 
 	@Override
 	public boolean isPortletInvocationWhitelisted(
-		long companyId, String portletId, String strutsAction) {
+		HttpServletRequest httpServletRequest, Portlet portlet) {
 
-		Set<String> whitelist = getPortletInvocationWhitelist();
+		return _portletInvocationWhitelist.contains(portlet.getPortletId());
+	}
 
-		if (whitelist.contains(portletId)) {
-			return true;
-		}
+	@Override
+	public boolean isPortletURLCSRFWhitelisted(
+		LiferayPortletURL liferayPortletURL) {
 
-		if (Validator.isNotNull(strutsAction)) {
-			Set<String> whitelistActions =
-				getPortletInvocationWhitelistActions();
+		String rootPortletId = PortletIdCodec.decodePortletName(
+			liferayPortletURL.getPortletId());
 
-			if (whitelistActions.contains(strutsAction) &&
-				isValidStrutsAction(companyId, portletId, strutsAction)) {
+		return _portletCSRFWhitelist.contains(rootPortletId);
+	}
 
-				return true;
-			}
-		}
+	@Override
+	public boolean isPortletURLPortletInvocationWhitelisted(
+		LiferayPortletURL liferayPortletURL) {
 
-		return false;
+		return _portletInvocationWhitelist.contains(
+			liferayPortletURL.getPortletId());
 	}
 
 	@Override
@@ -140,89 +108,14 @@ public class AuthTokenWhitelistImpl implements AuthTokenWhitelist {
 		}
 
 		return sharedSecret.equals(
-			Encryptor.digest(PropsValues.AUTH_TOKEN_SHARED_SECRET));
+			DigesterUtil.digest(PropsValues.AUTH_TOKEN_SHARED_SECRET));
 	}
 
-	@Override
-	public Set<String> resetOriginCSRFWhitelist() {
-		_originCSRFWhitelist = SetUtil.fromArray(
-			PropsValues.AUTH_TOKEN_IGNORE_ORIGINS);
-		_originCSRFWhitelist = Collections.unmodifiableSet(
-			_originCSRFWhitelist);
-
-		return _originCSRFWhitelist;
-	}
-
-	@Override
-	public Set<String> resetPortletCSRFWhitelist() {
-		_portletCSRFWhitelist = SetUtil.fromArray(
-			PropsValues.AUTH_TOKEN_IGNORE_PORTLETS);
-		_portletCSRFWhitelist = Collections.unmodifiableSet(
-			_portletCSRFWhitelist);
-
-		return _portletCSRFWhitelist;
-	}
-
-	@Override
-	public Set<String> resetPortletCSRFWhitelistActions() {
-		_portletCSRFWhitelistActions = SetUtil.fromArray(
-			PropsValues.AUTH_TOKEN_IGNORE_ACTIONS);
-		_portletCSRFWhitelistActions = Collections.unmodifiableSet(
-			_portletCSRFWhitelistActions);
-
-		return _portletCSRFWhitelistActions;
-	}
-
-	@Override
-	public Set<String> resetPortletInvocationWhitelist() {
-		_portletInvocationWhitelist = SetUtil.fromArray(
-			PropsValues.PORTLET_ADD_DEFAULT_RESOURCE_CHECK_WHITELIST);
-		_portletInvocationWhitelist = Collections.unmodifiableSet(
-			_portletInvocationWhitelist);
-
-		return _portletInvocationWhitelist;
-	}
-
-	@Override
-	public Set<String> resetPortletInvocationWhitelistActions() {
-		_portletInvocationWhitelistActions = SetUtil.fromArray(
-			PropsValues.PORTLET_ADD_DEFAULT_RESOURCE_CHECK_WHITELIST_ACTIONS);
-		_portletInvocationWhitelistActions = Collections.unmodifiableSet(
-			_portletInvocationWhitelistActions);
-
-		return _portletInvocationWhitelistActions;
-	}
-
-	protected boolean isValidStrutsAction(
-		long companyId, String portletId, String strutsAction) {
-
-		try {
-			Portlet portlet = PortletLocalServiceUtil.getPortletById(
-				companyId, portletId);
-
-			if (portlet == null) {
-				return false;
-			}
-
-			String strutsPath = strutsAction.substring(
-				1, strutsAction.lastIndexOf(CharPool.SLASH));
-
-			if (strutsPath.equals(portlet.getStrutsPath()) ||
-				strutsPath.equals(portlet.getParentStrutsPath())) {
-
-				return true;
-			}
-		}
-		catch (Exception e) {
-		}
-
-		return false;
-	}
-
-	private Set<String> _originCSRFWhitelist;
-	private Set<String> _portletCSRFWhitelist;
-	private Set<String> _portletCSRFWhitelistActions;
-	private Set<String> _portletInvocationWhitelist;
-	private Set<String> _portletInvocationWhitelistActions;
+	private final Set<String> _originCSRFWhitelist = Collections.newSetFromMap(
+		new ConcurrentHashMap<>());
+	private final Set<String> _portletCSRFWhitelist = Collections.newSetFromMap(
+		new ConcurrentHashMap<>());
+	private final Set<String> _portletInvocationWhitelist =
+		Collections.newSetFromMap(new ConcurrentHashMap<>());
 
 }

@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,6 +14,7 @@
 
 package com.liferay.util.xml;
 
+import com.liferay.petra.string.CharPool;
 import com.liferay.portal.kernel.io.unsync.UnsyncStringReader;
 
 /**
@@ -22,7 +23,22 @@ import com.liferay.portal.kernel.io.unsync.UnsyncStringReader;
 public class XMLSafeReader extends UnsyncStringReader {
 
 	public XMLSafeReader(String xml) {
-		super(XMLFormatter.fixProlog(xml));
+		super(_fixProlog(xml));
+	}
+
+	private static String _fixProlog(String xml) {
+
+		// LEP-1921
+
+		if (xml != null) {
+			int pos = xml.indexOf(CharPool.LESS_THAN);
+
+			if (pos > 0) {
+				xml = xml.substring(pos);
+			}
+		}
+
+		return xml;
 	}
 
 }

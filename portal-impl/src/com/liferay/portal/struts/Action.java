@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,10 +14,20 @@
 
 package com.liferay.portal.struts;
 
+import com.liferay.portal.struts.model.ActionForward;
+import com.liferay.portal.struts.model.ActionMapping;
+
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+
 /**
- * @author     Brian Wing Shun Chan
- * @deprecated As of 6.2.0, moved to {@link
- *             com.liferay.portal.kernel.events.Action}
+ * @author Shuyang Zhou
  */
-public abstract class Action extends com.liferay.portal.kernel.events.Action {
+public interface Action {
+
+	public ActionForward execute(
+			ActionMapping mapping, HttpServletRequest httpServletRequest,
+			HttpServletResponse httpServletResponse)
+		throws Exception;
+
 }

@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,22 +14,28 @@
 
 package com.liferay.portal.service.impl;
 
-import com.liferay.portal.NoSuchRepositoryException;
+import com.liferay.document.library.kernel.model.DLFileEntry;
+import com.liferay.document.library.kernel.model.DLFileVersion;
+import com.liferay.document.library.kernel.model.DLFolder;
+import com.liferay.portal.kernel.bean.BeanReference;
+import com.liferay.portal.kernel.exception.NoSuchRepositoryException;
 import com.liferay.portal.kernel.exception.PortalException;
-import com.liferay.portal.kernel.exception.SystemException;
-import com.liferay.portal.kernel.repository.BaseRepository;
-import com.liferay.portal.kernel.repository.LocalRepository;
-import com.liferay.portal.kernel.repository.RepositoryException;
+import com.liferay.portal.kernel.model.Group;
+import com.liferay.portal.kernel.model.Repository;
+import com.liferay.portal.kernel.repository.InvalidRepositoryIdException;
+import com.liferay.portal.kernel.repository.model.FileEntry;
+import com.liferay.portal.kernel.repository.model.Folder;
+import com.liferay.portal.kernel.security.permission.ActionKeys;
+import com.liferay.portal.kernel.security.permission.resource.ModelResourcePermission;
+import com.liferay.portal.kernel.security.permission.resource.ModelResourcePermissionFactory;
+import com.liferay.portal.kernel.security.permission.resource.ModelResourcePermissionUtil;
+import com.liferay.portal.kernel.security.permission.resource.PortletResourcePermission;
+import com.liferay.portal.kernel.security.permission.resource.PortletResourcePermissionFactory;
+import com.liferay.portal.kernel.service.ServiceContext;
 import com.liferay.portal.kernel.util.UnicodeProperties;
-import com.liferay.portal.model.Group;
-import com.liferay.portal.model.Repository;
-import com.liferay.portal.repository.util.RepositoryFactoryUtil;
-import com.liferay.portal.security.permission.ActionKeys;
-import com.liferay.portal.service.ServiceContext;
+import com.liferay.portal.repository.registry.RepositoryClassDefinitionCatalog;
 import com.liferay.portal.service.base.RepositoryServiceBaseImpl;
-import com.liferay.portal.util.PortalUtil;
-import com.liferay.portlet.documentlibrary.service.permission.DLFolderPermission;
-import com.liferay.portlet.documentlibrary.service.permission.DLPermission;
+import com.liferay.portlet.documentlibrary.constants.DLConstants;
 
 /**
  * @author Alexander Chow
@@ -41,164 +47,68 @@ public class RepositoryServiceImpl extends RepositoryServiceBaseImpl {
 	public Repository addRepository(
 			long groupId, long classNameId, long parentFolderId, String name,
 			String description, String portletId,
-			UnicodeProperties typeSettingsProperties,
+			UnicodeProperties typeSettingsUnicodeProperties,
 			ServiceContext serviceContext)
-		throws PortalException, SystemException {
+		throws PortalException {
 
-		DLPermission.check(
+		_portletResourcePermission.check(
 			getPermissionChecker(), groupId, ActionKeys.ADD_REPOSITORY);
 
 		return repositoryLocalService.addRepository(
 			getUserId(), groupId, classNameId, parentFolderId, name,
-			description, portletId, typeSettingsProperties, false,
+			description, portletId, typeSettingsUnicodeProperties, false,
 			serviceContext);
 	}
 
 	@Override
-	public void checkRepository(long repositoryId)
-		throws PortalException, SystemException {
-
-		Group group = groupPersistence.fetchByPrimaryKey(repositoryId);
-
-		if (group != null) {
-			return;
-		}
-
-		try {
-			Repository repository = repositoryPersistence.findByPrimaryKey(
-				repositoryId);
-
-			DLFolderPermission.check(
-				getPermissionChecker(), repository.getGroupId(),
-				repository.getDlFolderId(), ActionKeys.VIEW);
-		}
-		catch (NoSuchRepositoryException nsre) {
-			throw new RepositoryException(nsre.getMessage());
-		}
+	public void checkRepository(long repositoryId) throws PortalException {
+		checkRepository(repositoryId, 0, 0, 0);
 	}
 
 	@Override
-	public void deleteRepository(long repositoryId)
-		throws PortalException, SystemException {
-
+	public void deleteRepository(long repositoryId) throws PortalException {
 		Repository repository = repositoryPersistence.findByPrimaryKey(
 			repositoryId);
 
-		DLFolderPermission.check(
-			getPermissionChecker(), repository.getGroupId(),
-			repository.getDlFolderId(), ActionKeys.DELETE);
+		ModelResourcePermissionUtil.check(
+			_folderModelResourcePermission, getPermissionChecker(),
+			repository.getGroupId(), repository.getDlFolderId(),
+			ActionKeys.DELETE);
 
 		repositoryLocalService.deleteRepository(repository.getRepositoryId());
 	}
 
 	@Override
-	public LocalRepository getLocalRepositoryImpl(long repositoryId)
-		throws PortalException, SystemException {
+	public Repository getRepository(long repositoryId) throws PortalException {
+		Repository repository = repositoryPersistence.findByPrimaryKey(
+			repositoryId);
 
-		checkRepository(repositoryId);
+		ModelResourcePermissionUtil.check(
+			_folderModelResourcePermission, getPermissionChecker(),
+			repository.getGroupId(), repository.getDlFolderId(),
+			ActionKeys.VIEW);
 
-		return repositoryLocalService.getLocalRepositoryImpl(repositoryId);
+		return repository;
 	}
 
 	@Override
-	public LocalRepository getLocalRepositoryImpl(
-			long folderId, long fileEntryId, long fileVersionId)
-		throws PortalException, SystemException {
+	public Repository getRepository(long groupId, String portletId)
+		throws PortalException {
 
-		LocalRepository localRepositoryImpl =
-			repositoryLocalService.getLocalRepositoryImpl(
-				folderId, fileEntryId, fileVersionId);
+		Repository repository = repositoryPersistence.findByG_N_P(
+			groupId, portletId, portletId);
 
-		checkRepository(localRepositoryImpl.getRepositoryId());
+		ModelResourcePermissionUtil.check(
+			_folderModelResourcePermission, getPermissionChecker(),
+			repository.getGroupId(), repository.getDlFolderId(),
+			ActionKeys.VIEW);
 
-		return localRepositoryImpl;
-	}
-
-	@Override
-	public Repository getRepository(long repositoryId)
-		throws PortalException, SystemException {
-
-		return repositoryPersistence.findByPrimaryKey(repositoryId);
-	}
-
-	@Override
-	public com.liferay.portal.kernel.repository.Repository getRepositoryImpl(
-			long repositoryId)
-		throws PortalException, SystemException {
-
-		checkRepository(repositoryId);
-
-		return repositoryLocalService.getRepositoryImpl(repositoryId);
-	}
-
-	@Override
-	public com.liferay.portal.kernel.repository.Repository getRepositoryImpl(
-			long folderId, long fileEntryId, long fileVersionId)
-		throws PortalException, SystemException {
-
-		com.liferay.portal.kernel.repository.Repository repositoryImpl =
-			repositoryLocalService.getRepositoryImpl(
-				folderId, fileEntryId, fileVersionId);
-
-		checkRepository(repositoryImpl.getRepositoryId());
-
-		return repositoryImpl;
-	}
-
-	@Override
-	public String[] getSupportedConfigurations(long classNameId)
-		throws SystemException {
-
-		try {
-			String repositoryImplClassName = PortalUtil.getClassName(
-				classNameId);
-
-			BaseRepository baseRepository = RepositoryFactoryUtil.getInstance(
-				repositoryImplClassName);
-
-			return baseRepository.getSupportedConfigurations();
-		}
-		catch (Exception e) {
-			throw new SystemException(e);
-		}
-	}
-
-	@Override
-	public String[] getSupportedParameters(
-			long classNameId, String configuration)
-		throws SystemException {
-
-		try {
-			String repositoryImplClassName = PortalUtil.getClassName(
-				classNameId);
-
-			BaseRepository baseRepository = RepositoryFactoryUtil.getInstance(
-				repositoryImplClassName);
-
-			String[] supportedConfigurations =
-				baseRepository.getSupportedConfigurations();
-
-			String[][] supportedParameters =
-				baseRepository.getSupportedParameters();
-
-			for (int i = 0; i < supportedConfigurations.length; i++) {
-				if (supportedConfigurations[i].equals(configuration)) {
-					return supportedParameters[i];
-				}
-			}
-
-			throw new RepositoryException(
-				"Configuration not found for repository with class name id " +
-					classNameId);
-		}
-		catch (Exception e) {
-			throw new SystemException(e);
-		}
+		return repository;
 	}
 
 	@Override
 	public UnicodeProperties getTypeSettingsProperties(long repositoryId)
-		throws PortalException, SystemException {
+		throws PortalException {
 
 		checkRepository(repositoryId);
 
@@ -208,17 +118,100 @@ public class RepositoryServiceImpl extends RepositoryServiceBaseImpl {
 	@Override
 	public void updateRepository(
 			long repositoryId, String name, String description)
-		throws PortalException, SystemException {
+		throws PortalException {
 
 		Repository repository = repositoryPersistence.findByPrimaryKey(
 			repositoryId);
 
-		DLFolderPermission.check(
-			getPermissionChecker(), repository.getGroupId(),
-			repository.getDlFolderId(), ActionKeys.UPDATE);
+		ModelResourcePermissionUtil.check(
+			_folderModelResourcePermission, getPermissionChecker(),
+			repository.getGroupId(), repository.getDlFolderId(),
+			ActionKeys.UPDATE);
 
 		repositoryLocalService.updateRepository(
 			repositoryId, name, description);
 	}
+
+	protected void checkModelPermissions(
+			long folderId, long fileEntryId, long fileVersionId)
+		throws PortalException {
+
+		if (folderId != 0) {
+			DLFolder dlFolder = dlFolderLocalService.fetchDLFolder(folderId);
+
+			if (dlFolder != null) {
+				_folderModelResourcePermission.check(
+					getPermissionChecker(), folderId, ActionKeys.VIEW);
+			}
+		}
+		else if (fileEntryId != 0) {
+			DLFileEntry dlFileEntry = dlFileEntryLocalService.fetchDLFileEntry(
+				fileEntryId);
+
+			if (dlFileEntry != null) {
+				_fileEntryModelResourcePermission.check(
+					getPermissionChecker(), fileEntryId, ActionKeys.VIEW);
+			}
+		}
+		else if (fileVersionId != 0) {
+			DLFileVersion dlFileVersion =
+				dlFileVersionLocalService.fetchDLFileVersion(fileVersionId);
+
+			if (dlFileVersion != null) {
+				_fileEntryModelResourcePermission.check(
+					getPermissionChecker(), dlFileVersion.getFileEntryId(),
+					ActionKeys.VIEW);
+			}
+		}
+	}
+
+	protected void checkRepository(
+			long repositoryId, long folderId, long fileEntryId,
+			long fileVersionId)
+		throws PortalException {
+
+		Group group = groupPersistence.fetchByPrimaryKey(repositoryId);
+
+		if (group != null) {
+			checkModelPermissions(folderId, fileEntryId, fileVersionId);
+
+			return;
+		}
+
+		try {
+			Repository repository = repositoryPersistence.fetchByPrimaryKey(
+				repositoryId);
+
+			if (repository != null) {
+				ModelResourcePermissionUtil.check(
+					_folderModelResourcePermission, getPermissionChecker(),
+					repository.getGroupId(), repository.getDlFolderId(),
+					ActionKeys.VIEW);
+			}
+		}
+		catch (NoSuchRepositoryException noSuchRepositoryException) {
+			throw new InvalidRepositoryIdException(
+				noSuchRepositoryException.getMessage());
+		}
+	}
+
+	private static volatile ModelResourcePermission<FileEntry>
+		_fileEntryModelResourcePermission =
+			ModelResourcePermissionFactory.getInstance(
+				RepositoryServiceImpl.class,
+				"_fileEntryModelResourcePermission", FileEntry.class);
+	private static volatile ModelResourcePermission<Folder>
+		_folderModelResourcePermission =
+			ModelResourcePermissionFactory.getInstance(
+				RepositoryServiceImpl.class, "_folderModelResourcePermission",
+				Folder.class);
+	private static volatile PortletResourcePermission
+		_portletResourcePermission =
+			PortletResourcePermissionFactory.getInstance(
+				RepositoryServiceImpl.class, "_portletResourcePermission",
+				DLConstants.RESOURCE_NAME);
+
+	@BeanReference(type = RepositoryClassDefinitionCatalog.class)
+	private RepositoryClassDefinitionCatalog _repositoryClassDefinitionCatalog;
 
 }

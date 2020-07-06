@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,34 +14,32 @@
 
 package com.liferay.portal.action;
 
-import com.liferay.portal.service.UserServiceUtil;
+import com.liferay.portal.kernel.service.UserServiceUtil;
+import com.liferay.portal.kernel.util.PortalUtil;
+import com.liferay.portal.struts.Action;
 import com.liferay.portal.struts.ActionConstants;
-import com.liferay.portal.util.PortalUtil;
+import com.liferay.portal.struts.model.ActionForward;
+import com.liferay.portal.struts.model.ActionMapping;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import org.apache.struts.action.Action;
-import org.apache.struts.action.ActionForm;
-import org.apache.struts.action.ActionForward;
-import org.apache.struts.action.ActionMapping;
-
 /**
  * @author Brian Wing Shun Chan
  */
-public class UpdateTermsOfUseAction extends Action {
+public class UpdateTermsOfUseAction implements Action {
 
 	@Override
 	public ActionForward execute(
-			ActionMapping actionMapping, ActionForm actionForm,
-			HttpServletRequest request, HttpServletResponse response)
+			ActionMapping actionMapping, HttpServletRequest httpServletRequest,
+			HttpServletResponse httpServletResponse)
 		throws Exception {
 
-		long userId = PortalUtil.getUserId(request);
+		UserServiceUtil.updateAgreedToTermsOfUse(
+			PortalUtil.getUserId(httpServletRequest), true);
 
-		UserServiceUtil.updateAgreedToTermsOfUse(userId, true);
-
-		return actionMapping.findForward(ActionConstants.COMMON_REFERER_JSP);
+		return actionMapping.getActionForward(
+			ActionConstants.COMMON_REFERER_JSP);
 	}
 
 }

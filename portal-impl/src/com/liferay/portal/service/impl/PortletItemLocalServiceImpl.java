@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,18 +14,17 @@
 
 package com.liferay.portal.service.impl;
 
-import com.liferay.portal.NoSuchPortletItemException;
-import com.liferay.portal.PortletItemNameException;
+import com.liferay.portal.kernel.exception.NoSuchPortletItemException;
 import com.liferay.portal.kernel.exception.PortalException;
-import com.liferay.portal.kernel.exception.SystemException;
+import com.liferay.portal.kernel.exception.PortletItemNameException;
+import com.liferay.portal.kernel.log.Log;
+import com.liferay.portal.kernel.log.LogFactoryUtil;
+import com.liferay.portal.kernel.model.PortletItem;
+import com.liferay.portal.kernel.model.PortletPreferences;
+import com.liferay.portal.kernel.model.User;
 import com.liferay.portal.kernel.util.Validator;
-import com.liferay.portal.model.PortletItem;
-import com.liferay.portal.model.PortletPreferences;
-import com.liferay.portal.model.User;
 import com.liferay.portal.service.base.PortletItemLocalServiceBaseImpl;
-import com.liferay.portal.util.PortalUtil;
 
-import java.util.Date;
 import java.util.List;
 
 /**
@@ -38,11 +37,10 @@ public class PortletItemLocalServiceImpl
 	public PortletItem addPortletItem(
 			long userId, long groupId, String name, String portletId,
 			String className)
-		throws PortalException, SystemException {
+		throws PortalException {
 
 		User user = userPersistence.findByPrimaryKey(userId);
-		long classNameId = PortalUtil.getClassNameId(className);
-		Date now = new Date();
+		long classNameId = classNameLocalService.getClassNameId(className);
 
 		validate(name);
 
@@ -54,53 +52,43 @@ public class PortletItemLocalServiceImpl
 		portletItem.setCompanyId(user.getCompanyId());
 		portletItem.setUserId(user.getUserId());
 		portletItem.setUserName(user.getFullName());
-		portletItem.setCreateDate(now);
-		portletItem.setModifiedDate(now);
 		portletItem.setName(name);
 		portletItem.setPortletId(portletId);
 		portletItem.setClassNameId(classNameId);
 
-		portletItemPersistence.update(portletItem);
-
-		return portletItem;
+		return portletItemPersistence.update(portletItem);
 	}
 
 	@Override
 	public PortletItem getPortletItem(
 			long groupId, String name, String portletId, String className)
-		throws PortalException, SystemException {
-
-		long classNameId = PortalUtil.getClassNameId(className);
+		throws PortalException {
 
 		return portletItemPersistence.findByG_N_P_C(
-			groupId, name, portletId, classNameId);
+			groupId, name, portletId,
+			classNameLocalService.getClassNameId(className));
 	}
 
 	@Override
-	public List<PortletItem> getPortletItems(long groupId, String className)
-		throws SystemException {
-
-		long classNameId = PortalUtil.getClassNameId(className);
-
-		return portletItemPersistence.findByG_C(groupId, classNameId);
+	public List<PortletItem> getPortletItems(long groupId, String className) {
+		return portletItemPersistence.findByG_C(
+			groupId, classNameLocalService.getClassNameId(className));
 	}
 
 	@Override
 	public List<PortletItem> getPortletItems(
-			long groupId, String portletId, String className)
-		throws SystemException {
-
-		long classNameId = PortalUtil.getClassNameId(className);
+		long groupId, String portletId, String className) {
 
 		return portletItemPersistence.findByG_P_C(
-			groupId, portletId, classNameId);
+			groupId, portletId,
+			classNameLocalService.getClassNameId(className));
 	}
 
 	@Override
 	public PortletItem updatePortletItem(
 			long userId, long groupId, String name, String portletId,
 			String className)
-		throws PortalException, SystemException {
+		throws PortalException {
 
 		PortletItem portletItem = null;
 
@@ -112,11 +100,18 @@ public class PortletItemLocalServiceImpl
 
 			portletItem.setUserId(userId);
 			portletItem.setUserName(user.getFullName());
-			portletItem.setModifiedDate(new Date());
 
-			portletItemPersistence.update(portletItem);
+			portletItem = portletItemPersistence.update(portletItem);
 		}
-		catch (NoSuchPortletItemException nspie) {
+		catch (NoSuchPortletItemException noSuchPortletItemException) {
+
+			// LPS-52675
+
+			if (_log.isDebugEnabled()) {
+				_log.debug(
+					noSuchPortletItemException, noSuchPortletItemException);
+			}
+
 			portletItem = addPortletItem(
 				userId, groupId, name, portletId,
 				PortletPreferences.class.getName());
@@ -130,5 +125,8 @@ public class PortletItemLocalServiceImpl
 			throw new PortletItemNameException();
 		}
 	}
+
+	private static final Log _log = LogFactoryUtil.getLog(
+		PortletItemLocalServiceImpl.class);
 
 }

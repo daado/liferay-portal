@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,9 +14,8 @@
 
 package com.liferay.portal.model.impl;
 
-import com.liferay.portal.kernel.exception.SystemException;
-import com.liferay.portal.model.UserTrackerPath;
-import com.liferay.portal.service.UserTrackerPathLocalServiceUtil;
+import com.liferay.portal.kernel.model.UserTrackerPath;
+import com.liferay.portal.kernel.service.UserTrackerPathLocalServiceUtil;
 
 /**
  * The extended model base implementation for the UserTrackerPath service. Represents a row in the &quot;UserTrackerPath&quot; database table, with each column mapped to a property of this class.
@@ -27,18 +26,19 @@ import com.liferay.portal.service.UserTrackerPathLocalServiceUtil;
  *
  * @author Brian Wing Shun Chan
  * @see UserTrackerPathImpl
- * @see com.liferay.portal.model.UserTrackerPath
+ * @see UserTrackerPath
  * @generated
  */
-public abstract class UserTrackerPathBaseImpl extends UserTrackerPathModelImpl
-	implements UserTrackerPath {
+public abstract class UserTrackerPathBaseImpl
+	extends UserTrackerPathModelImpl implements UserTrackerPath {
+
 	/*
 	 * NOTE FOR DEVELOPERS:
 	 *
-	 * Never modify or reference this class directly. All methods that expect a user tracker path model instance should use the {@link UserTrackerPath} interface instead.
+	 * Never modify or reference this class directly. All methods that expect a user tracker path model instance should use the <code>UserTrackerPath</code> interface instead.
 	 */
 	@Override
-	public void persist() throws SystemException {
+	public void persist() {
 		if (this.isNew()) {
 			UserTrackerPathLocalServiceUtil.addUserTrackerPath(this);
 		}
@@ -46,4 +46,5 @@ public abstract class UserTrackerPathBaseImpl extends UserTrackerPathModelImpl
 			UserTrackerPathLocalServiceUtil.updateUserTrackerPath(this);
 		}
 	}
+
 }

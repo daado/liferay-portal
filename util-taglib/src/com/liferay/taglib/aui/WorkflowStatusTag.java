@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -28,13 +28,25 @@ import javax.servlet.http.HttpServletRequest;
 public class WorkflowStatusTag extends BaseWorkflowStatusTag {
 
 	@Override
+	protected String getPage() {
+		String markupView = getMarkupView();
+
+		if (Validator.isNotNull(markupView)) {
+			return "/html/taglib/aui/workflow_status/" + markupView +
+				"/page.jsp";
+		}
+
+		return "/html/taglib/aui/workflow_status/page.jsp";
+	}
+
+	@Override
 	protected boolean isCleanUpSetAttributes() {
 		return _CLEAN_UP_SET_ATTRIBUTES;
 	}
 
 	@Override
-	protected void setAttributes(HttpServletRequest request) {
-		super.setAttributes(request);
+	protected void setAttributes(HttpServletRequest httpServletRequest) {
+		super.setAttributes(httpServletRequest);
 
 		Object bean = getBean();
 
@@ -58,15 +70,14 @@ public class WorkflowStatusTag extends BaseWorkflowStatusTag {
 				"aui:model-context:model");
 		}
 
-		setNamespacedAttribute(request, "bean", bean);
-		setNamespacedAttribute(request, "helpMessage", helpMessage);
-		setNamespacedAttribute(request, "model", model);
+		setNamespacedAttribute(httpServletRequest, "bean", bean);
+		setNamespacedAttribute(httpServletRequest, "helpMessage", helpMessage);
+		setNamespacedAttribute(httpServletRequest, "model", model);
 	}
 
 	private static final boolean _CLEAN_UP_SET_ATTRIBUTES = true;
 
 	private static final String _HELP_MESSAGE_DEFAULT =
-		"a-new-version-will-be-created-automatically-if-this-content-is-" +
-			"modified";
+		"a-new-version-is-created-automatically-if-this-content-is-modified";
 
 }

@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -16,7 +16,6 @@ package com.liferay.taglib.portlet;
 
 import com.liferay.portal.kernel.portlet.LiferayPortletRequest;
 import com.liferay.portal.kernel.portlet.LiferayPortletResponse;
-import com.liferay.portal.kernel.util.SearchContainerReference;
 
 import java.util.Map;
 
@@ -43,60 +42,63 @@ public class DefineObjectsTei extends TagExtraInfo {
 
 	@Override
 	public VariableInfo[] getVariableInfo(TagData tagData) {
-		return _variableInfo;
+		return Concealer._variableInfo;
 	}
 
-	private static VariableInfo[] _variableInfo = new VariableInfo[] {
-		new VariableInfo(
-			"actionRequest", ActionRequest.class.getName(), true,
-			VariableInfo.AT_END),
-		new VariableInfo(
-			"actionResponse", ActionResponse.class.getName(), true,
-			VariableInfo.AT_END),
-		new VariableInfo(
-			"eventRequest", EventRequest.class.getName(), true,
-			VariableInfo.AT_END),
-		new VariableInfo(
-			"eventResponse", EventResponse.class.getName(), true,
-			VariableInfo.AT_END),
-		new VariableInfo(
-			"liferayPortletRequest", LiferayPortletRequest.class.getName(),
-			true, VariableInfo.AT_END),
-		new VariableInfo(
-			"liferayPortletResponse", LiferayPortletResponse.class.getName(),
-			true, VariableInfo.AT_END),
-		new VariableInfo(
-			"portletConfig", PortletConfig.class.getName(), true,
-			VariableInfo.AT_END),
-		new VariableInfo(
-			"portletName", String.class.getName(), true, VariableInfo.AT_END),
-		new VariableInfo(
-			"portletPreferences", PortletPreferences.class.getName(), true,
-			VariableInfo.AT_END),
-		new VariableInfo(
-			"portletPreferencesValues", Map.class.getName(), true,
-			VariableInfo.AT_END),
-		new VariableInfo(
-			"portletSession", PortletSession.class.getName(), true,
-			VariableInfo.AT_END),
-		new VariableInfo(
-			"portletSessionScope", Map.class.getName(), true,
-			VariableInfo.AT_END),
-		new VariableInfo(
-			"renderRequest", RenderRequest.class.getName(), true,
-			VariableInfo.AT_END),
-		new VariableInfo(
-			"renderResponse", RenderResponse.class.getName(), true,
-			VariableInfo.AT_END),
-		new VariableInfo(
-			"resourceRequest", ResourceRequest.class.getName(), true,
-			VariableInfo.AT_END),
-		new VariableInfo(
-			"resourceResponse", ResourceResponse.class.getName(), true,
-			VariableInfo.AT_END),
-		new VariableInfo(
-			"searchContainerReference",
-			SearchContainerReference.class.getName(), true, VariableInfo.AT_END)
-	};
+	private static class Concealer {
+
+		private static final VariableInfo[] _variableInfo = {
+			new VariableInfo(
+				"actionRequest", ActionRequest.class.getName(), true,
+				VariableInfo.AT_END),
+			new VariableInfo(
+				"actionResponse", ActionResponse.class.getName(), true,
+				VariableInfo.AT_END),
+			new VariableInfo(
+				"eventRequest", EventRequest.class.getName(), true,
+				VariableInfo.AT_END),
+			new VariableInfo(
+				"eventResponse", EventResponse.class.getName(), true,
+				VariableInfo.AT_END),
+			new VariableInfo(
+				"liferayPortletRequest", LiferayPortletRequest.class.getName(),
+				true, VariableInfo.AT_END),
+			new VariableInfo(
+				"liferayPortletResponse",
+				LiferayPortletResponse.class.getName(), true,
+				VariableInfo.AT_END),
+			new VariableInfo(
+				"portletConfig", PortletConfig.class.getName(), true,
+				VariableInfo.AT_END),
+			new VariableInfo(
+				"portletName", String.class.getName(), true,
+				VariableInfo.AT_END),
+			new VariableInfo(
+				"portletPreferences", PortletPreferences.class.getName(), true,
+				VariableInfo.AT_END),
+			new VariableInfo(
+				"portletPreferencesValues", Map.class.getName(), true,
+				VariableInfo.AT_END),
+			new VariableInfo(
+				"portletSession", PortletSession.class.getName(), true,
+				VariableInfo.AT_END),
+			new VariableInfo(
+				"portletSessionScope", Map.class.getName(), true,
+				VariableInfo.AT_END),
+			new VariableInfo(
+				"renderRequest", RenderRequest.class.getName(), true,
+				VariableInfo.AT_END),
+			new VariableInfo(
+				"renderResponse", RenderResponse.class.getName(), true,
+				VariableInfo.AT_END),
+			new VariableInfo(
+				"resourceRequest", ResourceRequest.class.getName(), true,
+				VariableInfo.AT_END),
+			new VariableInfo(
+				"resourceResponse", ResourceResponse.class.getName(), true,
+				VariableInfo.AT_END)
+		};
+
+	}
 
 }

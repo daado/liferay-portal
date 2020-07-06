@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,30 +14,32 @@
 
 package com.liferay.portal.jsonwebservice;
 
+import com.liferay.petra.string.CharPool;
+import com.liferay.petra.string.StringBundler;
+import com.liferay.petra.string.StringPool;
 import com.liferay.portal.action.JSONServiceAction;
 import com.liferay.portal.jsonwebservice.action.JSONWebServiceDiscoverAction;
 import com.liferay.portal.jsonwebservice.action.JSONWebServiceInvokerAction;
+import com.liferay.portal.kernel.exception.NoSuchModelException;
 import com.liferay.portal.kernel.json.JSONFactoryUtil;
 import com.liferay.portal.kernel.jsonwebservice.JSONWebServiceAction;
 import com.liferay.portal.kernel.jsonwebservice.JSONWebServiceActionsManagerUtil;
+import com.liferay.portal.kernel.jsonwebservice.NoSuchJSONWebServiceException;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
+import com.liferay.portal.kernel.security.auth.PrincipalException;
 import com.liferay.portal.kernel.upload.UploadException;
-import com.liferay.portal.kernel.util.CharPool;
 import com.liferay.portal.kernel.util.ClassUtil;
 import com.liferay.portal.kernel.util.GetterUtil;
-import com.liferay.portal.kernel.util.StringBundler;
-import com.liferay.portal.kernel.util.StringPool;
 import com.liferay.portal.kernel.util.StringUtil;
-import com.liferay.portal.util.WebKeys;
+import com.liferay.portal.kernel.util.Validator;
+import com.liferay.portal.kernel.util.WebKeys;
+import com.liferay.portal.util.PropsValues;
 
 import java.lang.reflect.InvocationTargetException;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-
-import org.apache.struts.action.ActionForm;
-import org.apache.struts.action.ActionMapping;
 
 /**
  * @author Igor Spasic
@@ -47,48 +49,74 @@ public class JSONWebServiceServiceAction extends JSONServiceAction {
 
 	@Override
 	public String getJSON(
-			ActionMapping actionMapping, ActionForm actionForm,
-			HttpServletRequest request, HttpServletResponse response)
+			HttpServletRequest httpServletRequest,
+			HttpServletResponse httpServletResponse)
 		throws Exception {
 
-		UploadException uploadException = (UploadException)request.getAttribute(
-			WebKeys.UPLOAD_EXCEPTION);
+		UploadException uploadException =
+			(UploadException)httpServletRequest.getAttribute(
+				WebKeys.UPLOAD_EXCEPTION);
 
 		if (uploadException != null) {
-			return JSONFactoryUtil.serializeException(uploadException);
+			return JSONFactoryUtil.serializeThrowable(uploadException);
 		}
-
-		JSONWebServiceAction jsonWebServiceAction = null;
 
 		try {
-			jsonWebServiceAction = getJSONWebServiceAction(request);
+			JSONWebServiceAction jsonWebServiceAction = getJSONWebServiceAction(
+				httpServletRequest);
 
-			Object returnObj = jsonWebServiceAction.invoke();
+			Object returnObject = jsonWebServiceAction.invoke();
 
-			if (returnObj != null) {
-				return getReturnValue(returnObj);
+			if (returnObject != null) {
+				return getReturnValue(returnObject);
+			}
+
+			return JSONFactoryUtil.getNullJSON();
+		}
+		catch (Throwable throwable) {
+			int status = 0;
+
+			if (throwable instanceof InvocationTargetException) {
+				throwable = throwable.getCause();
+			}
+
+			if (throwable instanceof NoSuchJSONWebServiceException) {
+				status = HttpServletResponse.SC_NOT_FOUND;
+			}
+			else if (throwable instanceof NoSuchModelException) {
+				if (_log.isDebugEnabled()) {
+					_log.debug(getThrowableMessage(throwable), throwable);
+				}
+
+				httpServletResponse.setStatus(HttpServletResponse.SC_NOT_FOUND);
+
+				return JSONFactoryUtil.serializeThrowable(throwable);
+			}
+			else if (throwable instanceof PrincipalException ||
+					 throwable instanceof SecurityException) {
+
+				if (_log.isDebugEnabled()) {
+					_log.debug(getThrowableMessage(throwable), throwable);
+				}
+
+				httpServletResponse.setStatus(HttpServletResponse.SC_FORBIDDEN);
+
+				return JSONFactoryUtil.serializeThrowable(throwable);
 			}
 			else {
-				return JSONFactoryUtil.getNullJSON();
-			}
-		}
-		catch (InvocationTargetException ite) {
-			Throwable throwable = ite.getCause();
-
-			if (throwable instanceof SecurityException) {
-				throw (SecurityException)throwable;
+				status = HttpServletResponse.SC_INTERNAL_SERVER_ERROR;
 			}
 
-			_log.error(throwable, throwable);
+			if (_log.isDebugEnabled()) {
+				_log.debug(getThrowableMessage(throwable), throwable);
+			}
+			else {
+				_log.error(getThrowableMessage(throwable));
+			}
+
+			httpServletResponse.setStatus(status);
 
 			return JSONFactoryUtil.serializeThrowable(throwable);
-		}
-		catch (Exception e) {
-			if (_log.isWarnEnabled()) {
-				_log.warn(e, e);
-			}
-
-			return JSONFactoryUtil.serializeException(e);
 		}
 	}
 
@@ -96,8 +124,8 @@ public class JSONWebServiceServiceAction extends JSONServiceAction {
 	 * @see JSONServiceAction#getCSRFOrigin(HttpServletRequest)
 	 */
 	@Override
-	protected String getCSRFOrigin(HttpServletRequest request) {
-		String uri = request.getRequestURI();
+	protected String getCSRFOrigin(HttpServletRequest httpServletRequest) {
+		String uri = httpServletRequest.getRequestURI();
 
 		int x = uri.indexOf("jsonws/");
 
@@ -133,20 +161,23 @@ public class JSONWebServiceServiceAction extends JSONServiceAction {
 	}
 
 	protected JSONWebServiceAction getJSONWebServiceAction(
-		HttpServletRequest request) {
+			HttpServletRequest httpServletRequest)
+		throws NoSuchJSONWebServiceException {
 
-		String path = GetterUtil.getString(request.getPathInfo());
+		String path = GetterUtil.getString(httpServletRequest.getPathInfo());
 
 		if (path.equals("/invoke")) {
-			return new JSONWebServiceInvokerAction(request);
+			return new JSONWebServiceInvokerAction(httpServletRequest);
 		}
 
-		if (request.getParameter("discover") != null) {
-			return new JSONWebServiceDiscoverAction(request);
+		if (PropsValues.JSONWS_WEB_SERVICE_API_DISCOVERABLE &&
+			(httpServletRequest.getParameter("discover") != null)) {
+
+			return new JSONWebServiceDiscoverAction(httpServletRequest);
 		}
 
 		return JSONWebServiceActionsManagerUtil.getJSONWebServiceAction(
-			request);
+			httpServletRequest);
 	}
 
 	@Override
@@ -154,9 +185,19 @@ public class JSONWebServiceServiceAction extends JSONServiceAction {
 		return _REROUTE_PATH;
 	}
 
+	protected String getThrowableMessage(Throwable throwable) {
+		String message = throwable.getMessage();
+
+		if (Validator.isNotNull(message)) {
+			return message;
+		}
+
+		return throwable.toString();
+	}
+
 	private static final String _REROUTE_PATH = "/jsonws";
 
-	private static Log _log = LogFactoryUtil.getLog(
+	private static final Log _log = LogFactoryUtil.getLog(
 		JSONWebServiceServiceAction.class);
 
 }

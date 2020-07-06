@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,9 +14,9 @@
 
 package com.liferay.portal.spring.aop;
 
+import com.liferay.portal.kernel.spring.aop.InvocationHandlerFactory;
 import com.liferay.portal.kernel.util.ObjectValuePair;
 import com.liferay.portal.kernel.util.ProxyUtil;
-import com.liferay.portal.util.ClassLoaderUtil;
 
 import java.lang.reflect.InvocationHandler;
 
@@ -24,17 +24,20 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.springframework.beans.BeansException;
-import org.springframework.beans.factory.config.InstantiationAwareBeanPostProcessorAdapter;
+import org.springframework.beans.factory.config.BeanPostProcessor;
 import org.springframework.core.Ordered;
 
 /**
  * @author Shuyang Zhou
  */
-public class DynamicProxyCreator
-	extends InstantiationAwareBeanPostProcessorAdapter implements Ordered {
+public class DynamicProxyCreator implements BeanPostProcessor, Ordered {
 
 	public static DynamicProxyCreator getDynamicProxyCreator() {
-		return _instance;
+		return _dynamicProxyCreator;
+	}
+
+	public void clear() {
+		_beanMatcherInvocationHandlerFactories.clear();
 	}
 
 	@Override
@@ -47,6 +50,10 @@ public class DynamicProxyCreator
 		throws BeansException {
 
 		Class<?> beanClass = bean.getClass();
+
+		Thread currentThread = Thread.currentThread();
+
+		ClassLoader contextClassLoader = currentThread.getContextClassLoader();
 
 		for (ObjectValuePair<BeanMatcher, InvocationHandlerFactory>
 				objectValuePair : _beanMatcherInvocationHandlerFactories) {
@@ -61,10 +68,17 @@ public class DynamicProxyCreator
 					invocationHandlerFactory.createInvocationHandler(bean);
 
 				bean = ProxyUtil.newProxyInstance(
-					ClassLoaderUtil.getContextClassLoader(),
-					beanClass.getInterfaces(), invocationHandler);
+					contextClassLoader, beanClass.getInterfaces(),
+					invocationHandler);
 			}
 		}
+
+		return bean;
+	}
+
+	@Override
+	public Object postProcessBeforeInitialization(
+		Object bean, String beanName) {
 
 		return bean;
 	}
@@ -76,21 +90,19 @@ public class DynamicProxyCreator
 			InvocationHandlerFactory invocationHandlerFactory) {
 
 			ObjectValuePair<BeanMatcher, InvocationHandlerFactory>
-				objectValuePair =
-					new ObjectValuePair<BeanMatcher, InvocationHandlerFactory>(
-						beanMatcher, invocationHandlerFactory);
+				objectValuePair = new ObjectValuePair<>(
+					beanMatcher, invocationHandlerFactory);
 
-			_instance._beanMatcherInvocationHandlerFactories.add(
+			_dynamicProxyCreator._beanMatcherInvocationHandlerFactories.add(
 				objectValuePair);
 		}
 
 	}
 
-	private static DynamicProxyCreator _instance = new DynamicProxyCreator();
+	private static final DynamicProxyCreator _dynamicProxyCreator =
+		new DynamicProxyCreator();
 
-	private List<ObjectValuePair<BeanMatcher, InvocationHandlerFactory>>
-		_beanMatcherInvocationHandlerFactories =
-			new ArrayList
-				<ObjectValuePair<BeanMatcher, InvocationHandlerFactory>>();
+	private final List<ObjectValuePair<BeanMatcher, InvocationHandlerFactory>>
+		_beanMatcherInvocationHandlerFactories = new ArrayList<>();
 
 }

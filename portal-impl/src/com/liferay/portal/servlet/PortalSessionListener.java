@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,14 +14,13 @@
 
 package com.liferay.portal.servlet;
 
-import com.liferay.portal.kernel.cache.Lifecycle;
-import com.liferay.portal.kernel.cache.ThreadLocalCacheManager;
+import com.liferay.petra.string.StringBundler;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
 import com.liferay.portal.kernel.servlet.filters.compoundsessionid.CompoundSessionIdHttpSession;
 import com.liferay.portal.kernel.servlet.filters.compoundsessionid.CompoundSessionIdSplitterUtil;
+import com.liferay.portal.kernel.util.WebKeys;
 import com.liferay.portal.util.PropsValues;
-import com.liferay.portal.util.WebKeys;
 
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -44,21 +43,21 @@ public class PortalSessionListener implements HttpSessionListener {
 				compoundSessionIdHttpSession);
 		}
 
-		new PortalSessionCreator(httpSessionEvent);
-
 		HttpSession session = httpSessionEvent.getSession();
 
-		PortalSessionActivationListener.setInstance(session);
+		new PortalSessionCreator(session);
 
-		if (PropsValues.SESSION_MAX_ALLOWED > 0) {
-			if (_counter.incrementAndGet() > PropsValues.SESSION_MAX_ALLOWED) {
-				session.setAttribute(WebKeys.SESSION_MAX_ALLOWED, Boolean.TRUE);
+		if ((PropsValues.SESSION_MAX_ALLOWED > 0) &&
+			(_counter.incrementAndGet() > PropsValues.SESSION_MAX_ALLOWED)) {
 
-				_log.error(
-					"Exceeded maximum number of " +
-						PropsValues.SESSION_MAX_ALLOWED + " sessions " +
-							"allowed. You may be experiencing a DoS attack.");
-			}
+			session.setAttribute(WebKeys.SESSION_MAX_ALLOWED, Boolean.TRUE);
+
+			_log.error(
+				StringBundler.concat(
+					"Exceeded maximum number of ",
+					PropsValues.SESSION_MAX_ALLOWED,
+					" sessions allowed. You may be experiencing a DoS ",
+					"attack."));
 		}
 	}
 
@@ -72,18 +71,16 @@ public class PortalSessionListener implements HttpSessionListener {
 				compoundSessionIdHttpSession);
 		}
 
-		new PortalSessionDestroyer(httpSessionEvent);
-
-		ThreadLocalCacheManager.clearAll(Lifecycle.SESSION);
+		new PortalSessionDestroyer(httpSessionEvent.getSession());
 
 		if (PropsValues.SESSION_MAX_ALLOWED > 0) {
 			_counter.decrementAndGet();
 		}
 	}
 
-	private static Log _log = LogFactoryUtil.getLog(
+	private static final Log _log = LogFactoryUtil.getLog(
 		PortalSessionListener.class);
 
-	private AtomicInteger _counter = new AtomicInteger();
+	private final AtomicInteger _counter = new AtomicInteger();
 
 }

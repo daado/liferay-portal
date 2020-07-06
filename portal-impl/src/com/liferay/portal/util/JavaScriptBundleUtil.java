@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -15,14 +15,16 @@
 package com.liferay.portal.util;
 
 import com.liferay.portal.kernel.cache.PortalCache;
-import com.liferay.portal.kernel.cache.SingleVMPoolUtil;
+import com.liferay.portal.kernel.cache.PortalCacheHelperUtil;
+import com.liferay.portal.kernel.cache.PortalCacheManagerNames;
 import com.liferay.portal.kernel.configuration.Filter;
 import com.liferay.portal.kernel.util.ArrayUtil;
 import com.liferay.portal.kernel.util.PropsKeys;
-import com.liferay.portal.kernel.util.UniqueList;
 
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
 /**
  * @author Eduardo Lundgren
@@ -37,10 +39,10 @@ public class JavaScriptBundleUtil {
 		String[] fileNames = _portalCache.get(bundleId);
 
 		if (fileNames == null) {
-			List<String> fileNamesList = new ArrayList<String>();
+			List<String> fileNamesList = new ArrayList<>();
 
-			List<String> dependencies = _getDependencies(
-				bundleId, new UniqueList<String>());
+			Set<String> dependencies = _getDependencies(
+				bundleId, new LinkedHashSet<String>());
 
 			for (String dependency : dependencies) {
 				String[] dependencyFileNames = PropsUtil.getArray(dependency);
@@ -50,7 +52,7 @@ public class JavaScriptBundleUtil {
 				}
 			}
 
-			fileNames = fileNamesList.toArray(new String[fileNamesList.size()]);
+			fileNames = fileNamesList.toArray(new String[0]);
 
 			_portalCache.put(bundleId, fileNames);
 		}
@@ -58,8 +60,8 @@ public class JavaScriptBundleUtil {
 		return fileNames;
 	}
 
-	private static List<String> _getDependencies(
-		String bundleId, List<String> dependencies) {
+	private static Set<String> _getDependencies(
+		String bundleId, Set<String> dependencies) {
 
 		if (!ArrayUtil.contains(PropsValues.JAVASCRIPT_BUNDLE_IDS, bundleId)) {
 			return dependencies;
@@ -88,7 +90,8 @@ public class JavaScriptBundleUtil {
 	private static final String _CACHE_NAME =
 		JavaScriptBundleUtil.class.getName();
 
-	private static PortalCache<String, String[]> _portalCache =
-		SingleVMPoolUtil.getCache(_CACHE_NAME);
+	private static final PortalCache<String, String[]> _portalCache =
+		PortalCacheHelperUtil.getPortalCache(
+			PortalCacheManagerNames.SINGLE_VM, _CACHE_NAME);
 
 }

@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -24,7 +24,7 @@ import javax.servlet.jsp.JspException;
  * @author Julio Camarero
  * @generated
  */
-public class BaseNavItemTag extends com.liferay.taglib.util.IncludeTag {
+public abstract class BaseNavItemTag extends com.liferay.taglib.util.IncludeTag {
 
 	@Override
 	public int doStartTag() throws JspException {
@@ -73,12 +73,20 @@ public class BaseNavItemTag extends com.liferay.taglib.util.IncludeTag {
 		return _iconCssClass;
 	}
 
+	public java.lang.String getIconSrc() {
+		return _iconSrc;
+	}
+
 	public java.lang.String getId() {
 		return _id;
 	}
 
 	public java.lang.String getLabel() {
 		return _label;
+	}
+
+	public boolean getLocalizeLabel() {
+		return _localizeLabel;
 	}
 
 	public boolean getSelected() {
@@ -89,12 +97,20 @@ public class BaseNavItemTag extends com.liferay.taglib.util.IncludeTag {
 		return _state;
 	}
 
+	public java.lang.String getTarget() {
+		return _target;
+	}
+
 	public java.lang.String getTitle() {
 		return _title;
 	}
 
 	public boolean getToggle() {
 		return _toggle;
+	}
+
+	public boolean getToggleTouch() {
+		return _toggleTouch;
 	}
 
 	public boolean getUseDialog() {
@@ -107,114 +123,96 @@ public class BaseNavItemTag extends com.liferay.taglib.util.IncludeTag {
 
 	public void setAnchorCssClass(java.lang.String anchorCssClass) {
 		_anchorCssClass = anchorCssClass;
-
-		setScopedAttribute("anchorCssClass", anchorCssClass);
 	}
 
 	public void setAnchorData(java.lang.Object anchorData) {
 		_anchorData = anchorData;
-
-		setScopedAttribute("anchorData", anchorData);
 	}
 
 	public void setAnchorId(java.lang.String anchorId) {
 		_anchorId = anchorId;
-
-		setScopedAttribute("anchorId", anchorId);
 	}
 
 	public void setAriaLabel(java.lang.String ariaLabel) {
 		_ariaLabel = ariaLabel;
-
-		setScopedAttribute("ariaLabel", ariaLabel);
 	}
 
 	public void setAriaRole(java.lang.String ariaRole) {
 		_ariaRole = ariaRole;
-
-		setScopedAttribute("ariaRole", ariaRole);
 	}
 
 	public void setCssClass(java.lang.String cssClass) {
 		_cssClass = cssClass;
-
-		setScopedAttribute("cssClass", cssClass);
 	}
 
 	public void setData(java.lang.Object data) {
 		_data = data;
-
-		setScopedAttribute("data", data);
 	}
 
 	public void setDropdown(boolean dropdown) {
 		_dropdown = dropdown;
-
-		setScopedAttribute("dropdown", dropdown);
 	}
 
 	public void setHref(java.lang.Object href) {
 		_href = href;
-
-		setScopedAttribute("href", href);
 	}
 
 	public void setIconCssClass(java.lang.String iconCssClass) {
 		_iconCssClass = iconCssClass;
+	}
 
-		setScopedAttribute("iconCssClass", iconCssClass);
+	public void setIconSrc(java.lang.String iconSrc) {
+		_iconSrc = iconSrc;
 	}
 
 	public void setId(java.lang.String id) {
 		_id = id;
-
-		setScopedAttribute("id", id);
 	}
 
 	public void setLabel(java.lang.String label) {
 		_label = label;
+	}
 
-		setScopedAttribute("label", label);
+	public void setLocalizeLabel(boolean localizeLabel) {
+		_localizeLabel = localizeLabel;
 	}
 
 	public void setSelected(boolean selected) {
 		_selected = selected;
-
-		setScopedAttribute("selected", selected);
 	}
 
 	public void setState(java.lang.String state) {
 		_state = state;
+	}
 
-		setScopedAttribute("state", state);
+	public void setTarget(java.lang.String target) {
+		_target = target;
 	}
 
 	public void setTitle(java.lang.String title) {
 		_title = title;
-
-		setScopedAttribute("title", title);
 	}
 
 	public void setToggle(boolean toggle) {
 		_toggle = toggle;
+	}
 
-		setScopedAttribute("toggle", toggle);
+	public void setToggleTouch(boolean toggleTouch) {
+		_toggleTouch = toggleTouch;
 	}
 
 	public void setUseDialog(boolean useDialog) {
 		_useDialog = useDialog;
-
-		setScopedAttribute("useDialog", useDialog);
 	}
 
 	public void setWrapDropDownMenu(boolean wrapDropDownMenu) {
 		_wrapDropDownMenu = wrapDropDownMenu;
-
-		setScopedAttribute("wrapDropDownMenu", wrapDropDownMenu);
 	}
 
 	@Override
 	protected void cleanUp() {
+		super.cleanUp();
+
 		_anchorCssClass = null;
 		_anchorData = null;
 		_anchorId = null;
@@ -225,12 +223,16 @@ public class BaseNavItemTag extends com.liferay.taglib.util.IncludeTag {
 		_dropdown = false;
 		_href = "javascript:void(0);";
 		_iconCssClass = null;
+		_iconSrc = null;
 		_id = null;
 		_label = null;
+		_localizeLabel = true;
 		_selected = false;
 		_state = null;
+		_target = null;
 		_title = null;
 		_toggle = false;
+		_toggleTouch = true;
 		_useDialog = false;
 		_wrapDropDownMenu = true;
 	}
@@ -238,11 +240,6 @@ public class BaseNavItemTag extends com.liferay.taglib.util.IncludeTag {
 	@Override
 	protected String getEndPage() {
 		return _END_PAGE;
-	}
-
-	@Override
-	protected String getStartPage() {
-		return _START_PAGE;
 	}
 
 	@Override
@@ -257,12 +254,16 @@ public class BaseNavItemTag extends com.liferay.taglib.util.IncludeTag {
 		setNamespacedAttribute(request, "dropdown", _dropdown);
 		setNamespacedAttribute(request, "href", _href);
 		setNamespacedAttribute(request, "iconCssClass", _iconCssClass);
+		setNamespacedAttribute(request, "iconSrc", _iconSrc);
 		setNamespacedAttribute(request, "id", _id);
 		setNamespacedAttribute(request, "label", _label);
+		setNamespacedAttribute(request, "localizeLabel", _localizeLabel);
 		setNamespacedAttribute(request, "selected", _selected);
 		setNamespacedAttribute(request, "state", _state);
+		setNamespacedAttribute(request, "target", _target);
 		setNamespacedAttribute(request, "title", _title);
 		setNamespacedAttribute(request, "toggle", _toggle);
+		setNamespacedAttribute(request, "toggleTouch", _toggleTouch);
 		setNamespacedAttribute(request, "useDialog", _useDialog);
 		setNamespacedAttribute(request, "wrapDropDownMenu", _wrapDropDownMenu);
 	}
@@ -271,9 +272,6 @@ public class BaseNavItemTag extends com.liferay.taglib.util.IncludeTag {
 
 	private static final String _END_PAGE =
 		"/html/taglib/aui/nav_item/end.jsp";
-
-	private static final String _START_PAGE =
-		"/html/taglib/aui/nav_item/start.jsp";
 
 	private java.lang.String _anchorCssClass = null;
 	private java.lang.Object _anchorData = null;
@@ -285,12 +283,16 @@ public class BaseNavItemTag extends com.liferay.taglib.util.IncludeTag {
 	private boolean _dropdown = false;
 	private java.lang.Object _href = "javascript:void(0);";
 	private java.lang.String _iconCssClass = null;
+	private java.lang.String _iconSrc = null;
 	private java.lang.String _id = null;
 	private java.lang.String _label = null;
+	private boolean _localizeLabel = true;
 	private boolean _selected = false;
 	private java.lang.String _state = null;
+	private java.lang.String _target = null;
 	private java.lang.String _title = null;
 	private boolean _toggle = false;
+	private boolean _toggleTouch = true;
 	private boolean _useDialog = false;
 	private boolean _wrapDropDownMenu = true;
 

@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -32,18 +32,15 @@ import javax.servlet.http.HttpServletRequest;
  */
 public class MethodFactoryImpl implements MethodFactory {
 
-	public MethodFactoryImpl() throws Exception {
-		for (String methodName : Method.SUPPORTED_METHOD_NAMES) {
-			addMethod(methodName);
-		}
-	}
-
 	@Override
-	public Method create(HttpServletRequest request) throws WebDAVException {
-		String method = request.getMethod();
+	public Method create(HttpServletRequest httpServletRequest)
+		throws WebDAVException {
 
-		Method methodImpl = (Method)_methods.get(
-			StringUtil.toUpperCase(method));
+		String method = httpServletRequest.getMethod();
+
+		Map<String, Object> methods = MethodHolder._methods;
+
+		Method methodImpl = (Method)methods.get(StringUtil.toUpperCase(method));
 
 		if (methodImpl == null) {
 			throw new WebDAVException(
@@ -53,22 +50,44 @@ public class MethodFactoryImpl implements MethodFactory {
 		return methodImpl;
 	}
 
-	protected void addMethod(String methodName) throws Exception {
-		String defaultClassName = methodName.substring(1);
+	private static class MethodHolder {
 
-		defaultClassName = StringUtil.toLowerCase(defaultClassName);
-		defaultClassName = methodName.substring(0, 1) + defaultClassName;
-		defaultClassName =
-			"com.liferay.portal.webdav.methods." + defaultClassName +
-				"MethodImpl";
+		private static final Map<String, Object> _methods =
+			new HashMap<String, Object>() {
+				{
+					try {
+						for (String methodName :
+								Method.SUPPORTED_METHOD_NAMES) {
 
-		String className = GetterUtil.getString(
-			PropsUtil.get(MethodFactoryImpl.class.getName() + "." + methodName),
-			defaultClassName);
+							String defaultClassName = methodName.substring(1);
 
-		_methods.put(methodName, InstanceFactory.newInstance(className));
+							defaultClassName = StringUtil.toLowerCase(
+								defaultClassName);
+							defaultClassName =
+								methodName.substring(0, 1) + defaultClassName;
+							defaultClassName =
+								"com.liferay.portal.webdav.methods." +
+									defaultClassName + "MethodImpl";
+
+							String className = GetterUtil.getString(
+								PropsUtil.get(
+									MethodFactoryImpl.class.getName() + "." +
+										methodName),
+								defaultClassName);
+
+							put(
+								methodName,
+								InstanceFactory.newInstance(
+									MethodFactoryImpl.class.getClassLoader(),
+									className));
+						}
+					}
+					catch (Exception exception) {
+						throw new ExceptionInInitializerError(exception);
+					}
+				}
+			};
+
 	}
-
-	private Map<String, Object> _methods = new HashMap<String, Object>();
 
 }

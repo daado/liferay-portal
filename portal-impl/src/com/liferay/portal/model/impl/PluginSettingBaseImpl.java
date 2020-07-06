@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,9 +14,8 @@
 
 package com.liferay.portal.model.impl;
 
-import com.liferay.portal.kernel.exception.SystemException;
-import com.liferay.portal.model.PluginSetting;
-import com.liferay.portal.service.PluginSettingLocalServiceUtil;
+import com.liferay.portal.kernel.model.PluginSetting;
+import com.liferay.portal.kernel.service.PluginSettingLocalServiceUtil;
 
 /**
  * The extended model base implementation for the PluginSetting service. Represents a row in the &quot;PluginSetting&quot; database table, with each column mapped to a property of this class.
@@ -27,18 +26,19 @@ import com.liferay.portal.service.PluginSettingLocalServiceUtil;
  *
  * @author Brian Wing Shun Chan
  * @see PluginSettingImpl
- * @see com.liferay.portal.model.PluginSetting
+ * @see PluginSetting
  * @generated
  */
-public abstract class PluginSettingBaseImpl extends PluginSettingModelImpl
-	implements PluginSetting {
+public abstract class PluginSettingBaseImpl
+	extends PluginSettingModelImpl implements PluginSetting {
+
 	/*
 	 * NOTE FOR DEVELOPERS:
 	 *
-	 * Never modify or reference this class directly. All methods that expect a plugin setting model instance should use the {@link PluginSetting} interface instead.
+	 * Never modify or reference this class directly. All methods that expect a plugin setting model instance should use the <code>PluginSetting</code> interface instead.
 	 */
 	@Override
-	public void persist() throws SystemException {
+	public void persist() {
 		if (this.isNew()) {
 			PluginSettingLocalServiceUtil.addPluginSetting(this);
 		}
@@ -46,4 +46,5 @@ public abstract class PluginSettingBaseImpl extends PluginSettingModelImpl
 			PluginSettingLocalServiceUtil.updatePluginSetting(this);
 		}
 	}
+
 }

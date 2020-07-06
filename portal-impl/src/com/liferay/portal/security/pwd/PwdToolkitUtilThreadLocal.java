@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,7 +14,7 @@
 
 package com.liferay.portal.security.pwd;
 
-import com.liferay.portal.kernel.util.InitialThreadLocal;
+import com.liferay.petra.lang.CentralizedThreadLocal;
 
 /**
  * @author Brian Wing Shun Chan
@@ -29,8 +29,9 @@ public class PwdToolkitUtilThreadLocal {
 		_validate.set(validate);
 	}
 
-	private static ThreadLocal<Boolean> _validate =
-		new InitialThreadLocal<Boolean>(
-			PwdToolkitUtilThreadLocal.class + "._validate", true);
+	private static final ThreadLocal<Boolean> _validate =
+		new CentralizedThreadLocal<>(
+			PwdToolkitUtilThreadLocal.class + "._validate", () -> Boolean.TRUE,
+			false);
 
 }

@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,8 +14,8 @@
 
 package com.liferay.taglib.core;
 
-import com.liferay.portal.kernel.servlet.taglib.TagSupport;
 import com.liferay.portal.kernel.util.StringUtil;
+import com.liferay.taglib.TagSupport;
 
 import javax.servlet.jsp.JspTagException;
 import javax.servlet.jsp.PageContext;
@@ -26,7 +26,6 @@ import javax.servlet.jsp.PageContext;
 public abstract class ConditionalTagSupport extends TagSupport {
 
 	@Override
-	@SuppressWarnings("unused")
 	public int doStartTag() throws JspTagException {
 		_result = condition();
 
@@ -37,9 +36,8 @@ public abstract class ConditionalTagSupport extends TagSupport {
 		if (_result) {
 			return EVAL_BODY_INCLUDE;
 		}
-		else {
-			return SKIP_BODY;
-		}
+
+		return SKIP_BODY;
 	}
 
 	@Override

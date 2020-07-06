@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,9 +14,8 @@
 
 package com.liferay.portal.model.impl;
 
-import com.liferay.portal.kernel.exception.SystemException;
-import com.liferay.portal.model.LayoutSetBranch;
-import com.liferay.portal.service.LayoutSetBranchLocalServiceUtil;
+import com.liferay.portal.kernel.model.LayoutSetBranch;
+import com.liferay.portal.kernel.service.LayoutSetBranchLocalServiceUtil;
 
 /**
  * The extended model base implementation for the LayoutSetBranch service. Represents a row in the &quot;LayoutSetBranch&quot; database table, with each column mapped to a property of this class.
@@ -27,18 +26,19 @@ import com.liferay.portal.service.LayoutSetBranchLocalServiceUtil;
  *
  * @author Brian Wing Shun Chan
  * @see LayoutSetBranchImpl
- * @see com.liferay.portal.model.LayoutSetBranch
+ * @see LayoutSetBranch
  * @generated
  */
-public abstract class LayoutSetBranchBaseImpl extends LayoutSetBranchModelImpl
-	implements LayoutSetBranch {
+public abstract class LayoutSetBranchBaseImpl
+	extends LayoutSetBranchModelImpl implements LayoutSetBranch {
+
 	/*
 	 * NOTE FOR DEVELOPERS:
 	 *
-	 * Never modify or reference this class directly. All methods that expect a layout set branch model instance should use the {@link LayoutSetBranch} interface instead.
+	 * Never modify or reference this class directly. All methods that expect a layout set branch model instance should use the <code>LayoutSetBranch</code> interface instead.
 	 */
 	@Override
-	public void persist() throws SystemException {
+	public void persist() {
 		if (this.isNew()) {
 			LayoutSetBranchLocalServiceUtil.addLayoutSetBranch(this);
 		}
@@ -46,4 +46,5 @@ public abstract class LayoutSetBranchBaseImpl extends LayoutSetBranchModelImpl
 			LayoutSetBranchLocalServiceUtil.updateLayoutSetBranch(this);
 		}
 	}
+
 }

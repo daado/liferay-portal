@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,16 +14,18 @@
 
 package com.liferay.portlet.ratings.service.impl;
 
+import com.liferay.petra.string.StringBundler;
 import com.liferay.portal.kernel.exception.PortalException;
 import com.liferay.portal.kernel.exception.SystemException;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
-import com.liferay.portal.util.PortalUtil;
-import com.liferay.portlet.ratings.NoSuchStatsException;
-import com.liferay.portlet.ratings.model.RatingsStats;
 import com.liferay.portlet.ratings.service.base.RatingsStatsLocalServiceBaseImpl;
+import com.liferay.ratings.kernel.exception.NoSuchStatsException;
+import com.liferay.ratings.kernel.model.RatingsStats;
 
-import java.util.List;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * @author Brian Wing Shun Chan
@@ -32,12 +34,15 @@ public class RatingsStatsLocalServiceImpl
 	extends RatingsStatsLocalServiceBaseImpl {
 
 	@Override
-	public RatingsStats addStats(long classNameId, long classPK)
-		throws SystemException {
-
+	public RatingsStats addStats(long classNameId, long classPK) {
 		long statsId = counterLocalService.increment();
 
 		RatingsStats stats = ratingsStatsPersistence.create(statsId);
+
+		Date now = new Date();
+
+		stats.setCreateDate(now);
+		stats.setModifiedDate(now);
 
 		stats.setClassNameId(classNameId);
 		stats.setClassPK(classPK);
@@ -46,20 +51,21 @@ public class RatingsStatsLocalServiceImpl
 		stats.setAverageScore(0.0);
 
 		try {
-			ratingsStatsPersistence.update(stats);
+			stats = ratingsStatsPersistence.update(stats);
 		}
-		catch (SystemException se) {
+		catch (SystemException systemException) {
 			if (_log.isWarnEnabled()) {
 				_log.warn(
-					"Add failed, fetch {classNameId=" + classNameId +
-						", classPK=" + classPK + "}");
+					StringBundler.concat(
+						"Add failed, fetch {classNameId=", classNameId,
+						", classPK=", classPK, "}"));
 			}
 
 			stats = ratingsStatsPersistence.fetchByC_C(
 				classNameId, classPK, false);
 
 			if (stats == null) {
-				throw se;
+				throw systemException;
 			}
 		}
 
@@ -67,17 +73,15 @@ public class RatingsStatsLocalServiceImpl
 	}
 
 	@Override
-	public void deleteStats(String className, long classPK)
-		throws SystemException {
-
-		long classNameId = PortalUtil.getClassNameId(className);
+	public void deleteStats(String className, long classPK) {
+		long classNameId = classNameLocalService.getClassNameId(className);
 
 		try {
 			ratingsStatsPersistence.removeByC_C(classNameId, classPK);
 		}
-		catch (NoSuchStatsException nsse) {
+		catch (NoSuchStatsException noSuchStatsException) {
 			if (_log.isWarnEnabled()) {
-				_log.warn(nsse);
+				_log.warn(noSuchStatsException, noSuchStatsException);
 			}
 		}
 
@@ -85,38 +89,40 @@ public class RatingsStatsLocalServiceImpl
 	}
 
 	@Override
-	public RatingsStats getStats(long statsId)
-		throws PortalException, SystemException {
+	public RatingsStats fetchStats(String className, long classPK) {
+		return ratingsStatsPersistence.fetchByC_C(
+			classNameLocalService.getClassNameId(className), classPK);
+	}
 
+	@Override
+	public RatingsStats getStats(long statsId) throws PortalException {
 		return ratingsStatsPersistence.findByPrimaryKey(statsId);
 	}
 
 	@Override
-	public List<RatingsStats> getStats(String className, List<Long> classPKs)
-		throws SystemException {
+	public RatingsStats getStats(String className, long classPK)
+		throws PortalException {
 
-		long classNameId = PortalUtil.getClassNameId(className);
-
-		return ratingsStatsFinder.findByC_C(classNameId, classPKs);
+		return ratingsStatsPersistence.findByC_C(
+			classNameLocalService.getClassNameId(className), classPK);
 	}
 
 	@Override
-	public RatingsStats getStats(String className, long classPK)
-		throws SystemException {
+	public Map<Long, RatingsStats> getStats(String className, long[] classPKs) {
+		long classNameId = classNameLocalService.getClassNameId(className);
 
-		long classNameId = PortalUtil.getClassNameId(className);
+		Map<Long, RatingsStats> ratingsStats = new HashMap<>();
 
-		RatingsStats stats = ratingsStatsPersistence.fetchByC_C(
-			classNameId, classPK);
+		for (RatingsStats stats :
+				ratingsStatsPersistence.findByC_C(classNameId, classPKs)) {
 
-		if (stats == null) {
-			stats = ratingsStatsLocalService.addStats(classNameId, classPK);
+			ratingsStats.put(stats.getClassPK(), stats);
 		}
 
-		return stats;
+		return ratingsStats;
 	}
 
-	private static Log _log = LogFactoryUtil.getLog(
+	private static final Log _log = LogFactoryUtil.getLog(
 		RatingsStatsLocalServiceImpl.class);
 
 }

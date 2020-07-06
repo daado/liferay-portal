@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,27 +14,29 @@
 
 package com.liferay.portal.struts;
 
+import com.liferay.petra.string.StringBundler;
+import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.exception.PortalException;
 import com.liferay.portal.kernel.json.JSONFactoryUtil;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
+import com.liferay.portal.kernel.security.access.control.AccessControlUtil;
+import com.liferay.portal.kernel.security.auth.AuthTokenUtil;
+import com.liferay.portal.kernel.security.auth.PrincipalException;
 import com.liferay.portal.kernel.servlet.HttpHeaders;
 import com.liferay.portal.kernel.servlet.ServletContextPool;
 import com.liferay.portal.kernel.util.ClassUtil;
 import com.liferay.portal.kernel.util.ContentTypes;
 import com.liferay.portal.kernel.util.GetterUtil;
 import com.liferay.portal.kernel.util.ParamUtil;
+import com.liferay.portal.kernel.util.PortalUtil;
 import com.liferay.portal.kernel.util.SetUtil;
-import com.liferay.portal.kernel.util.StringPool;
 import com.liferay.portal.kernel.util.Validator;
-import com.liferay.portal.security.ac.AccessControlUtil;
-import com.liferay.portal.security.auth.AuthSettingsUtil;
-import com.liferay.portal.security.auth.AuthTokenUtil;
-import com.liferay.portal.security.auth.PortalSessionAuthVerifier;
+import com.liferay.portal.kernel.util.WebKeys;
 import com.liferay.portal.servlet.SharedSessionServletRequest;
-import com.liferay.portal.util.PortalUtil;
+import com.liferay.portal.struts.model.ActionForward;
+import com.liferay.portal.struts.model.ActionMapping;
 import com.liferay.portal.util.PropsValues;
-import com.liferay.portal.util.WebKeys;
 
 import java.io.OutputStream;
 
@@ -45,99 +47,109 @@ import javax.servlet.ServletContext;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import org.apache.struts.action.Action;
-import org.apache.struts.action.ActionForm;
-import org.apache.struts.action.ActionForward;
-import org.apache.struts.action.ActionMapping;
-
 /**
  * @author Ming-Gih Lam
  * @author Brian Wing Shun Chan
  * @author Tomas Polesovsky
  */
-public abstract class JSONAction extends Action {
+public abstract class JSONAction implements Action {
 
 	@Override
 	public ActionForward execute(
-			ActionMapping actionMapping, ActionForm actionForm,
-			HttpServletRequest request, HttpServletResponse response)
+			ActionMapping actionMapping, HttpServletRequest httpServletRequest,
+			HttpServletResponse httpServletResponse)
 		throws Exception {
 
-		if (rerouteExecute(request, response)) {
+		if (rerouteExecute(httpServletRequest, httpServletResponse)) {
 			return null;
 		}
 
-		String callback = ParamUtil.getString(request, "callback");
-		String instance = ParamUtil.getString(request, "inst");
+		String callback = ParamUtil.getString(httpServletRequest, "callback");
 
 		String json = null;
 
 		try {
-			checkAuthToken(request);
+			checkAuthToken(httpServletRequest);
 
-			json = getJSON(actionMapping, actionForm, request, response);
+			json = getJSON(httpServletRequest, httpServletResponse);
 
 			if (Validator.isNotNull(callback)) {
-				json = callback + "(" + json + ");";
-			}
-			else if (Validator.isNotNull(instance)) {
-				json = "var " + instance + "=" + json + ";";
-			}
-		}
-		catch (SecurityException se) {
-			if (_log.isWarnEnabled()) {
-				_log.warn(se.getMessage());
-			}
+				StringBundler sb = new StringBundler(5);
 
-			json = JSONFactoryUtil.serializeException(se);
+				sb.append("/**/");
+				sb.append(callback);
+				sb.append(StringPool.OPEN_PARENTHESIS);
+				sb.append(json);
+				sb.append(StringPool.CLOSE_PARENTHESIS);
+
+				json = sb.toString();
+			}
 		}
-		catch (Exception e) {
-			_log.error(e, e);
+		catch (PrincipalException principalException) {
+			_log.error(principalException.getMessage());
 
 			PortalUtil.sendError(
-				HttpServletResponse.SC_INTERNAL_SERVER_ERROR, e, request,
-				response);
+				HttpServletResponse.SC_FORBIDDEN, principalException,
+				httpServletRequest, httpServletResponse);
+
+			return null;
+		}
+		catch (SecurityException securityException) {
+			if (_log.isWarnEnabled()) {
+				_log.warn(securityException.getMessage());
+			}
+
+			json = JSONFactoryUtil.serializeThrowable(securityException);
+		}
+		catch (Exception exception) {
+			_log.error(exception.getMessage());
+
+			PortalUtil.sendError(
+				HttpServletResponse.SC_INTERNAL_SERVER_ERROR, exception,
+				httpServletRequest, httpServletResponse);
 
 			return null;
 		}
 
-		boolean refresh = ParamUtil.getBoolean(request, "refresh");
+		boolean refresh = ParamUtil.getBoolean(httpServletRequest, "refresh");
 
 		if (refresh) {
-			return actionMapping.findForward(ActionConstants.COMMON_REFERER);
+			return actionMapping.getActionForward(
+				ActionConstants.COMMON_REFERER);
 		}
 		else if (Validator.isNotNull(json)) {
-			response.setCharacterEncoding(StringPool.UTF8);
-			response.setContentType(ContentTypes.APPLICATION_JSON);
-			response.setHeader(
+			httpServletResponse.setCharacterEncoding(StringPool.UTF8);
+			httpServletResponse.setContentType(ContentTypes.APPLICATION_JSON);
+			httpServletResponse.setHeader(
 				HttpHeaders.CACHE_CONTROL,
 				HttpHeaders.CACHE_CONTROL_NO_CACHE_VALUE);
 
-			OutputStream outputStream = response.getOutputStream();
+			try (OutputStream outputStream =
+					httpServletResponse.getOutputStream()) {
 
-			byte[] bytes = json.getBytes(StringPool.UTF8);
+				byte[] bytes = json.getBytes(StringPool.UTF8);
 
-			outputStream.write(bytes);
-
-			outputStream.close();
+				outputStream.write(bytes);
+			}
 		}
 
 		return null;
 	}
 
 	public abstract String getJSON(
-			ActionMapping actionMapping, ActionForm actionForm,
-			HttpServletRequest request, HttpServletResponse response)
+			HttpServletRequest httpServletRequest,
+			HttpServletResponse httpServletResponse)
 		throws Exception;
 
 	public void setServletContext(ServletContext servletContext) {
 		_servletContext = servletContext;
 	}
 
-	protected void checkAuthToken(HttpServletRequest request)
+	protected void checkAuthToken(HttpServletRequest httpServletRequest)
 		throws PortalException {
 
-		String authType = GetterUtil.getString(request.getAuthType());
+		String authType = GetterUtil.getString(
+			httpServletRequest.getAuthType());
 
 		// Support for the legacy JSON API at /c/portal/json_service
 
@@ -153,19 +165,21 @@ public abstract class JSONAction extends Action {
 			// The new web service should only check auth tokens when the user
 			// is authenticated using portal session cookies
 
-			if (!authType.equals(PortalSessionAuthVerifier.AUTH_TYPE)) {
+			if (!authType.equals(HttpServletRequest.FORM_AUTH)) {
 				return;
 			}
 		}
 
-		if (PropsValues.JSON_SERVICE_AUTH_TOKEN_ENABLED) {
-			if (!AuthSettingsUtil.isAccessAllowed(request, _hostsAllowed)) {
-				AuthTokenUtil.checkCSRFToken(request, getCSRFOrigin(request));
-			}
+		if (PropsValues.JSON_SERVICE_AUTH_TOKEN_ENABLED &&
+			!AccessControlUtil.isAccessAllowed(
+				httpServletRequest, _hostsAllowed)) {
+
+			AuthTokenUtil.checkCSRFToken(
+				httpServletRequest, getCSRFOrigin(httpServletRequest));
 		}
 	}
 
-	protected String getCSRFOrigin(HttpServletRequest request) {
+	protected String getCSRFOrigin(HttpServletRequest httpServletRequest) {
 		return ClassUtil.getClassName(this);
 	}
 
@@ -174,7 +188,8 @@ public abstract class JSONAction extends Action {
 	}
 
 	protected boolean rerouteExecute(
-			HttpServletRequest request, HttpServletResponse response)
+			HttpServletRequest httpServletRequest,
+			HttpServletResponse httpServletResponse)
 		throws Exception {
 
 		String reroutePath = getReroutePath();
@@ -184,7 +199,7 @@ public abstract class JSONAction extends Action {
 		}
 
 		String requestServletContextName = ParamUtil.getString(
-			request, "servletContextName");
+			httpServletRequest, "servletContextName");
 
 		if (Validator.isNull(requestServletContextName)) {
 			return false;
@@ -193,7 +208,8 @@ public abstract class JSONAction extends Action {
 		ServletContext servletContext = _servletContext;
 
 		if (servletContext == null) {
-			servletContext = (ServletContext)request.getAttribute(WebKeys.CTX);
+			servletContext = (ServletContext)httpServletRequest.getAttribute(
+				WebKeys.CTX);
 		}
 
 		String servletContextName = GetterUtil.getString(
@@ -218,14 +234,15 @@ public abstract class JSONAction extends Action {
 		}
 
 		requestDispatcher.forward(
-			new SharedSessionServletRequest(request, true), response);
+			new SharedSessionServletRequest(httpServletRequest, true),
+			httpServletResponse);
 
 		return true;
 	}
 
-	private static Log _log = LogFactoryUtil.getLog(JSONAction.class);
+	private static final Log _log = LogFactoryUtil.getLog(JSONAction.class);
 
-	private Set<String> _hostsAllowed = SetUtil.fromArray(
+	private final Set<String> _hostsAllowed = SetUtil.fromArray(
 		PropsValues.JSON_SERVICE_AUTH_TOKEN_HOSTS_ALLOWED);
 	private ServletContext _servletContext;
 

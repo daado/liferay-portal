@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -17,13 +17,12 @@ package com.liferay.portlet.sites.search;
 import com.liferay.portal.kernel.dao.search.RowChecker;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
-import com.liferay.portal.model.Organization;
-import com.liferay.portal.model.Role;
-import com.liferay.portal.model.User;
-import com.liferay.portal.security.membershippolicy.OrganizationMembershipPolicyUtil;
-import com.liferay.portal.security.permission.PermissionChecker;
-import com.liferay.portal.security.permission.PermissionThreadLocal;
-import com.liferay.portal.service.UserGroupRoleLocalServiceUtil;
+import com.liferay.portal.kernel.model.Organization;
+import com.liferay.portal.kernel.model.Role;
+import com.liferay.portal.kernel.model.User;
+import com.liferay.portal.kernel.security.membershippolicy.OrganizationMembershipPolicyUtil;
+import com.liferay.portal.kernel.security.permission.PermissionThreadLocal;
+import com.liferay.portal.kernel.service.UserGroupRoleLocalServiceUtil;
 
 import javax.portlet.RenderResponse;
 
@@ -42,33 +41,31 @@ public class OrganizationRoleUserChecker extends RowChecker {
 	}
 
 	@Override
-	public boolean isChecked(Object obj) {
-		User user = (User)obj;
+	public boolean isChecked(Object object) {
+		User user = (User)object;
 
 		try {
 			return UserGroupRoleLocalServiceUtil.hasUserGroupRole(
 				user.getUserId(), _organization.getGroupId(),
 				_role.getRoleId());
 		}
-		catch (Exception e) {
-			_log.error(e, e);
+		catch (Exception exception) {
+			_log.error(exception, exception);
 
 			return false;
 		}
 	}
 
 	@Override
-	public boolean isDisabled(Object obj) {
-		User user = (User)obj;
+	public boolean isDisabled(Object object) {
+		User user = (User)object;
 
 		try {
-			PermissionChecker permissionChecker =
-				PermissionThreadLocal.getPermissionChecker();
-
 			if (isChecked(user)) {
 				if (OrganizationMembershipPolicyUtil.isRoleProtected(
-						permissionChecker, user.getUserId(),
-						_organization.getOrganizationId(), _role.getRoleId()) ||
+						PermissionThreadLocal.getPermissionChecker(),
+						user.getUserId(), _organization.getOrganizationId(),
+						_role.getRoleId()) ||
 					OrganizationMembershipPolicyUtil.isRoleRequired(
 						user.getUserId(), _organization.getOrganizationId(),
 						_role.getRoleId())) {
@@ -85,17 +82,17 @@ public class OrganizationRoleUserChecker extends RowChecker {
 				}
 			}
 		}
-		catch (Exception e) {
-			_log.error(e, e);
+		catch (Exception exception) {
+			_log.error(exception, exception);
 		}
 
-		return super.isDisabled(obj);
+		return super.isDisabled(object);
 	}
 
-	private static Log _log = LogFactoryUtil.getLog(
+	private static final Log _log = LogFactoryUtil.getLog(
 		OrganizationRoleUserChecker.class);
 
-	private Organization _organization;
-	private Role _role;
+	private final Organization _organization;
+	private final Role _role;
 
 }

@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,9 +14,8 @@
 
 package com.liferay.portal.model.impl;
 
-import com.liferay.portal.kernel.exception.SystemException;
-import com.liferay.portal.model.OrgLabor;
-import com.liferay.portal.service.OrgLaborLocalServiceUtil;
+import com.liferay.portal.kernel.model.OrgLabor;
+import com.liferay.portal.kernel.service.OrgLaborLocalServiceUtil;
 
 /**
  * The extended model base implementation for the OrgLabor service. Represents a row in the &quot;OrgLabor&quot; database table, with each column mapped to a property of this class.
@@ -27,18 +26,19 @@ import com.liferay.portal.service.OrgLaborLocalServiceUtil;
  *
  * @author Brian Wing Shun Chan
  * @see OrgLaborImpl
- * @see com.liferay.portal.model.OrgLabor
+ * @see OrgLabor
  * @generated
  */
-public abstract class OrgLaborBaseImpl extends OrgLaborModelImpl
-	implements OrgLabor {
+public abstract class OrgLaborBaseImpl
+	extends OrgLaborModelImpl implements OrgLabor {
+
 	/*
 	 * NOTE FOR DEVELOPERS:
 	 *
-	 * Never modify or reference this class directly. All methods that expect a org labor model instance should use the {@link OrgLabor} interface instead.
+	 * Never modify or reference this class directly. All methods that expect a org labor model instance should use the <code>OrgLabor</code> interface instead.
 	 */
 	@Override
-	public void persist() throws SystemException {
+	public void persist() {
 		if (this.isNew()) {
 			OrgLaborLocalServiceUtil.addOrgLabor(this);
 		}
@@ -46,4 +46,5 @@ public abstract class OrgLaborBaseImpl extends OrgLaborModelImpl
 			OrgLaborLocalServiceUtil.updateOrgLabor(this);
 		}
 	}
+
 }

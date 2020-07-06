@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -15,10 +15,10 @@
 package com.liferay.portal.deploy.auto;
 
 import com.liferay.portal.kernel.plugin.PluginPackage;
+import com.liferay.portal.kernel.util.HashMapBuilder;
 
 import java.io.File;
 
-import java.util.HashMap;
 import java.util.Map;
 
 /**
@@ -33,24 +33,32 @@ public class MVCPortletAutoDeployer extends PortletAutoDeployer {
 
 		super.copyXmls(srcFile, displayName, pluginPackage);
 
-		Map<String, String> filterMap = new HashMap<String, String>();
-
 		String pluginName = displayName;
 
 		if (pluginPackage != null) {
 			pluginName = pluginPackage.getName();
 		}
 
-		filterMap.put(
-			"portlet_class", "com.liferay.util.bridges.mvc.MVCPortlet");
-		filterMap.put("portlet_name", pluginName);
-		filterMap.put("portlet_title", pluginName);
-		filterMap.put("restore_current_view", "false");
-		filterMap.put("friendly_url_mapper_class", "");
-		filterMap.put("friendly_url_mapping", "");
-		filterMap.put("friendly_url_routes", "");
-		filterMap.put("init_param_name_0", "view-jsp");
-		filterMap.put("init_param_value_0", "/index_mvc.jsp");
+		Map<String, String> filterMap = HashMapBuilder.put(
+			"friendly_url_mapper_class", ""
+		).put(
+			"friendly_url_mapping", ""
+		).put(
+			"friendly_url_routes", ""
+		).put(
+			"init_param_name_0", "view-jsp"
+		).put(
+			"init_param_value_0", "/index_mvc.jsp"
+		).put(
+			"portlet_class",
+			"com.liferay.portal.kernel.portlet.bridges.mvc.MVCPortlet"
+		).put(
+			"portlet_name", pluginName
+		).put(
+			"portlet_title", pluginName
+		).put(
+			"restore_current_view", "false"
+		).build();
 
 		copyDependencyXml(
 			"liferay-display.xml", srcFile + "/WEB-INF", filterMap);

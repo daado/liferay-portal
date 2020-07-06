@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,32 +14,47 @@
 
 package com.liferay.taglib.portletext;
 
-import com.liferay.portal.kernel.json.JSONArray;
+import com.liferay.petra.lang.CentralizedThreadLocal;
+import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.json.JSONFactoryUtil;
 import com.liferay.portal.kernel.json.JSONObject;
+import com.liferay.portal.kernel.language.LanguageUtil;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
+import com.liferay.portal.kernel.model.Layout;
+import com.liferay.portal.kernel.model.LayoutTypePortlet;
+import com.liferay.portal.kernel.model.Portlet;
+import com.liferay.portal.kernel.model.PortletWrapper;
 import com.liferay.portal.kernel.portlet.PortletContainerUtil;
+import com.liferay.portal.kernel.portlet.PortletIdCodec;
 import com.liferay.portal.kernel.portlet.PortletJSONUtil;
 import com.liferay.portal.kernel.portlet.PortletLayoutListener;
 import com.liferay.portal.kernel.portlet.PortletParameterUtil;
+import com.liferay.portal.kernel.portlet.PortletPreferencesFactoryConstants;
+import com.liferay.portal.kernel.portlet.PortletPreferencesFactoryUtil;
+import com.liferay.portal.kernel.portlet.PortletProvider;
+import com.liferay.portal.kernel.portlet.PortletProviderUtil;
 import com.liferay.portal.kernel.portlet.RestrictPortletServletRequest;
+import com.liferay.portal.kernel.security.permission.ActionKeys;
+import com.liferay.portal.kernel.service.PortletLocalServiceUtil;
+import com.liferay.portal.kernel.service.PortletPreferencesLocalServiceUtil;
+import com.liferay.portal.kernel.service.permission.LayoutPermissionUtil;
 import com.liferay.portal.kernel.servlet.DynamicServletRequest;
-import com.liferay.portal.kernel.servlet.PipingServletResponse;
-import com.liferay.portal.kernel.util.HtmlUtil;
-import com.liferay.portal.kernel.util.StringPool;
+import com.liferay.portal.kernel.theme.ThemeDisplay;
+import com.liferay.portal.kernel.util.PortalUtil;
+import com.liferay.portal.kernel.util.PortletKeys;
+import com.liferay.portal.kernel.util.Validator;
 import com.liferay.portal.kernel.util.WebKeys;
-import com.liferay.portal.model.Layout;
-import com.liferay.portal.model.LayoutTypePortlet;
-import com.liferay.portal.model.Portlet;
-import com.liferay.portal.service.PortletLocalServiceUtil;
-import com.liferay.portal.service.PortletPreferencesLocalServiceUtil;
-import com.liferay.portal.theme.ThemeDisplay;
-import com.liferay.portal.util.PortletKeys;
-import com.liferay.portlet.PortletPreferencesFactoryUtil;
+import com.liferay.taglib.DirectTag;
+import com.liferay.taglib.servlet.PipingServletResponse;
+import com.liferay.taglib.util.PortalIncludeUtil;
+import com.liferay.taglib.util.ThreadLocalUtil;
 
-import java.io.IOException;
-import java.io.PrintWriter;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.Stack;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -50,56 +65,210 @@ import javax.servlet.jsp.tagext.TagSupport;
 /**
  * @author Brian Wing Shun Chan
  */
-public class RuntimeTag extends TagSupport {
+public class RuntimeTag extends TagSupport implements DirectTag {
 
 	public static void doTag(
 			String portletName, PageContext pageContext,
-			HttpServletRequest request, HttpServletResponse response)
+			HttpServletRequest httpServletRequest,
+			HttpServletResponse httpServletResponse)
 		throws Exception {
 
-		doTag(portletName, null, pageContext, request, response);
+		doTag(
+			portletName, null, pageContext, httpServletRequest,
+			httpServletResponse);
+	}
+
+	public static void doTag(
+			String portletProviderClassName,
+			PortletProvider.Action portletProviderAction, String instanceId,
+			String queryString, String defaultPreferences,
+			boolean persistSettings, PageContext pageContext,
+			HttpServletRequest httpServletRequest,
+			HttpServletResponse httpServletResponse)
+		throws Exception {
+
+		String portletId = PortletProviderUtil.getPortletId(
+			portletProviderClassName, portletProviderAction);
+
+		if (Validator.isNotNull(portletId)) {
+			doTag(
+				portletId, instanceId, queryString, _SETTINGS_SCOPE_DEFAULT,
+				defaultPreferences, persistSettings, pageContext,
+				httpServletRequest, httpServletResponse);
+		}
+		else {
+			ThemeDisplay themeDisplay =
+				(ThemeDisplay)httpServletRequest.getAttribute(
+					WebKeys.THEME_DISPLAY);
+
+			Layout layout = themeDisplay.getLayout();
+
+			if (!layout.isTypeControlPanel() &&
+				!LayoutPermissionUtil.contains(
+					themeDisplay.getPermissionChecker(), layout,
+					ActionKeys.UPDATE)) {
+
+				return;
+			}
+
+			String errorMessage = LanguageUtil.format(
+				httpServletRequest, "an-app-that-can-x-x-belongs-here",
+				new Object[] {
+					portletProviderAction.name(), portletProviderClassName
+				},
+				false);
+
+			httpServletRequest.setAttribute(
+				"liferay-portlet:runtime:errorMessage", errorMessage);
+
+			PortalIncludeUtil.include(pageContext, _ERROR_PAGE);
+		}
 	}
 
 	public static void doTag(
 			String portletName, String queryString, PageContext pageContext,
-			HttpServletRequest request, HttpServletResponse response)
+			HttpServletRequest httpServletRequest,
+			HttpServletResponse httpServletResponse)
 		throws Exception {
 
-		doTag(portletName, queryString, null, pageContext, request, response);
+		doTag(
+			portletName, queryString, null, pageContext, httpServletRequest,
+			httpServletResponse);
 	}
 
 	public static void doTag(
 			String portletName, String queryString, String defaultPreferences,
-			PageContext pageContext, HttpServletRequest request,
-			HttpServletResponse response)
+			PageContext pageContext, HttpServletRequest httpServletRequest,
+			HttpServletResponse httpServletResponse)
 		throws Exception {
 
+		doTag(
+			portletName, StringPool.BLANK, queryString, _SETTINGS_SCOPE_DEFAULT,
+			defaultPreferences, true, pageContext, httpServletRequest,
+			httpServletResponse);
+	}
+
+	public static void doTag(
+			String portletName, String instanceId, String queryString,
+			String defaultPreferences, PageContext pageContext,
+			HttpServletRequest httpServletRequest,
+			HttpServletResponse httpServletResponse)
+		throws Exception {
+
+		doTag(
+			portletName, instanceId, queryString, _SETTINGS_SCOPE_DEFAULT,
+			defaultPreferences, true, pageContext, httpServletRequest,
+			httpServletResponse);
+	}
+
+	public static void doTag(
+			String portletName, String instanceId, String queryString,
+			String settingsScope, String defaultPreferences,
+			boolean persistSettings, PageContext pageContext,
+			HttpServletRequest httpServletRequest,
+			HttpServletResponse httpServletResponse)
+		throws Exception {
+
+		instanceId = PortalUtil.getJsSafePortletId(instanceId);
+
 		if (pageContext != null) {
-			response = new PipingServletResponse(
-				response, pageContext.getOut());
+			if (httpServletResponse == pageContext.getResponse()) {
+				httpServletResponse =
+					PipingServletResponse.createPipingServletResponse(
+						pageContext);
+			}
+			else {
+				httpServletResponse = new PipingServletResponse(
+					httpServletResponse, pageContext.getOut());
+			}
 		}
 
-		String portletId = portletName;
+		HttpServletRequest originalHttpServletRequest =
+			PortalUtil.getOriginalServletRequest(httpServletRequest);
 
 		RestrictPortletServletRequest restrictPortletServletRequest =
-			new RestrictPortletServletRequest(request);
+			new RestrictPortletServletRequest(originalHttpServletRequest);
 
-		queryString = PortletParameterUtil.addNamespace(portletId, queryString);
+		Map<String, String[]> parameterMap = new HashMap<>(
+			httpServletRequest.getParameterMap());
 
-		request = DynamicServletRequest.addQueryString(
-			restrictPortletServletRequest, queryString);
+		String portletInstanceKey = portletName;
+
+		if (Validator.isNotNull(instanceId) && !instanceId.startsWith("0")) {
+			portletInstanceKey = PortletIdCodec.encode(
+				PortletIdCodec.decodePortletName(portletName),
+				PortletIdCodec.decodeUserId(portletName), instanceId);
+		}
+
+		if (!Objects.equals(
+				portletInstanceKey,
+				httpServletRequest.getParameter("p_p_id"))) {
+
+			Set<String> keySet = parameterMap.keySet();
+
+			keySet.removeIf(key -> key.startsWith("p_p_"));
+		}
+
+		String portletNamespace = PortalUtil.getPortletNamespace(
+			portletInstanceKey);
+
+		Map<String, String[]> originalParameterMap =
+			originalHttpServletRequest.getParameterMap();
+
+		for (Map.Entry<String, String[]> entry :
+				originalParameterMap.entrySet()) {
+
+			String key = entry.getKey();
+
+			if (key.startsWith(portletNamespace)) {
+				parameterMap.put(key, entry.getValue());
+			}
+		}
+
+		queryString = PortletParameterUtil.addNamespace(
+			portletInstanceKey, queryString);
+
+		httpServletRequest = DynamicServletRequest.addQueryString(
+			restrictPortletServletRequest, parameterMap, queryString, false);
 
 		try {
-			request.setAttribute(WebKeys.RENDER_PORTLET_RESOURCE, Boolean.TRUE);
+			httpServletRequest.setAttribute(
+				WebKeys.RENDER_PORTLET_RESOURCE, Boolean.TRUE);
 
-			ThemeDisplay themeDisplay = (ThemeDisplay)request.getAttribute(
-				WebKeys.THEME_DISPLAY);
+			ThemeDisplay themeDisplay =
+				(ThemeDisplay)httpServletRequest.getAttribute(
+					WebKeys.THEME_DISPLAY);
+
+			Portlet portlet = getPortlet(
+				themeDisplay.getCompanyId(), portletInstanceKey);
+
+			Stack<String> embeddedPortletIds = _embeddedPortletIds.get();
+
+			if (embeddedPortletIds == null) {
+				embeddedPortletIds = new Stack<>();
+
+				_embeddedPortletIds.set(embeddedPortletIds);
+			}
+
+			if (embeddedPortletIds.search(portlet.getPortletId()) > -1) {
+				String errorMessage = LanguageUtil.get(
+					httpServletRequest,
+					"the-application-cannot-include-itself");
+
+				httpServletRequest.setAttribute(
+					"liferay-portlet:runtime:errorMessage", errorMessage);
+
+				PortalIncludeUtil.include(pageContext, _ERROR_PAGE);
+
+				return;
+			}
 
 			if (themeDisplay.isStateMaximized()) {
 				LayoutTypePortlet layoutTypePortlet =
 					themeDisplay.getLayoutTypePortlet();
 
-				if (layoutTypePortlet.hasStateMaxPortletId(portletId)) {
+				if (layoutTypePortlet.hasStateMaxPortletId(
+						portletInstanceKey)) {
 
 					// A portlet in the maximized state has already been
 					// processed
@@ -110,42 +279,70 @@ public class RuntimeTag extends TagSupport {
 
 			Layout layout = themeDisplay.getLayout();
 
-			Portlet portlet = getPortlet(
-				themeDisplay.getCompanyId(), portletId);
+			httpServletRequest.setAttribute(
+				WebKeys.SETTINGS_SCOPE, settingsScope);
 
 			JSONObject jsonObject = null;
 
-			if ((PortletPreferencesLocalServiceUtil.getPortletPreferencesCount(
-					PortletKeys.PREFS_OWNER_TYPE_LAYOUT, themeDisplay.getPlid(),
-					portletId) < 1) ||
-				layout.isTypeControlPanel() ||
-				layout.isTypePanel()) {
+			boolean writeObject = false;
 
+			if (persistSettings &&
+				!layout.isPortletEmbedded(
+					portlet.getPortletId(), layout.getGroupId())) {
+
+				PortletPreferencesFactoryUtil.getLayoutPortletSetup(
+					themeDisplay.getCompanyId(), themeDisplay.getScopeGroupId(),
+					PortletKeys.PREFS_OWNER_TYPE_LAYOUT,
+					PortletKeys.PREFS_PLID_SHARED, portletInstanceKey,
+					defaultPreferences);
+
+				writeObject = true;
+			}
+
+			long count =
+				PortletPreferencesLocalServiceUtil.getPortletPreferencesCount(
+					PortletKeys.PREFS_OWNER_TYPE_LAYOUT, themeDisplay.getPlid(),
+					portletInstanceKey);
+
+			if (count < 1) {
+				PortletPreferencesFactoryUtil.getLayoutPortletSetup(
+					layout, portletInstanceKey, defaultPreferences);
 				PortletPreferencesFactoryUtil.getPortletSetup(
-					request, portletId, defaultPreferences);
+					httpServletRequest, portletInstanceKey, defaultPreferences);
 
 				PortletLayoutListener portletLayoutListener =
 					portlet.getPortletLayoutListenerInstance();
 
 				if (portletLayoutListener != null) {
 					portletLayoutListener.onAddToLayout(
-						portletId, themeDisplay.getPlid());
+						portletInstanceKey, themeDisplay.getPlid());
 				}
 
+				writeObject = true;
+			}
+
+			if (writeObject) {
 				jsonObject = JSONFactoryUtil.createJSONObject();
 
 				PortletJSONUtil.populatePortletJSONObject(
-					request, StringPool.BLANK, portlet, jsonObject);
+					httpServletRequest, StringPool.BLANK, portlet, jsonObject);
 			}
 
 			if (jsonObject != null) {
-				writeHeaderPaths(response, jsonObject);
+				PortletJSONUtil.writeHeaderPaths(
+					httpServletResponse, jsonObject);
 			}
 
-			PortletContainerUtil.render(request, response, portlet);
+			embeddedPortletIds.push(portletInstanceKey);
+
+			PortletContainerUtil.render(
+				httpServletRequest, httpServletResponse, portlet);
+
+			embeddedPortletIds.pop();
 
 			if (jsonObject != null) {
-				writeFooterPaths(response, jsonObject);
+				PortletJSONUtil.writeFooterPaths(
+					httpServletResponse, jsonObject);
 			}
 		}
 		finally {
@@ -156,28 +353,42 @@ public class RuntimeTag extends TagSupport {
 	@Override
 	public int doEndTag() throws JspException {
 		try {
-			HttpServletRequest request =
+			HttpServletRequest httpServletRequest =
 				(HttpServletRequest)pageContext.getRequest();
 
-			Layout layout = (Layout)request.getAttribute(WebKeys.LAYOUT);
+			Layout layout = (Layout)httpServletRequest.getAttribute(
+				WebKeys.LAYOUT);
 
 			if (layout == null) {
 				return EVAL_PAGE;
 			}
 
-			HttpServletResponse response =
+			HttpServletResponse httpServletResponse =
 				(HttpServletResponse)pageContext.getResponse();
 
-			doTag(
-				_portletName, _queryString, _defaultPreferences, pageContext,
-				request, response);
+			if (Validator.isNotNull(_portletProviderClassName) &&
+				(_portletProviderAction != null)) {
+
+				doTag(
+					_portletProviderClassName, _portletProviderAction,
+					_instanceId, _queryString, _defaultPreferences,
+					_persistSettings, pageContext, httpServletRequest,
+					httpServletResponse);
+			}
+			else {
+				doTag(
+					_portletName, _instanceId, _queryString,
+					_SETTINGS_SCOPE_DEFAULT, _defaultPreferences,
+					_persistSettings, pageContext, httpServletRequest,
+					httpServletResponse);
+			}
 
 			return EVAL_PAGE;
 		}
-		catch (Exception e) {
-			_log.error(e, e);
+		catch (Exception exception) {
+			_log.error(exception, exception);
 
-			throw new JspException(e);
+			throw new JspException(exception);
 		}
 	}
 
@@ -185,12 +396,37 @@ public class RuntimeTag extends TagSupport {
 		_defaultPreferences = defaultPreferences;
 	}
 
+	public void setInstanceId(String instanceId) {
+		_instanceId = instanceId;
+	}
+
+	public void setPersistSettings(boolean persistSettings) {
+		_persistSettings = persistSettings;
+	}
+
 	public void setPortletName(String portletName) {
 		_portletName = portletName;
 	}
 
+	public void setPortletProviderAction(
+		PortletProvider.Action portletProviderAction) {
+
+		_portletProviderAction = portletProviderAction;
+	}
+
+	public void setPortletProviderClassName(String portletProviderClassName) {
+		_portletProviderClassName = portletProviderClassName;
+	}
+
 	public void setQueryString(String queryString) {
 		_queryString = queryString;
+	}
+
+	/**
+	 * @deprecated As of Mueller (7.2.x), with no direct replacement
+	 */
+	@Deprecated
+	public void setSettingsScope(String settingsScope) {
 	}
 
 	/**
@@ -207,7 +443,26 @@ public class RuntimeTag extends TagSupport {
 		// non-instanceable portlets
 
 		if (!portlet.isInstanceable()) {
-			portlet = (Portlet)portlet.clone();
+			portlet = new PortletWrapper(portlet) {
+
+				@Override
+				public boolean getStatic() {
+					return _staticPortlet;
+				}
+
+				@Override
+				public boolean isStatic() {
+					return _staticPortlet;
+				}
+
+				@Override
+				public void setStatic(boolean staticPortlet) {
+					_staticPortlet = staticPortlet;
+				}
+
+				private boolean _staticPortlet;
+
+			};
 		}
 
 		portlet.setStatic(true);
@@ -215,78 +470,25 @@ public class RuntimeTag extends TagSupport {
 		return portlet;
 	}
 
-	protected static void writeFooterPaths(
-			HttpServletResponse response, JSONObject jsonObject)
-		throws IOException {
+	private static final String _ERROR_PAGE =
+		"/html/taglib/portlet/runtime/error.jsp";
 
-		JSONArray footerCssPathsJSONArray = jsonObject.getJSONArray(
-			"footerCssPaths");
-		JSONArray footerJavaScriptPathsJSONArray = jsonObject.getJSONArray(
-			"footerJavaScriptPaths");
+	private static final String _SETTINGS_SCOPE_DEFAULT =
+		PortletPreferencesFactoryConstants.SETTINGS_SCOPE_PORTLET_INSTANCE;
 
-		if ((footerCssPathsJSONArray.length() == 0) &&
-			(footerJavaScriptPathsJSONArray.length() == 0)) {
+	private static final Log _log = LogFactoryUtil.getLog(RuntimeTag.class);
 
-			return;
-		}
-
-		PrintWriter printWriter = response.getWriter();
-
-		for (int i = 0; i < footerCssPathsJSONArray.length(); i++) {
-			String value = footerCssPathsJSONArray.getString(i);
-
-			printWriter.print("<link href=\"");
-			printWriter.print(HtmlUtil.escape(value));
-			printWriter.println("\" rel=\"stylesheet\" type=\"text/css\" />");
-		}
-
-		for (int i = 0; i < footerJavaScriptPathsJSONArray.length(); i++) {
-			String value = footerJavaScriptPathsJSONArray.getString(i);
-
-			printWriter.print("<script src=\"");
-			printWriter.print(HtmlUtil.escape(value));
-			printWriter.println("\" type=\"text/javascript\"></script>");
-		}
-	}
-
-	protected static void writeHeaderPaths(
-			HttpServletResponse response, JSONObject jsonObject)
-		throws IOException {
-
-		JSONArray headerCssPathsJSONArray = jsonObject.getJSONArray(
-			"headerCssPaths");
-		JSONArray headerJavaScriptPathsJSONArray = jsonObject.getJSONArray(
-			"headerJavaScriptPaths");
-
-		if ((headerCssPathsJSONArray.length() == 0) &&
-			(headerJavaScriptPathsJSONArray.length() == 0)) {
-
-			return;
-		}
-
-		PrintWriter printWriter = response.getWriter();
-
-		for (int i = 0; i < headerCssPathsJSONArray.length(); i++) {
-			String value = headerCssPathsJSONArray.getString(i);
-
-			printWriter.print("<link href=\"");
-			printWriter.print(HtmlUtil.escape(value));
-			printWriter.println("\" rel=\"stylesheet\" type=\"text/css\" />");
-		}
-
-		for (int i = 0; i < headerJavaScriptPathsJSONArray.length(); i++) {
-			String value = headerJavaScriptPathsJSONArray.getString(i);
-
-			printWriter.print("<script src=\"");
-			printWriter.print(HtmlUtil.escape(value));
-			printWriter.println("\" type=\"text/javascript\"></script>");
-		}
-	}
-
-	private static Log _log = LogFactoryUtil.getLog(RuntimeTag.class);
+	private static final ThreadLocal<Stack<String>> _embeddedPortletIds =
+		ThreadLocalUtil.create(
+			RuntimeTag.class, "_embeddedPortletIds",
+			name -> new CentralizedThreadLocal<>(name));
 
 	private String _defaultPreferences;
+	private String _instanceId;
+	private boolean _persistSettings = true;
 	private String _portletName;
+	private PortletProvider.Action _portletProviderAction;
+	private String _portletProviderClassName;
 	private String _queryString;
 
 }

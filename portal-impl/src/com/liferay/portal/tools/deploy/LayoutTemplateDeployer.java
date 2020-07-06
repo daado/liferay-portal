@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,8 +14,12 @@
 
 package com.liferay.portal.tools.deploy;
 
-import com.liferay.portal.model.Plugin;
-import com.liferay.portal.util.InitUtil;
+import com.liferay.portal.kernel.log.Log;
+import com.liferay.portal.kernel.log.LogFactoryUtil;
+import com.liferay.portal.kernel.model.Plugin;
+import com.liferay.portal.tools.ToolDependencies;
+
+import java.io.IOException;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -26,10 +30,10 @@ import java.util.List;
 public class LayoutTemplateDeployer extends BaseDeployer {
 
 	public static void main(String[] args) {
-		InitUtil.initWithSpring();
+		ToolDependencies.wireDeployers();
 
-		List<String> wars = new ArrayList<String>();
-		List<String> jars = new ArrayList<String>();
+		List<String> wars = new ArrayList<>();
+		List<String> jars = new ArrayList<>();
 
 		for (String arg : args) {
 			if (arg.endsWith(".war")) {
@@ -40,7 +44,14 @@ public class LayoutTemplateDeployer extends BaseDeployer {
 			}
 		}
 
-		new LayoutTemplateDeployer(wars, jars);
+		try (LayoutTemplateDeployer layoutTemplateDeployer =
+				new LayoutTemplateDeployer(wars, jars)) {
+		}
+		catch (IOException ioException) {
+			if (_log.isWarnEnabled()) {
+				_log.warn(ioException, ioException);
+			}
+		}
 	}
 
 	public LayoutTemplateDeployer() {
@@ -54,5 +65,8 @@ public class LayoutTemplateDeployer extends BaseDeployer {
 	public String getPluginType() {
 		return Plugin.TYPE_LAYOUT_TEMPLATE;
 	}
+
+	private static final Log _log = LogFactoryUtil.getLog(
+		LayoutTemplateDeployer.class);
 
 }

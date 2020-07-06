@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,8 +14,11 @@
 
 package com.liferay.portal.json.jabsorb.serializer;
 
+import com.liferay.petra.lang.ClassLoaderPool;
+import com.liferay.petra.string.StringBundler;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
+import com.liferay.portal.kernel.util.Validator;
 
 import java.io.Serializable;
 
@@ -51,7 +54,7 @@ public class LiferaySerializer extends AbstractSerializer {
 		try {
 			constructor = clazz.getConstructor();
 		}
-		catch (Exception e) {
+		catch (Exception exception) {
 		}
 
 		if (Serializable.class.isAssignableFrom(clazz) &&
@@ -86,9 +89,17 @@ public class LiferaySerializer extends AbstractSerializer {
 		if (ser.getMarshallClassHints()) {
 			try {
 				jsonObject.put("javaClass", javaClass.getName());
+
+				String contextName = ClassLoaderPool.getContextName(
+					javaClass.getClassLoader());
+
+				if (Validator.isNotNull(contextName)) {
+					jsonObject.put("contextName", contextName);
+				}
 			}
-			catch (Exception e) {
-				throw new MarshallException("Unable to put javaClass", e);
+			catch (Exception exception) {
+				throw new MarshallException(
+					"Unable to put javaClass", exception);
 			}
 		}
 
@@ -100,14 +111,15 @@ public class LiferaySerializer extends AbstractSerializer {
 			serializerState.push(
 				object, serializableJSONObject, "serializable");
 		}
-		catch (Exception e) {
-			throw new MarshallException("Unable to put serializable", e);
+		catch (Exception exception) {
+			throw new MarshallException(
+				"Unable to put serializable", exception);
 		}
 
 		String fieldName = null;
 
 		try {
-			Set<String> processedFieldNames = new HashSet<String>();
+			Set<String> processedFieldNames = new HashSet<>();
 
 			while (javaClass != null) {
 				Field[] declaredFields = javaClass.getDeclaredFields();
@@ -125,20 +137,16 @@ public class LiferaySerializer extends AbstractSerializer {
 
 					int modifiers = field.getModifiers();
 
-					// Only marshall fields that are not final, static, or
-					// transient
+					// Only marshall fields that are not static or transient
 
-					if (((modifiers & Modifier.FINAL) == Modifier.FINAL) ||
-						((modifiers & Modifier.STATIC) == Modifier.STATIC) ||
+					if (((modifiers & Modifier.STATIC) == Modifier.STATIC) ||
 						((modifiers & Modifier.TRANSIENT) ==
 							Modifier.TRANSIENT)) {
 
 						continue;
 					}
 
-					if (!field.isAccessible()) {
-						field.setAccessible(true);
-					}
+					field.setAccessible(true);
 
 					if (fieldName.startsWith("_")) {
 						fieldName = fieldName.substring(1);
@@ -154,14 +162,18 @@ public class LiferaySerializer extends AbstractSerializer {
 					if (JSONSerializer.CIRC_REF_OR_DUPLICATE != fieldObject) {
 						serializableJSONObject.put(fieldName, fieldObject);
 					}
+					else if (!serializableJSONObject.has(fieldName)) {
+						serializableJSONObject.put(
+							fieldName, field.get(object));
+					}
 				}
 
 				javaClass = javaClass.getSuperclass();
 			}
 		}
-		catch (Exception e) {
+		catch (Exception exception) {
 			throw new MarshallException(
-				"Unable to match field " + fieldName, e);
+				"Unable to match field " + fieldName, exception);
 		}
 		finally {
 			serializerState.pop();
@@ -183,8 +195,8 @@ public class LiferaySerializer extends AbstractSerializer {
 		try {
 			javaClassName = jsonObject.getString("javaClass");
 		}
-		catch (Exception e) {
-			throw new UnmarshallException("Unable to get javaClass", e);
+		catch (Exception exception) {
+			throw new UnmarshallException("Unable to get javaClass", exception);
 		}
 
 		if (javaClassName == null) {
@@ -192,13 +204,33 @@ public class LiferaySerializer extends AbstractSerializer {
 		}
 
 		try {
-			Class<?> javaClass = Class.forName(javaClassName);
+			ClassLoader classLoader = null;
 
-			Serializable.class.isAssignableFrom(javaClass);
+			if (jsonObject.has("contextName")) {
+				String contextName = jsonObject.getString("contextName");
+
+				classLoader = ClassLoaderPool.getClassLoader(contextName);
+
+				if (classLoader == null) {
+					if (_log.isWarnEnabled()) {
+						_log.warn(
+							StringBundler.concat(
+								"Unable to get class loader for class ",
+								javaClassName, " in context ", contextName));
+					}
+				}
+			}
+
+			if (classLoader != null) {
+				Class.forName(javaClassName, true, classLoader);
+			}
+			else {
+				Class.forName(javaClassName);
+			}
 		}
-		catch (Exception e) {
+		catch (Exception exception) {
 			throw new UnmarshallException(
-				"Unable to load javaClass " + javaClassName, e);
+				"Unable to get class " + javaClassName, exception);
 		}
 
 		JSONObject serializableJSONObject = null;
@@ -206,8 +238,9 @@ public class LiferaySerializer extends AbstractSerializer {
 		try {
 			serializableJSONObject = jsonObject.getJSONObject("serializable");
 		}
-		catch (Exception e) {
-			throw new UnmarshallException("Unable to get serializable", e);
+		catch (Exception exception) {
+			throw new UnmarshallException(
+				"Unable to get serializable", exception);
 		}
 
 		if (serializableJSONObject == null) {
@@ -236,9 +269,9 @@ public class LiferaySerializer extends AbstractSerializer {
 				objectMatch.setMismatch(maxFieldObjectMatch.getMismatch());
 			}
 		}
-		catch (Exception e) {
+		catch (Exception exception) {
 			throw new UnmarshallException(
-				"Unable to match field " + fieldName, e);
+				"Unable to match field " + fieldName, exception);
 		}
 
 		return objectMatch;
@@ -257,8 +290,8 @@ public class LiferaySerializer extends AbstractSerializer {
 		try {
 			javaClassName = jsonObject.getString("javaClass");
 		}
-		catch (Exception e) {
-			throw new UnmarshallException("Unable to get javaClass", e);
+		catch (Exception exception) {
+			throw new UnmarshallException("Unable to get javaClass", exception);
 		}
 
 		if (javaClassName == null) {
@@ -270,13 +303,35 @@ public class LiferaySerializer extends AbstractSerializer {
 		Object javaClassInstance = null;
 
 		try {
-			javaClass = Class.forName(javaClassName);
+			ClassLoader classLoader = null;
+
+			if (jsonObject.has("contextName")) {
+				String contextName = jsonObject.getString("contextName");
+
+				classLoader = ClassLoaderPool.getClassLoader(contextName);
+
+				if (classLoader == null) {
+					if (_log.isWarnEnabled()) {
+						_log.warn(
+							StringBundler.concat(
+								"Unable to get class loader for class ",
+								javaClassName, " in context ", contextName));
+					}
+				}
+			}
+
+			if (classLoader != null) {
+				javaClass = Class.forName(javaClassName, true, classLoader);
+			}
+			else {
+				javaClass = Class.forName(javaClassName);
+			}
 
 			javaClassInstance = javaClass.newInstance();
 		}
-		catch (Exception e) {
+		catch (Exception exception) {
 			throw new UnmarshallException(
-				"Unable to load javaClass " + javaClassName, e);
+				"Unable to get class " + javaClassName, exception);
 		}
 
 		JSONObject serializableJSONObject = null;
@@ -284,8 +339,9 @@ public class LiferaySerializer extends AbstractSerializer {
 		try {
 			serializableJSONObject = jsonObject.getJSONObject("serializable");
 		}
-		catch (Exception e) {
-			throw new UnmarshallException("Unable to get serializable", e);
+		catch (Exception exception) {
+			throw new UnmarshallException(
+				"Unable to get serializable", exception);
 		}
 
 		if (serializableJSONObject == null) {
@@ -297,7 +353,7 @@ public class LiferaySerializer extends AbstractSerializer {
 		String fieldName = null;
 
 		try {
-			Set<String> processedFieldNames = new HashSet<String>();
+			Set<String> processedFieldNames = new HashSet<>();
 
 			while (javaClass != null) {
 				Field[] fields = javaClass.getDeclaredFields();
@@ -315,23 +371,23 @@ public class LiferaySerializer extends AbstractSerializer {
 
 					int modifiers = field.getModifiers();
 
-					// Only unmarshall fields that are not final, static, or
-					// transient
+					// Only unmarshall fields that are not static or transient
 
-					if (((modifiers & Modifier.FINAL) == Modifier.FINAL) ||
-						((modifiers & Modifier.STATIC) == Modifier.STATIC) ||
+					if (((modifiers & Modifier.STATIC) == Modifier.STATIC) ||
 						((modifiers & Modifier.TRANSIENT) ==
 							Modifier.TRANSIENT)) {
 
 						continue;
 					}
 
-					if (!field.isAccessible()) {
-						field.setAccessible(true);
-					}
+					field.setAccessible(true);
 
 					if (fieldName.startsWith("_")) {
 						fieldName = fieldName.substring(1);
+					}
+
+					if (!serializableJSONObject.has(fieldName)) {
+						continue;
 					}
 
 					Object value = null;
@@ -339,17 +395,20 @@ public class LiferaySerializer extends AbstractSerializer {
 					try {
 						value = ser.unmarshall(
 							serializerState, field.getType(),
-							serializableJSONObject.get(fieldName));
+							_getSafe(serializableJSONObject, fieldName));
 					}
-					catch (Exception e) {
+					catch (Exception exception) {
+						if (_log.isDebugEnabled()) {
+							_log.debug(exception, exception);
+						}
 					}
 
 					if (value != null) {
 						try {
 							field.set(javaClassInstance, value);
 						}
-						catch (Exception e) {
-							_log.error(e, e);
+						catch (Exception exception) {
+							_log.error(exception, exception);
 						}
 					}
 				}
@@ -357,19 +416,46 @@ public class LiferaySerializer extends AbstractSerializer {
 				javaClass = javaClass.getSuperclass();
 			}
 		}
-		catch (Exception e) {
+		catch (Exception exception) {
 			throw new UnmarshallException(
-				"Unable to match field " + fieldName, e);
+				"Unable to match field " + fieldName, exception);
 		}
 
 		return javaClassInstance;
 	}
 
+	private static Object _getSafe(JSONObject jsonObject, String name) {
+		Object object = jsonObject.get(name);
+
+		if (object instanceof Integer) {
+			Integer jsonInteger = (Integer)object;
+
+			Integer cachedInteger = Integer.valueOf(jsonInteger.intValue());
+
+			if (jsonInteger == cachedInteger) {
+				return new Integer(jsonInteger.intValue());
+			}
+		}
+		else if (object instanceof Long) {
+			Long jsonLong = (Long)object;
+
+			Long cachedLong = Long.valueOf(jsonLong.longValue());
+
+			if (jsonLong == cachedLong) {
+				return new Long(jsonLong.intValue());
+			}
+		}
+
+		return object;
+	}
+
 	private static final Class<?>[] _JSON_CLASSES = {JSONObject.class};
 
-	private static final Class<?>[] _SERIALIZABLE_CLASSES =
-		{Serializable.class};
+	private static final Class<?>[] _SERIALIZABLE_CLASSES = {
+		Serializable.class
+	};
 
-	private static Log _log = LogFactoryUtil.getLog(LiferaySerializer.class);
+	private static final Log _log = LogFactoryUtil.getLog(
+		LiferaySerializer.class);
 
 }

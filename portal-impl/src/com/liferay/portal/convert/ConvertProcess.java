@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,79 +14,48 @@
 
 package com.liferay.portal.convert;
 
-import com.liferay.portal.kernel.log.Log;
-import com.liferay.portal.kernel.log.LogFactoryUtil;
-import com.liferay.portal.util.MaintenanceUtil;
-
-import org.apache.commons.lang.time.StopWatch;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
 
 /**
- * @author Alexander Chow
+ * @author Iván Zaera
  */
-public abstract class ConvertProcess {
+public interface ConvertProcess {
 
-	public void convert() throws ConvertException {
-		try {
-			if (getPath() != null) {
-				return;
-			}
+	public void convert() throws ConvertException;
 
-			StopWatch stopWatch = null;
+	public String getConfigurationErrorMessage();
 
-			if (_log.isInfoEnabled()) {
-				stopWatch = new StopWatch();
+	public String getDescription();
 
-				stopWatch.start();
+	public String getParameterDescription();
 
-				_log.info("Starting conversion for " + getClass().getName());
-			}
+	public String[] getParameterNames();
 
-			doConvert();
-
-			if (_log.isInfoEnabled()) {
-				_log.info(
-					"Finished conversion for " + getClass().getName() + " in " +
-						stopWatch.getTime() + " ms");
-			}
-		}
-		catch (Exception e) {
-			throw new ConvertException(e);
-		}
-		finally {
-			setParameterValues(null);
-
-			MaintenanceUtil.cancel();
-		}
-	}
-
-	public abstract String getDescription();
-
-	public String getParameterDescription() {
+	/**
+	 * @deprecated As of Mueller (7.2.x), with no direct replacement
+	 */
+	@Deprecated
+	public default String getPath() {
 		return null;
 	}
 
-	public String[] getParameterNames() {
-		return null;
+	public default boolean hasCustomView() {
+		return false;
 	}
 
-	public String[] getParameterValues() {
-		return _paramValues;
+	public default boolean includeCustomView(
+			HttpServletRequest httpServletRequest,
+			HttpServletResponse httpServletResponse)
+		throws Exception {
+
+		return false;
 	}
 
-	public String getPath() {
-		return null;
-	}
+	public boolean isEnabled();
 
-	public abstract boolean isEnabled();
+	public void setParameterValues(String[] values);
 
-	public void setParameterValues(String[] values) {
-		_paramValues = values;
-	}
-
-	protected abstract void doConvert() throws Exception;
-
-	private static Log _log = LogFactoryUtil.getLog(ConvertProcess.class);
-
-	private String[] _paramValues = null;
+	public void validate() throws ConvertException;
 
 }

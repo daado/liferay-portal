@@ -1,6 +1,6 @@
 <%--
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -16,8 +16,19 @@
 
 <%@ include file="/html/taglib/ui/breadcrumb/init.jsp" %>
 
-<c:if test="<%= Validator.isNotNull(breadcrumbString) %>">
-	<ul aria-label="<%= LanguageUtil.get(pageContext, "breadcrumb") %>" class="breadcrumb">
-		<%= breadcrumbString %>
-	</ul>
-</c:if>
+<nav aria-label="<%= HtmlUtil.escapeAttribute(portletDisplay.getTitle()) %>" id="<portlet:namespace />breadcrumbs-defaultScreen">
+	<c:if test="<%= !breadcrumbEntries.isEmpty() %>">
+
+		<%
+		String renderedDDMTemplate = StringPool.BLANK;
+
+		DDMTemplate portletDisplayDDMTemplate = PortletDisplayTemplateManagerUtil.getDDMTemplate(displayStyleGroupId, PortalUtil.getClassNameId(BreadcrumbEntry.class), displayStyle, true);
+
+		if (portletDisplayDDMTemplate != null) {
+			renderedDDMTemplate = PortletDisplayTemplateManagerUtil.renderDDMTemplate(request, response, portletDisplayDDMTemplate.getTemplateId(), breadcrumbEntries, new HashMap<String, Object>());
+		}
+		%>
+
+		<%= renderedDDMTemplate %>
+	</c:if>
+</nav>

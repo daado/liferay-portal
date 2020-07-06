@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -24,7 +24,7 @@ import javax.servlet.jsp.JspException;
  * @author Julio Camarero
  * @generated
  */
-public class BaseFormTag extends com.liferay.taglib.util.IncludeTag {
+public abstract class BaseFormTag extends com.liferay.taglib.util.IncludeTag {
 
 	@Override
 	public int doStartTag() throws JspException {
@@ -69,62 +69,54 @@ public class BaseFormTag extends com.liferay.taglib.util.IncludeTag {
 		return _useNamespace;
 	}
 
+	public boolean getValidateOnBlur() {
+		return _validateOnBlur;
+	}
+
 	public void setAction(java.lang.String action) {
 		_action = action;
-
-		setScopedAttribute("action", action);
 	}
 
 	public void setCssClass(java.lang.String cssClass) {
 		_cssClass = cssClass;
-
-		setScopedAttribute("cssClass", cssClass);
 	}
 
 	public void setEscapeXml(boolean escapeXml) {
 		_escapeXml = escapeXml;
-
-		setScopedAttribute("escapeXml", escapeXml);
 	}
 
 	public void setInlineLabels(boolean inlineLabels) {
 		_inlineLabels = inlineLabels;
-
-		setScopedAttribute("inlineLabels", inlineLabels);
 	}
 
 	public void setMethod(java.lang.String method) {
 		_method = method;
-
-		setScopedAttribute("method", method);
 	}
 
 	public void setName(java.lang.String name) {
 		_name = name;
-
-		setScopedAttribute("name", name);
 	}
 
 	public void setOnSubmit(java.lang.String onSubmit) {
 		_onSubmit = onSubmit;
-
-		setScopedAttribute("onSubmit", onSubmit);
 	}
 
 	public void setPortletNamespace(java.lang.String portletNamespace) {
 		_portletNamespace = portletNamespace;
-
-		setScopedAttribute("portletNamespace", portletNamespace);
 	}
 
 	public void setUseNamespace(boolean useNamespace) {
 		_useNamespace = useNamespace;
+	}
 
-		setScopedAttribute("useNamespace", useNamespace);
+	public void setValidateOnBlur(boolean validateOnBlur) {
+		_validateOnBlur = validateOnBlur;
 	}
 
 	@Override
 	protected void cleanUp() {
+		super.cleanUp();
+
 		_action = null;
 		_cssClass = null;
 		_escapeXml = true;
@@ -134,6 +126,7 @@ public class BaseFormTag extends com.liferay.taglib.util.IncludeTag {
 		_onSubmit = null;
 		_portletNamespace = null;
 		_useNamespace = true;
+		_validateOnBlur = true;
 	}
 
 	@Override
@@ -157,6 +150,7 @@ public class BaseFormTag extends com.liferay.taglib.util.IncludeTag {
 		setNamespacedAttribute(request, "onSubmit", _onSubmit);
 		setNamespacedAttribute(request, "portletNamespace", _portletNamespace);
 		setNamespacedAttribute(request, "useNamespace", _useNamespace);
+		setNamespacedAttribute(request, "validateOnBlur", _validateOnBlur);
 	}
 
 	protected static final String _ATTRIBUTE_NAMESPACE = "aui:form:";
@@ -176,5 +170,6 @@ public class BaseFormTag extends com.liferay.taglib.util.IncludeTag {
 	private java.lang.String _onSubmit = null;
 	private java.lang.String _portletNamespace = null;
 	private boolean _useNamespace = true;
+	private boolean _validateOnBlur = true;
 
 }

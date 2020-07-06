@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -17,6 +17,7 @@ package com.liferay.portal.atom;
 import com.liferay.portal.kernel.atom.AtomRequestContext;
 import com.liferay.portal.kernel.util.GetterUtil;
 
+import org.apache.abdera.i18n.iri.IRI;
 import org.apache.abdera.protocol.server.RequestContext;
 
 /**
@@ -86,7 +87,9 @@ public class AtomRequestContextImpl implements AtomRequestContext {
 
 	@Override
 	public String getResolvedUri() {
-		return _requestContext.getResolvedUri().toString();
+		IRI resolvedURI = _requestContext.getResolvedUri();
+
+		return resolvedURI.toString();
 	}
 
 	@Override
@@ -115,6 +118,6 @@ public class AtomRequestContextImpl implements AtomRequestContext {
 		_requestContext.setAttribute(RequestContext.Scope.SESSION, name, value);
 	}
 
-	private RequestContext _requestContext;
+	private final RequestContext _requestContext;
 
 }

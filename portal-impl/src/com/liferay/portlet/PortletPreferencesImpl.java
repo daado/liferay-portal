@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,14 +14,14 @@
 
 package com.liferay.portlet;
 
+import com.liferay.petra.lang.HashUtil;
 import com.liferay.portal.kernel.exception.SystemException;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
-import com.liferay.portal.kernel.util.HashUtil;
-import com.liferay.portal.model.Portlet;
-import com.liferay.portal.service.PortletLocalServiceUtil;
-import com.liferay.portal.service.PortletPreferencesLocalServiceUtil;
-import com.liferay.portal.util.PortalUtil;
+import com.liferay.portal.kernel.model.Portlet;
+import com.liferay.portal.kernel.service.PortletLocalServiceUtil;
+import com.liferay.portal.kernel.service.PortletPreferencesLocalServiceUtil;
+import com.liferay.portal.kernel.util.PortalUtil;
 
 import java.io.IOException;
 import java.io.Serializable;
@@ -53,7 +53,7 @@ public class PortletPreferencesImpl
 
 		super(ownerId, ownerType, xml, preferences);
 
-		_companyId = companyId;
+		this.companyId = companyId;
 		_plid = plid;
 		_portletId = portletId;
 	}
@@ -67,34 +67,34 @@ public class PortletPreferencesImpl
 	@Override
 	public Object clone() {
 		return new PortletPreferencesImpl(
-			_companyId, getOwnerId(), getOwnerType(), _plid, _portletId,
+			companyId, getOwnerId(), getOwnerType(), _plid, _portletId,
 			getOriginalXML(), getOriginalPreferences());
 	}
 
 	@Override
-	public boolean equals(Object obj) {
-		if (this == obj) {
+	public boolean equals(Object object) {
+		if (this == object) {
 			return true;
 		}
 
-		if (!(obj instanceof PortletPreferencesImpl)) {
+		if (!(object instanceof PortletPreferencesImpl)) {
 			return false;
 		}
 
-		PortletPreferencesImpl portletPreferences = (PortletPreferencesImpl)obj;
+		PortletPreferencesImpl portletPreferencesImpl =
+			(PortletPreferencesImpl)object;
 
-		if ((_companyId == portletPreferences._companyId) &&
-			(getOwnerId() == portletPreferences.getOwnerId()) &&
-			(getOwnerType() == portletPreferences.getOwnerType()) &&
-			(getPlid() == portletPreferences.getPlid()) &&
-			getPortletId().equals(portletPreferences.getPortletId()) &&
-			getPreferences().equals(portletPreferences.getPreferences())) {
+		if ((companyId == portletPreferencesImpl.companyId) &&
+			(getOwnerId() == portletPreferencesImpl.getOwnerId()) &&
+			(getOwnerType() == portletPreferencesImpl.getOwnerType()) &&
+			(getPlid() == portletPreferencesImpl.getPlid()) &&
+			getPortletId().equals(portletPreferencesImpl.getPortletId()) &&
+			getPreferences().equals(portletPreferencesImpl.getPreferences())) {
 
 			return true;
 		}
-		else {
-			return false;
-		}
+
+		return false;
 	}
 
 	public long getPlid() {
@@ -103,7 +103,7 @@ public class PortletPreferencesImpl
 
 	@Override
 	public int hashCode() {
-		int hashCode = HashUtil.hash(0, _companyId);
+		int hashCode = HashUtil.hash(0, companyId);
 
 		hashCode = HashUtil.hash(hashCode, getOwnerId());
 		hashCode = HashUtil.hash(hashCode, getOwnerType());
@@ -124,11 +124,11 @@ public class PortletPreferencesImpl
 			try {
 				_defaultPreferences =
 					PortletPreferencesLocalServiceUtil.getDefaultPreferences(
-						_companyId, _portletId);
+						companyId, _portletId);
 			}
-			catch (Exception e) {
+			catch (Exception exception) {
 				if (_log.isWarnEnabled()) {
-					_log.warn(e, e);
+					_log.warn(exception, exception);
 				}
 			}
 		}
@@ -162,20 +162,22 @@ public class PortletPreferencesImpl
 
 		try {
 			Portlet portlet = PortletLocalServiceUtil.getPortletById(
-				_companyId, _portletId);
+				companyId, _portletId);
 
-			PreferencesValidator preferencesValidator =
-				PortalUtil.getPreferencesValidator(portlet);
+			if (portlet != null) {
+				PreferencesValidator preferencesValidator =
+					PortalUtil.getPreferencesValidator(portlet);
 
-			if (preferencesValidator != null) {
-				preferencesValidator.validate(this);
+				if (preferencesValidator != null) {
+					preferencesValidator.validate(this);
+				}
 			}
 
 			PortletPreferencesLocalServiceUtil.updatePreferences(
 				getOwnerId(), getOwnerType(), _plid, _portletId, this);
 		}
-		catch (SystemException se) {
-			throw new IOException(se.getMessage());
+		catch (SystemException systemException) {
+			throw new IOException(systemException);
 		}
 	}
 
@@ -183,10 +185,11 @@ public class PortletPreferencesImpl
 		return _portletId;
 	}
 
-	private static Log _log = LogFactoryUtil.getLog(
+	protected long companyId;
+
+	private static final Log _log = LogFactoryUtil.getLog(
 		PortletPreferencesImpl.class);
 
-	private long _companyId;
 	private PortletPreferences _defaultPreferences;
 	private long _plid;
 	private String _portletId;

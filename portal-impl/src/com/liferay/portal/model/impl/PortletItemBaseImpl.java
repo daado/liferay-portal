@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,9 +14,8 @@
 
 package com.liferay.portal.model.impl;
 
-import com.liferay.portal.kernel.exception.SystemException;
-import com.liferay.portal.model.PortletItem;
-import com.liferay.portal.service.PortletItemLocalServiceUtil;
+import com.liferay.portal.kernel.model.PortletItem;
+import com.liferay.portal.kernel.service.PortletItemLocalServiceUtil;
 
 /**
  * The extended model base implementation for the PortletItem service. Represents a row in the &quot;PortletItem&quot; database table, with each column mapped to a property of this class.
@@ -27,18 +26,19 @@ import com.liferay.portal.service.PortletItemLocalServiceUtil;
  *
  * @author Brian Wing Shun Chan
  * @see PortletItemImpl
- * @see com.liferay.portal.model.PortletItem
+ * @see PortletItem
  * @generated
  */
-public abstract class PortletItemBaseImpl extends PortletItemModelImpl
-	implements PortletItem {
+public abstract class PortletItemBaseImpl
+	extends PortletItemModelImpl implements PortletItem {
+
 	/*
 	 * NOTE FOR DEVELOPERS:
 	 *
-	 * Never modify or reference this class directly. All methods that expect a portlet item model instance should use the {@link PortletItem} interface instead.
+	 * Never modify or reference this class directly. All methods that expect a portlet item model instance should use the <code>PortletItem</code> interface instead.
 	 */
 	@Override
-	public void persist() throws SystemException {
+	public void persist() {
 		if (this.isNew()) {
 			PortletItemLocalServiceUtil.addPortletItem(this);
 		}
@@ -46,4 +46,5 @@ public abstract class PortletItemBaseImpl extends PortletItemModelImpl
 			PortletItemLocalServiceUtil.updatePortletItem(this);
 		}
 	}
+
 }

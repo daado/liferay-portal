@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -23,6 +23,10 @@ import javax.servlet.http.HttpServletRequest;
  */
 public class SearchSpeedTag<R> extends SearchFormTag<R> {
 
+	public Hits getHits() {
+		return _hits;
+	}
+
 	public void setHits(Hits hits) {
 		_hits = hits;
 	}
@@ -40,10 +44,10 @@ public class SearchSpeedTag<R> extends SearchFormTag<R> {
 	}
 
 	@Override
-	protected void setAttributes(HttpServletRequest request) {
-		super.setAttributes(request);
+	protected void setAttributes(HttpServletRequest httpServletRequest) {
+		super.setAttributes(httpServletRequest);
 
-		request.setAttribute("liferay-ui:search:hits", _hits);
+		httpServletRequest.setAttribute("liferay-ui:search:hits", _hits);
 	}
 
 	private static final String _PAGE = "/html/taglib/ui/search_speed/page.jsp";

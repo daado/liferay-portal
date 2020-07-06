@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,7 +14,11 @@
 
 package com.liferay.taglib.ui;
 
+import com.liferay.asset.kernel.model.AssetTag;
 import com.liferay.taglib.util.IncludeTag;
+
+import java.util.ArrayList;
+import java.util.List;
 
 import javax.portlet.PortletURL;
 
@@ -23,10 +27,26 @@ import javax.servlet.http.HttpServletRequest;
 /**
  * @author Brian Wing Shun Chan
  */
-public class AssetTagsSummaryTag extends IncludeTag {
+public class AssetTagsSummaryTag<R> extends IncludeTag {
 
 	public String getAssetTagNames() {
 		return _assetTagNames;
+	}
+
+	public String getClassName() {
+		return _className;
+	}
+
+	public long getClassPK() {
+		return _classPK;
+	}
+
+	public String getMessage() {
+		return _message;
+	}
+
+	public String getParamName() {
+		return _paramName;
 	}
 
 	public PortletURL getPortletURL() {
@@ -49,16 +69,23 @@ public class AssetTagsSummaryTag extends IncludeTag {
 		_message = message;
 	}
 
+	public void setParamName(String paramName) {
+		_paramName = paramName;
+	}
+
 	public void setPortletURL(PortletURL portletURL) {
 		_portletURL = portletURL;
 	}
 
 	@Override
 	protected void cleanUp() {
+		super.cleanUp();
+
 		_assetTagNames = null;
 		_className = null;
 		_classPK = 0;
 		_message = null;
+		_paramName = null;
 		_portletURL = null;
 	}
 
@@ -68,15 +95,23 @@ public class AssetTagsSummaryTag extends IncludeTag {
 	}
 
 	@Override
-	protected void setAttributes(HttpServletRequest request) {
-		request.setAttribute(
+	protected void setAttributes(HttpServletRequest httpServletRequest) {
+		List<AssetTag> assetTags = new ArrayList<>();
+
+		httpServletRequest.setAttribute(
+			"liferay-ui:asset-categories-summary:assetTags", assetTags);
+
+		httpServletRequest.setAttribute(
 			"liferay-ui:asset-tags-summary:assetTagNames", _assetTagNames);
-		request.setAttribute(
+		httpServletRequest.setAttribute(
 			"liferay-ui:asset-tags-summary:className", _className);
-		request.setAttribute(
+		httpServletRequest.setAttribute(
 			"liferay-ui:asset-tags-summary:classPK", String.valueOf(_classPK));
-		request.setAttribute("liferay-ui:asset-tags-summary:message", _message);
-		request.setAttribute(
+		httpServletRequest.setAttribute(
+			"liferay-ui:asset-tags-summary:message", _message);
+		httpServletRequest.setAttribute(
+			"liferay-ui:asset-tags-summary:paramName", _paramName);
+		httpServletRequest.setAttribute(
 			"liferay-ui:asset-tags-summary:portletURL", _portletURL);
 	}
 
@@ -87,6 +122,7 @@ public class AssetTagsSummaryTag extends IncludeTag {
 	private String _className;
 	private long _classPK;
 	private String _message;
+	private String _paramName;
 	private PortletURL _portletURL;
 
 }

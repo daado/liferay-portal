@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,18 +14,17 @@
 
 package com.liferay.taglib.portlet;
 
+import com.liferay.petra.string.CharPool;
+import com.liferay.petra.string.StringPool;
+import com.liferay.portal.kernel.io.unsync.UnsyncStringWriter;
 import com.liferay.portal.kernel.util.ArrayUtil;
-import com.liferay.portal.kernel.util.CharPool;
 import com.liferay.portal.kernel.util.HtmlUtil;
 import com.liferay.portal.kernel.util.HttpUtil;
-import com.liferay.portal.kernel.util.ParamUtil;
-import com.liferay.portal.kernel.util.StringBundler;
-import com.liferay.portal.kernel.util.StringPool;
 import com.liferay.portal.kernel.util.StringUtil;
+import com.liferay.taglib.servlet.PipingPageContext;
 
 import javax.portlet.PortletURL;
 
-import javax.servlet.http.HttpServletRequest;
 import javax.servlet.jsp.JspException;
 import javax.servlet.jsp.JspWriter;
 import javax.servlet.jsp.PageContext;
@@ -36,60 +35,73 @@ import javax.servlet.jsp.tagext.TagSupport;
  */
 public class RenderURLParamsTag extends TagSupport {
 
+	public static String doTag(PortletURL portletURL, PageContext pageContext)
+		throws Exception {
+
+		UnsyncStringWriter unsyncStringWriter = new UnsyncStringWriter();
+
+		_doTag(
+			portletURL, null,
+			new PipingPageContext(pageContext, unsyncStringWriter));
+
+		return unsyncStringWriter.toString();
+	}
+
 	public static String doTag(String varImpl, PageContext pageContext)
 		throws Exception {
 
-		PortletURL portletURL = (PortletURL)pageContext.getAttribute(varImpl);
+		UnsyncStringWriter unsyncStringWriter = new UnsyncStringWriter();
 
-		String params = StringPool.BLANK;
+		_doTag(
+			null, varImpl,
+			new PipingPageContext(pageContext, unsyncStringWriter));
 
-		if (portletURL != null) {
-			params = _toParamsString(portletURL, pageContext);
-
-			JspWriter jspWriter = pageContext.getOut();
-
-			jspWriter.write(params);
-		}
-
-		return params;
+		return unsyncStringWriter.toString();
 	}
 
 	@Override
 	public int doEndTag() throws JspException {
 		try {
-			doTag(_varImpl, pageContext);
+			_doTag(_portletURL, _varImpl, pageContext);
 
 			return EVAL_PAGE;
 		}
-		catch (Exception e) {
-			throw new JspException(e);
+		catch (Exception exception) {
+			throw new JspException(exception);
 		}
+	}
+
+	public void setPortletURL(PortletURL portletURL) {
+		_portletURL = portletURL;
 	}
 
 	public void setVarImpl(String varImpl) {
 		_varImpl = varImpl;
 	}
 
-	private static String _toParamsString(
+	private static void _doTag(
+			PortletURL portletURL, String varImpl, PageContext pageContext)
+		throws Exception {
+
+		if (portletURL == null) {
+			portletURL = (PortletURL)pageContext.getAttribute(varImpl);
+		}
+
+		if (portletURL != null) {
+			_writeParamsString(portletURL, pageContext);
+		}
+	}
+
+	private static void _writeParamsString(
 			PortletURL portletURL, PageContext pageContext)
 		throws Exception {
 
-		StringBundler sb = new StringBundler();
-
 		String url = portletURL.toString();
 
-		HttpServletRequest request =
-			(HttpServletRequest)pageContext.getRequest();
+		JspWriter jspWriter = pageContext.getOut();
 
-		if (ParamUtil.getBoolean(request, "wsrp")) {
-			int x = url.indexOf("/wsrp_rewrite");
-
-			url = url.substring(0, x);
-		}
-
-		String queryString = HttpUtil.getQueryString(url);
-
-		String[] parameters = StringUtil.split(queryString, CharPool.AMPERSAND);
+		String[] parameters = StringUtil.split(
+			HttpUtil.getQueryString(url), CharPool.AMPERSAND);
 
 		for (String parameter : parameters) {
 			if (parameter.length() > 0) {
@@ -97,6 +109,7 @@ public class RenderURLParamsTag extends TagSupport {
 
 				if (ArrayUtil.isNotEmpty(kvp)) {
 					String key = kvp[0];
+
 					String value = StringPool.BLANK;
 
 					if (kvp.length > 1) {
@@ -105,18 +118,17 @@ public class RenderURLParamsTag extends TagSupport {
 
 					value = HttpUtil.decodeURL(value);
 
-					sb.append("<input name=\"");
-					sb.append(key);
-					sb.append("\" type=\"hidden\" value=\"");
-					sb.append(HtmlUtil.escapeAttribute(value));
-					sb.append("\" />");
+					jspWriter.write("<input name=\"");
+					jspWriter.write(key);
+					jspWriter.write("\" type=\"hidden\" value=\"");
+					jspWriter.write(HtmlUtil.escapeAttribute(value));
+					jspWriter.write("\" />");
 				}
 			}
 		}
-
-		return sb.toString();
 	}
 
+	private PortletURL _portletURL;
 	private String _varImpl;
 
 }

@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,52 +14,35 @@
 
 package com.liferay.portlet;
 
+import com.liferay.petra.string.CharPool;
 import com.liferay.portal.kernel.exception.PortalException;
-import com.liferay.portal.kernel.exception.SystemException;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
+import com.liferay.portal.kernel.model.Layout;
+import com.liferay.portal.kernel.model.LayoutTypeAccessPolicy;
+import com.liferay.portal.kernel.model.LayoutTypePortlet;
+import com.liferay.portal.kernel.model.Portlet;
 import com.liferay.portal.kernel.portlet.ActionResult;
 import com.liferay.portal.kernel.portlet.PortletContainer;
 import com.liferay.portal.kernel.portlet.PortletContainerException;
 import com.liferay.portal.kernel.portlet.PortletContainerUtil;
-import com.liferay.portal.kernel.portlet.PortletModeFactory;
-import com.liferay.portal.kernel.resiliency.spi.SPIUtil;
-import com.liferay.portal.kernel.security.pacl.DoPrivileged;
+import com.liferay.portal.kernel.security.auth.AuthTokenUtil;
+import com.liferay.portal.kernel.security.auth.AuthTokenWhitelistUtil;
+import com.liferay.portal.kernel.security.auth.PrincipalException;
 import com.liferay.portal.kernel.servlet.HttpHeaders;
 import com.liferay.portal.kernel.servlet.TempAttributesServletRequest;
 import com.liferay.portal.kernel.struts.LastPath;
-import com.liferay.portal.kernel.util.ArrayUtil;
-import com.liferay.portal.kernel.util.CharPool;
+import com.liferay.portal.kernel.theme.ThemeDisplay;
 import com.liferay.portal.kernel.util.GetterUtil;
-import com.liferay.portal.kernel.util.ParamUtil;
-import com.liferay.portal.kernel.util.StringUtil;
-import com.liferay.portal.kernel.util.Validator;
-import com.liferay.portal.model.Group;
-import com.liferay.portal.model.Layout;
-import com.liferay.portal.model.LayoutTypePortlet;
-import com.liferay.portal.model.Portlet;
-import com.liferay.portal.security.auth.AuthTokenUtil;
-import com.liferay.portal.security.auth.PrincipalException;
-import com.liferay.portal.security.permission.ActionKeys;
-import com.liferay.portal.security.permission.PermissionChecker;
-import com.liferay.portal.security.permission.PermissionThreadLocal;
-import com.liferay.portal.service.permission.GroupPermissionUtil;
-import com.liferay.portal.service.permission.LayoutPermissionUtil;
-import com.liferay.portal.service.permission.LayoutPrototypePermissionUtil;
-import com.liferay.portal.service.permission.LayoutSetPrototypePermissionUtil;
-import com.liferay.portal.service.permission.OrganizationPermissionUtil;
-import com.liferay.portal.service.permission.PortletPermissionUtil;
-import com.liferay.portal.theme.ThemeDisplay;
-import com.liferay.portal.util.PortalUtil;
-import com.liferay.portal.util.PortletKeys;
+import com.liferay.portal.kernel.util.PortalUtil;
+import com.liferay.portal.kernel.util.WebKeys;
+import com.liferay.portal.util.LayoutTypeAccessPolicyTracker;
 import com.liferay.portal.util.PropsValues;
-import com.liferay.portal.util.WebKeys;
 
 import java.util.List;
 import java.util.Map;
 
 import javax.portlet.Event;
-import javax.portlet.PortletMode;
 
 import javax.servlet.RequestDispatcher;
 import javax.servlet.http.HttpServletRequest;
@@ -69,18 +52,16 @@ import javax.servlet.http.HttpServletResponse;
  * @author Tomas Polesovsky
  * @author Raymond Augé
  */
-@DoPrivileged
 public class SecurityPortletContainerWrapper implements PortletContainer {
 
+	/**
+	 * @deprecated As of Athanasius (7.3.x), with no direct replacement
+	 */
+	@Deprecated
 	public static PortletContainer createSecurityPortletContainerWrapper(
 		PortletContainer portletContainer) {
 
-		if (!SPIUtil.isSPI()) {
-			portletContainer = new SecurityPortletContainerWrapper(
-				portletContainer);
-		}
-
-		return portletContainer;
+		return new SecurityPortletContainerWrapper(portletContainer);
 	}
 
 	public SecurityPortletContainerWrapper(PortletContainer portletContainer) {
@@ -88,95 +69,159 @@ public class SecurityPortletContainerWrapper implements PortletContainer {
 	}
 
 	@Override
-	public void preparePortlet(HttpServletRequest request, Portlet portlet)
+	public void preparePortlet(
+			HttpServletRequest httpServletRequest, Portlet portlet)
 		throws PortletContainerException {
 
-		_portletContainer.preparePortlet(request, portlet);
+		_portletContainer.preparePortlet(httpServletRequest, portlet);
 	}
 
 	@Override
 	public ActionResult processAction(
-			HttpServletRequest request, HttpServletResponse response,
-			Portlet portlet)
+			HttpServletRequest httpServletRequest,
+			HttpServletResponse httpServletResponse, Portlet portlet)
 		throws PortletContainerException {
 
 		try {
-			HttpServletRequest ownerLayoutRequest =
-				getOwnerLayoutRequestWrapper(request, portlet);
+			HttpServletRequest ownerLayoutHttpServletRequest =
+				getOwnerLayoutRequestWrapper(httpServletRequest, portlet);
 
-			checkAction(ownerLayoutRequest, portlet);
+			checkAction(ownerLayoutHttpServletRequest, portlet);
 
-			return _portletContainer.processAction(request, response, portlet);
+			return _portletContainer.processAction(
+				httpServletRequest, httpServletResponse, portlet);
 		}
-		catch (PrincipalException pe) {
-			return processActionException(request, response, portlet, pe);
+		catch (PrincipalException principalException) {
+			return processActionException(
+				httpServletRequest, httpServletResponse, portlet,
+				principalException);
 		}
-		catch (PortletContainerException pce) {
-			throw pce;
+		catch (PortletContainerException portletContainerException) {
+			throw portletContainerException;
 		}
-		catch (Exception e) {
-			throw new PortletContainerException(e);
+		catch (Exception exception) {
+			throw new PortletContainerException(exception);
 		}
 	}
 
 	@Override
 	public List<Event> processEvent(
-			HttpServletRequest request, HttpServletResponse response,
-			Portlet portlet, Layout layout, Event event)
+			HttpServletRequest httpServletRequest,
+			HttpServletResponse httpServletResponse, Portlet portlet,
+			Layout layout, Event event)
 		throws PortletContainerException {
 
 		return _portletContainer.processEvent(
-			request, response, portlet, layout, event);
+			httpServletRequest, httpServletResponse, portlet, layout, event);
+	}
+
+	@Override
+	public void processPublicRenderParameters(
+		HttpServletRequest httpServletRequest, Layout layout) {
+
+		_portletContainer.processPublicRenderParameters(
+			httpServletRequest, layout);
+	}
+
+	@Override
+	public void processPublicRenderParameters(
+		HttpServletRequest httpServletRequest, Layout layout, Portlet portlet) {
+
+		_portletContainer.processPublicRenderParameters(
+			httpServletRequest, layout, portlet);
 	}
 
 	@Override
 	public void render(
-			HttpServletRequest request, HttpServletResponse response,
-			Portlet portlet)
+			HttpServletRequest httpServletRequest,
+			HttpServletResponse httpServletResponse, Portlet portlet)
 		throws PortletContainerException {
 
 		try {
-			checkRender(request, portlet);
+			checkRender(httpServletRequest, portlet);
 
-			_portletContainer.render(request, response, portlet);
+			_portletContainer.render(
+				httpServletRequest, httpServletResponse, portlet);
 		}
-		catch (PrincipalException e) {
-			processRenderException(request, response, portlet);
+		catch (PrincipalException principalException) {
+
+			// LPS-52675
+
+			if (_log.isDebugEnabled()) {
+				_log.debug(principalException, principalException);
+			}
+
+			processRenderException(
+				httpServletRequest, httpServletResponse, portlet);
 		}
-		catch (PortletContainerException e) {
-			throw e;
+		catch (PortletContainerException portletContainerException) {
+			throw portletContainerException;
 		}
-		catch (Exception e) {
-			throw new PortletContainerException(e);
+		catch (Exception exception) {
+			throw new PortletContainerException(exception);
+		}
+	}
+
+	@Override
+	public void renderHeaders(
+			HttpServletRequest httpServletRequest,
+			HttpServletResponse httpServletResponse, Portlet portlet)
+		throws PortletContainerException {
+
+		try {
+			checkRender(httpServletRequest, portlet);
+
+			_portletContainer.renderHeaders(
+				httpServletRequest, httpServletResponse, portlet);
+		}
+		catch (PrincipalException principalException) {
+
+			// LPS-52675
+
+			if (_log.isDebugEnabled()) {
+				_log.debug(principalException, principalException);
+			}
+
+			processRenderException(
+				httpServletRequest, httpServletResponse, portlet);
+		}
+		catch (PortletContainerException portletContainerException) {
+			throw portletContainerException;
+		}
+		catch (Exception exception) {
+			throw new PortletContainerException(exception);
 		}
 	}
 
 	@Override
 	public void serveResource(
-			HttpServletRequest request, HttpServletResponse response,
-			Portlet portlet)
+			HttpServletRequest httpServletRequest,
+			HttpServletResponse httpServletResponse, Portlet portlet)
 		throws PortletContainerException {
 
 		try {
-			HttpServletRequest ownerLayoutRequest =
-				getOwnerLayoutRequestWrapper(request, portlet);
+			HttpServletRequest ownerLayoutHttpServletRequest =
+				getOwnerLayoutRequestWrapper(httpServletRequest, portlet);
 
-			checkResource(ownerLayoutRequest, portlet);
+			checkResource(ownerLayoutHttpServletRequest, portlet);
 
-			_portletContainer.serveResource(request, response, portlet);
+			_portletContainer.serveResource(
+				httpServletRequest, httpServletResponse, portlet);
 		}
-		catch (PrincipalException pe) {
-			processServeResourceException(request, response, portlet, pe);
+		catch (PrincipalException principalException) {
+			processServeResourceException(
+				httpServletRequest, httpServletResponse, portlet,
+				principalException);
 		}
-		catch (PortletContainerException pce) {
-			throw pce;
+		catch (PortletContainerException portletContainerException) {
+			throw portletContainerException;
 		}
-		catch (Exception e) {
-			throw new PortletContainerException(e);
+		catch (Exception exception) {
+			throw new PortletContainerException(exception);
 		}
 	}
 
-	protected void check(HttpServletRequest request, Portlet portlet)
+	protected void check(HttpServletRequest httpServletRequest, Portlet portlet)
 		throws Exception {
 
 		if (portlet == null) {
@@ -185,45 +230,37 @@ public class SecurityPortletContainerWrapper implements PortletContainer {
 
 		if (!isValidPortletId(portlet.getPortletId())) {
 			if (_log.isWarnEnabled()) {
-				_log.warn("Invalid portlet id " + portlet.getPortletId());
+				_log.warn("Invalid portlet ID " + portlet.getPortletId());
 			}
 
-			throw new PrincipalException();
+			throw new PrincipalException(
+				"Invalid portlet ID " + portlet.getPortletId());
 		}
 
 		if (portlet.isUndeployedPortlet()) {
 			return;
 		}
 
-		Layout layout = (Layout)request.getAttribute(WebKeys.LAYOUT);
+		Layout layout = (Layout)httpServletRequest.getAttribute(WebKeys.LAYOUT);
 
-		if (layout.isTypeControlPanel()) {
-			isAccessAllowedToControlPanelPortlet(request, portlet);
+		LayoutTypeAccessPolicy layoutTypeAccessPolicy =
+			LayoutTypeAccessPolicyTracker.getLayoutTypeAccessPolicy(layout);
 
-			return;
-		}
-
-		if (isAccessAllowedToLayoutPortlet(request, portlet)) {
-			PortalUtil.addPortletDefaultResource(request, portlet);
-
-			if (hasAccessPermission(request, portlet)) {
-				return;
-			}
-		}
-
-		throw new PrincipalException();
+		layoutTypeAccessPolicy.checkAccessAllowedToPortlet(
+			httpServletRequest, layout, portlet);
 	}
 
-	protected void checkAction(HttpServletRequest request, Portlet portlet)
+	protected void checkAction(
+			HttpServletRequest httpServletRequest, Portlet portlet)
 		throws Exception {
 
-		checkCSRFProtection(request, portlet);
+		checkCSRFProtection(httpServletRequest, portlet);
 
-		check(request, portlet);
+		check(httpServletRequest, portlet);
 	}
 
 	protected void checkCSRFProtection(
-			HttpServletRequest request, Portlet portlet)
+			HttpServletRequest httpServletRequest, Portlet portlet)
 		throws PortalException {
 
 		Map<String, String> initParams = portlet.getInitParams();
@@ -231,54 +268,69 @@ public class SecurityPortletContainerWrapper implements PortletContainer {
 		boolean checkAuthToken = GetterUtil.getBoolean(
 			initParams.get("check-auth-token"), true);
 
+		if (AuthTokenWhitelistUtil.isPortletCSRFWhitelisted(
+				httpServletRequest, portlet)) {
+
+			checkAuthToken = false;
+		}
+
 		if (checkAuthToken) {
 			AuthTokenUtil.checkCSRFToken(
-				request, SecurityPortletContainerWrapper.class.getName());
+				httpServletRequest,
+				SecurityPortletContainerWrapper.class.getName());
 		}
 	}
 
-	protected void checkRender(HttpServletRequest request, Portlet portlet)
+	protected void checkRender(
+			HttpServletRequest httpServletRequest, Portlet portlet)
 		throws Exception {
 
-		check(request, portlet);
+		check(httpServletRequest, portlet);
 	}
 
-	protected void checkResource(HttpServletRequest request, Portlet portlet)
+	protected void checkResource(
+			HttpServletRequest httpServletRequest, Portlet portlet)
 		throws Exception {
 
-		check(request, portlet);
+		check(httpServletRequest, portlet);
 	}
 
-	protected String getOriginalURL(HttpServletRequest request) {
-		LastPath lastPath = (LastPath)request.getAttribute(WebKeys.LAST_PATH);
+	protected String getOriginalURL(HttpServletRequest httpServletRequest) {
+		LastPath lastPath = (LastPath)httpServletRequest.getAttribute(
+			WebKeys.LAST_PATH);
 
 		if (lastPath == null) {
-			return String.valueOf(request.getRequestURI());
+			return String.valueOf(httpServletRequest.getRequestURI());
 		}
 
-		String portalURL = PortalUtil.getPortalURL(request);
+		String portalURL = PortalUtil.getPortalURL(httpServletRequest);
 
 		return portalURL.concat(
-			lastPath.getContextPath()).concat(lastPath.getPath());
+			lastPath.getContextPath()
+		).concat(
+			lastPath.getPath()
+		);
 	}
 
 	protected HttpServletRequest getOwnerLayoutRequestWrapper(
-			HttpServletRequest request, Portlet portlet)
+			HttpServletRequest httpServletRequest, Portlet portlet)
 		throws Exception {
 
 		if (!PropsValues.PORTLET_EVENT_DISTRIBUTION_LAYOUT_SET ||
 			PropsValues.PORTLET_CROSS_LAYOUT_INVOCATION_MODE.equals("render")) {
 
-			return request;
+			return httpServletRequest;
 		}
 
 		Layout ownerLayout = null;
 		LayoutTypePortlet ownerLayoutTypePortlet = null;
 
-		ThemeDisplay themeDisplay = (ThemeDisplay)request.getAttribute(
-			WebKeys.THEME_DISPLAY);
+		ThemeDisplay themeDisplay =
+			(ThemeDisplay)httpServletRequest.getAttribute(
+				WebKeys.THEME_DISPLAY);
 
-		Layout requestLayout = (Layout)request.getAttribute(WebKeys.LAYOUT);
+		Layout requestLayout = (Layout)httpServletRequest.getAttribute(
+			WebKeys.LAYOUT);
 
 		List<LayoutTypePortlet> layoutTypePortlets =
 			PortletContainerUtil.getLayoutTypePortlets(requestLayout);
@@ -294,13 +346,13 @@ public class SecurityPortletContainerWrapper implements PortletContainer {
 		}
 
 		if (ownerLayout == null) {
-			return request;
+			return httpServletRequest;
 		}
 
 		Layout currentLayout = themeDisplay.getLayout();
 
 		if (currentLayout.equals(ownerLayout)) {
-			return request;
+			return httpServletRequest;
 		}
 
 		ThemeDisplay themeDisplayClone = (ThemeDisplay)themeDisplay.clone();
@@ -309,7 +361,7 @@ public class SecurityPortletContainerWrapper implements PortletContainer {
 		themeDisplayClone.setLayoutTypePortlet(ownerLayoutTypePortlet);
 
 		TempAttributesServletRequest tempAttributesServletRequest =
-			new TempAttributesServletRequest(request);
+			new TempAttributesServletRequest(httpServletRequest);
 
 		tempAttributesServletRequest.setTempAttribute(
 			WebKeys.LAYOUT, ownerLayout);
@@ -317,270 +369,6 @@ public class SecurityPortletContainerWrapper implements PortletContainer {
 			WebKeys.THEME_DISPLAY, themeDisplayClone);
 
 		return tempAttributesServletRequest;
-	}
-
-	protected boolean hasAccessPermission(
-			HttpServletRequest request, Portlet portlet)
-		throws PortalException, SystemException {
-
-		PermissionChecker permissionChecker =
-			PermissionThreadLocal.getPermissionChecker();
-
-		ThemeDisplay themeDisplay = (ThemeDisplay)request.getAttribute(
-			WebKeys.THEME_DISPLAY);
-
-		Layout layout = (Layout)request.getAttribute(WebKeys.LAYOUT);
-
-		PortletMode portletMode = PortletModeFactory.getPortletMode(
-			ParamUtil.getString(request, "p_p_mode"));
-
-		return PortletPermissionUtil.hasAccessPermission(
-			permissionChecker, themeDisplay.getScopeGroupId(), layout, portlet,
-			portletMode);
-	}
-
-	protected void isAccessAllowedToControlPanelPortlet(
-			HttpServletRequest request, Portlet portlet)
-		throws PortalException, SystemException {
-
-		PermissionChecker permissionChecker =
-			PermissionThreadLocal.getPermissionChecker();
-
-		ThemeDisplay themeDisplay = (ThemeDisplay)request.getAttribute(
-			WebKeys.THEME_DISPLAY);
-
-		if (PortletPermissionUtil.hasControlPanelAccessPermission(
-				permissionChecker, themeDisplay.getScopeGroupId(), portlet)) {
-
-			return;
-		}
-
-		if (isAccessGrantedByRuntimePortlet(request, portlet)) {
-			return;
-		}
-
-		if (isAccessGrantedByPortletAuthenticationToken(request, portlet)) {
-			return;
-		}
-
-		throw new PrincipalException();
-	}
-
-	protected boolean isAccessAllowedToLayoutPortlet(
-			HttpServletRequest request, Portlet portlet)
-		throws PortalException, SystemException {
-
-		if (isAccessGrantedByRuntimePortlet(request, portlet)) {
-			return true;
-		}
-
-		if (isAccessGrantedByPortletOnPage(request, portlet)) {
-			return true;
-		}
-
-		if (isLayoutConfigurationAllowed(request, portlet)) {
-			return true;
-		}
-
-		if (isAccessGrantedByPortletAuthenticationToken(request, portlet)) {
-			return true;
-		}
-
-		return false;
-	}
-
-	protected boolean isAccessGrantedByPortletAuthenticationToken(
-		HttpServletRequest request, Portlet portlet) {
-
-		ThemeDisplay themeDisplay = (ThemeDisplay)request.getAttribute(
-			WebKeys.THEME_DISPLAY);
-
-		String portletId = portlet.getPortletId();
-
-		if (!portlet.isAddDefaultResource()) {
-			return false;
-		}
-
-		if (!PropsValues.PORTLET_ADD_DEFAULT_RESOURCE_CHECK_ENABLED) {
-			return true;
-		}
-
-		String namespace = PortalUtil.getPortletNamespace(portletId);
-
-		String strutsAction = ParamUtil.getString(
-			request, namespace + "struts_action");
-
-		if (Validator.isNull(strutsAction)) {
-			strutsAction = ParamUtil.getString(request, "struts_action");
-		}
-
-		String requestPortletAuthenticationToken = ParamUtil.getString(
-			request, "p_p_auth");
-
-		if (Validator.isNull(requestPortletAuthenticationToken)) {
-			HttpServletRequest originalRequest =
-				PortalUtil.getOriginalServletRequest(request);
-
-			requestPortletAuthenticationToken = ParamUtil.getString(
-				originalRequest, "p_p_auth");
-		}
-
-		if (AuthTokenUtil.isValidPortletInvocationToken(
-				request, themeDisplay.getPlid(), portletId, strutsAction,
-			requestPortletAuthenticationToken)) {
-
-			return true;
-		}
-
-		return false;
-	}
-
-	protected boolean isAccessGrantedByPortletOnPage(
-			HttpServletRequest request, Portlet portlet)
-		throws PortalException, SystemException {
-
-		ThemeDisplay themeDisplay = (ThemeDisplay)request.getAttribute(
-			WebKeys.THEME_DISPLAY);
-
-		Layout layout = themeDisplay.getLayout();
-
-		String portletId = portlet.getPortletId();
-
-		if (layout.isTypePanel() &&
-			isPanelSelectedPortlet(themeDisplay, portletId)) {
-
-			return true;
-		}
-
-		LayoutTypePortlet layoutTypePortlet =
-			themeDisplay.getLayoutTypePortlet();
-
-		if ((layoutTypePortlet != null) &&
-			layoutTypePortlet.hasPortletId(portletId)) {
-
-			return true;
-		}
-
-		return false;
-	}
-
-	protected boolean isAccessGrantedByRuntimePortlet(
-		HttpServletRequest request, Portlet portlet) {
-
-		Boolean renderPortletResource = (Boolean)request.getAttribute(
-			WebKeys.RENDER_PORTLET_RESOURCE);
-
-		if (renderPortletResource != null) {
-			boolean runtimePortlet = renderPortletResource.booleanValue();
-
-			if (runtimePortlet) {
-				return true;
-			}
-		}
-
-		return false;
-	}
-
-	protected boolean isLayoutConfigurationAllowed(
-			HttpServletRequest request, Portlet portlet)
-		throws PortalException, SystemException {
-
-		ThemeDisplay themeDisplay = (ThemeDisplay)request.getAttribute(
-			WebKeys.THEME_DISPLAY);
-
-		if (!themeDisplay.isSignedIn()) {
-			return false;
-		}
-
-		String portletId = portlet.getPortletId();
-
-		if (!portletId.equals(PortletKeys.LAYOUTS_ADMIN)) {
-			return false;
-		}
-
-		PermissionChecker permissionChecker =
-			themeDisplay.getPermissionChecker();
-
-		Layout layout = themeDisplay.getLayout();
-
-		Group group = layout.getGroup();
-
-		if (group.isSite()) {
-			if (LayoutPermissionUtil.contains(
-					permissionChecker, layout, ActionKeys.CUSTOMIZE) ||
-				LayoutPermissionUtil.contains(
-					permissionChecker, layout, ActionKeys.UPDATE)) {
-
-				return true;
-			}
-		}
-
-		if (group.isCompany()) {
-			if (permissionChecker.isCompanyAdmin()) {
-				return true;
-			}
-		}
-		else if (group.isLayoutPrototype()) {
-			long layoutPrototypeId = group.getClassPK();
-
-			if (LayoutPrototypePermissionUtil.contains(
-					permissionChecker, layoutPrototypeId,
-				ActionKeys.UPDATE)) {
-
-				return true;
-			}
-		}
-		else if (group.isLayoutSetPrototype()) {
-			long layoutSetPrototypeId = group.getClassPK();
-
-			if (LayoutSetPrototypePermissionUtil.contains(
-					permissionChecker, layoutSetPrototypeId,
-				ActionKeys.UPDATE)) {
-
-				return true;
-			}
-		}
-		else if (group.isOrganization()) {
-			long organizationId = group.getOrganizationId();
-
-			if (OrganizationPermissionUtil.contains(
-					permissionChecker, organizationId, ActionKeys.UPDATE)) {
-
-				return true;
-			}
-		}
-		else if (group.isUserGroup()) {
-			long scopeGroupId = themeDisplay.getScopeGroupId();
-
-			if (GroupPermissionUtil.contains(
-					permissionChecker, scopeGroupId, ActionKeys.UPDATE)) {
-
-				return true;
-			}
-		}
-		else if (group.isUser()) {
-			return true;
-		}
-
-		return false;
-	}
-
-	protected boolean isPanelSelectedPortlet(
-		ThemeDisplay themeDisplay, String portletId) {
-
-		Layout layout = themeDisplay.getLayout();
-
-		String panelSelectedPortlets = layout.getTypeSettingsProperty(
-			"panelSelectedPortlets");
-
-		if (Validator.isNotNull(panelSelectedPortlets)) {
-			String[] panelSelectedPortletsArray = StringUtil.split(
-				panelSelectedPortlets);
-
-			return ArrayUtil.contains(panelSelectedPortletsArray, portletId);
-		}
-
-		return false;
 	}
 
 	protected boolean isValidPortletId(String portletId) {
@@ -599,7 +387,9 @@ public class SecurityPortletContainerWrapper implements PortletContainer {
 				continue;
 			}
 
-			if (c == CharPool.UNDERLINE) {
+			if ((c == CharPool.DOLLAR) || (c == CharPool.POUND) ||
+				(c == CharPool.UNDERLINE)) {
+
 				continue;
 			}
 
@@ -610,27 +400,33 @@ public class SecurityPortletContainerWrapper implements PortletContainer {
 	}
 
 	protected ActionResult processActionException(
-		HttpServletRequest request, HttpServletResponse response,
-		Portlet portlet, PrincipalException e) {
+		HttpServletRequest httpServletRequest,
+		HttpServletResponse httpServletResponse, Portlet portlet,
+		PrincipalException principalException) {
 
 		if (_log.isDebugEnabled()) {
-			_log.debug(e);
+			_log.debug(principalException, principalException);
 		}
-
-		String url = getOriginalURL(request);
 
 		if (_log.isWarnEnabled()) {
+			String url = getOriginalURL(httpServletRequest);
+
 			_log.warn(
-				"Reject process action for " + url + " on " +
-					portlet.getPortletId());
+				String.format(
+					"User %s is not allowed to access URL %s and portlet %s: " +
+						"%s",
+					PortalUtil.getUserId(httpServletRequest), url,
+					portlet.getPortletId(), principalException.getMessage()));
 		}
+
+		httpServletResponse.setStatus(HttpServletResponse.SC_FORBIDDEN);
 
 		return ActionResult.EMPTY_ACTION_RESULT;
 	}
 
 	protected void processRenderException(
-			HttpServletRequest request, HttpServletResponse response,
-			Portlet portlet)
+			HttpServletRequest httpServletRequest,
+			HttpServletResponse httpServletResponse, Portlet portlet)
 		throws PortletContainerException {
 
 		String portletContent = null;
@@ -641,43 +437,51 @@ public class SecurityPortletContainerWrapper implements PortletContainer {
 
 		try {
 			if (portletContent != null) {
-				RequestDispatcher requestDispatcher =
-					request.getRequestDispatcher(portletContent);
+				HttpServletRequest originalHttpServletRequest =
+					PortalUtil.getOriginalServletRequest(httpServletRequest);
 
-				requestDispatcher.include(request, response);
+				RequestDispatcher requestDispatcher =
+					originalHttpServletRequest.getRequestDispatcher(
+						portletContent);
+
+				requestDispatcher.include(
+					httpServletRequest, httpServletResponse);
 			}
 		}
-		catch (Exception ex) {
-			throw new PortletContainerException(ex);
+		catch (Exception exception) {
+			throw new PortletContainerException(exception);
 		}
 	}
 
 	protected void processServeResourceException(
-		HttpServletRequest request, HttpServletResponse response,
-		Portlet portlet, PrincipalException e) {
+		HttpServletRequest httpServletRequest,
+		HttpServletResponse httpServletResponse, Portlet portlet,
+		PrincipalException principalException) {
 
 		if (_log.isDebugEnabled()) {
-			_log.debug(e);
+			_log.debug(principalException, principalException);
 		}
 
-		String url = getOriginalURL(request);
-
-		response.setHeader(
+		httpServletResponse.setHeader(
 			HttpHeaders.CACHE_CONTROL,
 			HttpHeaders.CACHE_CONTROL_NO_CACHE_VALUE);
 
-		response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+		httpServletResponse.setStatus(HttpServletResponse.SC_FORBIDDEN);
 
 		if (_log.isWarnEnabled()) {
+			String url = getOriginalURL(httpServletRequest);
+
 			_log.warn(
-				"Reject serveResource for " + url + " on " +
-					portlet.getPortletId());
+				String.format(
+					"User %s is not allowed to serve resource for %s on %s: %s",
+					PortalUtil.getUserId(httpServletRequest), url,
+					portlet.getPortletId(), principalException.getMessage()));
 		}
 	}
 
-	private static Log _log = LogFactoryUtil.getLog(
+	private static final Log _log = LogFactoryUtil.getLog(
 		SecurityPortletContainerWrapper.class);
 
-	private PortletContainer _portletContainer;
+	private final PortletContainer _portletContainer;
 
 }

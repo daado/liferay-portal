@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,7 +14,7 @@
 
 package com.liferay.portal.servlet;
 
-import com.liferay.portal.kernel.util.AutoResetThreadLocal;
+import com.liferay.petra.lang.CentralizedThreadLocal;
 import com.liferay.portal.kernel.util.WebKeys;
 
 import java.io.Closeable;
@@ -25,6 +25,7 @@ import java.util.Enumeration;
 import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.locks.Lock;
+import java.util.function.Function;
 
 import javax.servlet.RequestDispatcher;
 import javax.servlet.ServletRequest;
@@ -32,7 +33,9 @@ import javax.servlet.ServletRequestWrapper;
 
 /**
  * @author Shuyang Zhou
+ * @deprecated As of Athanasius (7.3.x), with no direct replacement
  */
+@Deprecated
 public class ThreadLocalFacadeServletRequestWrapper
 	extends ServletRequestWrapper implements Closeable {
 
@@ -46,7 +49,7 @@ public class ThreadLocalFacadeServletRequestWrapper
 
 		_nextServletRequestThreadLocal.set(nextServletRequest);
 
-		_locales = new ArrayList<Locale>();
+		_locales = new ArrayList<>();
 
 		Enumeration<Locale> enumeration = nextServletRequest.getLocales();
 
@@ -118,10 +121,10 @@ public class ThreadLocalFacadeServletRequestWrapper
 	}
 
 	@Override
-	public void setAttribute(String name, Object o) {
+	public void setAttribute(String name, Object object) {
 		ServletRequest servletRequest = getRequest();
 
-		servletRequest.setAttribute(name, o);
+		servletRequest.setAttribute(name, object);
 	}
 
 	@Override
@@ -129,19 +132,13 @@ public class ThreadLocalFacadeServletRequestWrapper
 		_nextServletRequestThreadLocal.set(servletRequest);
 	}
 
-	private static ThreadLocal<ServletRequest> _nextServletRequestThreadLocal =
-		new AutoResetThreadLocal<ServletRequest>(
+	private static final ThreadLocal<ServletRequest>
+		_nextServletRequestThreadLocal = new CentralizedThreadLocal<>(
 			ThreadLocalFacadeServletRequestWrapper.class +
-				"._nextServletRequestThreadLocal") {
+				"._nextServletRequestThreadLocal",
+			null, Function.identity(), true);
 
-			@Override
-			protected ServletRequest copy(ServletRequest servletRequest) {
-				return servletRequest;
-			}
-
-		};
-
-	private List<Locale> _locales;
-	private ServletRequestWrapper _servletRequestWrapper;
+	private final List<Locale> _locales;
+	private final ServletRequestWrapper _servletRequestWrapper;
 
 }

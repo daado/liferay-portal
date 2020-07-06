@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,9 +14,8 @@
 
 package com.liferay.portal.model.impl;
 
-import com.liferay.portal.kernel.exception.SystemException;
-import com.liferay.portal.model.LayoutSet;
-import com.liferay.portal.service.LayoutSetLocalServiceUtil;
+import com.liferay.portal.kernel.model.LayoutSet;
+import com.liferay.portal.kernel.service.LayoutSetLocalServiceUtil;
 
 /**
  * The extended model base implementation for the LayoutSet service. Represents a row in the &quot;LayoutSet&quot; database table, with each column mapped to a property of this class.
@@ -27,18 +26,19 @@ import com.liferay.portal.service.LayoutSetLocalServiceUtil;
  *
  * @author Brian Wing Shun Chan
  * @see LayoutSetImpl
- * @see com.liferay.portal.model.LayoutSet
+ * @see LayoutSet
  * @generated
  */
-public abstract class LayoutSetBaseImpl extends LayoutSetModelImpl
-	implements LayoutSet {
+public abstract class LayoutSetBaseImpl
+	extends LayoutSetModelImpl implements LayoutSet {
+
 	/*
 	 * NOTE FOR DEVELOPERS:
 	 *
-	 * Never modify or reference this class directly. All methods that expect a layout set model instance should use the {@link LayoutSet} interface instead.
+	 * Never modify or reference this class directly. All methods that expect a layout set model instance should use the <code>LayoutSet</code> interface instead.
 	 */
 	@Override
-	public void persist() throws SystemException {
+	public void persist() {
 		if (this.isNew()) {
 			LayoutSetLocalServiceUtil.addLayoutSet(this);
 		}
@@ -46,4 +46,5 @@ public abstract class LayoutSetBaseImpl extends LayoutSetModelImpl
 			LayoutSetLocalServiceUtil.updateLayoutSet(this);
 		}
 	}
+
 }

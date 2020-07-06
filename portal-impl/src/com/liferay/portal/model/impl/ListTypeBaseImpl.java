@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,7 +14,8 @@
 
 package com.liferay.portal.model.impl;
 
-import com.liferay.portal.model.ListType;
+import com.liferay.portal.kernel.model.ListType;
+import com.liferay.portal.kernel.service.ListTypeLocalServiceUtil;
 
 /**
  * The extended model base implementation for the ListType service. Represents a row in the &quot;ListType&quot; database table, with each column mapped to a property of this class.
@@ -25,14 +26,25 @@ import com.liferay.portal.model.ListType;
  *
  * @author Brian Wing Shun Chan
  * @see ListTypeImpl
- * @see com.liferay.portal.model.ListType
+ * @see ListType
  * @generated
  */
-public abstract class ListTypeBaseImpl extends ListTypeModelImpl
-	implements ListType {
+public abstract class ListTypeBaseImpl
+	extends ListTypeModelImpl implements ListType {
+
 	/*
 	 * NOTE FOR DEVELOPERS:
 	 *
-	 * Never modify or reference this class directly. All methods that expect a list type model instance should use the {@link ListType} interface instead.
+	 * Never modify or reference this class directly. All methods that expect a list type model instance should use the <code>ListType</code> interface instead.
 	 */
+	@Override
+	public void persist() {
+		if (this.isNew()) {
+			ListTypeLocalServiceUtil.addListType(this);
+		}
+		else {
+			ListTypeLocalServiceUtil.updateListType(this);
+		}
+	}
+
 }

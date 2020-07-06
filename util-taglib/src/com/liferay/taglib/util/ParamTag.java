@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,12 +14,13 @@
 
 package com.liferay.taglib.util;
 
-import com.liferay.portal.kernel.servlet.taglib.TagSupport;
+import com.liferay.taglib.TagSupport;
 
 import javax.servlet.jsp.JspException;
 
 /**
  * @author Brian Wing Shun Chan
+ * @author Neil Griffin
  */
 public class ParamTag extends TagSupport {
 
@@ -33,7 +34,15 @@ public class ParamTag extends TagSupport {
 			throw new JspException();
 		}
 
-		paramAncestorTag.addParam(_name, _value);
+		if (paramAncestorTag instanceof TypedParamAccessorTag) {
+			TypedParamAccessorTag typedParamAccessorTag =
+				(TypedParamAccessorTag)paramAncestorTag;
+
+			typedParamAccessorTag.addParam(_name, _type, _value);
+		}
+		else {
+			paramAncestorTag.addParam(_name, _value);
+		}
 
 		return SKIP_BODY;
 	}
@@ -42,11 +51,16 @@ public class ParamTag extends TagSupport {
 		_name = name;
 	}
 
+	public void setType(String type) {
+		_type = type;
+	}
+
 	public void setValue(String value) {
 		_value = value;
 	}
 
 	private String _name;
+	private String _type;
 	private String _value;
 
 }

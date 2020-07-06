@@ -1,6 +1,6 @@
 <%--
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -21,7 +21,7 @@ if (Validator.isNull(id)) {
 	id = randomNamespace;
 }
 else if (portletResponse != null) {
-	id = portletResponse.getNamespace() + id;
+	id = (PortalUtil.getLiferayPortletResponse(portletResponse)).getNamespace() + id;
 }
 
 if (useDialog && Validator.isNull(anchorId)) {
@@ -29,7 +29,7 @@ if (useDialog && Validator.isNull(anchorId)) {
 }
 
 if ((portletResponse != null) && Validator.isNotNull(anchorId)) {
-	anchorId = portletResponse.getNamespace() + anchorId;
+	anchorId = (PortalUtil.getLiferayPortletResponse(portletResponse)).getNamespace() + anchorId;
 }
 
 if (dropdown) {
@@ -39,5 +39,11 @@ if (dropdown) {
 
 if (Validator.isNull(state)) {
 	state = GetterUtil.getString(SessionClicks.get(request, id, null));
+}
+
+IntegerWrapper navItemCount = (IntegerWrapper)request.getAttribute("aui:nav-bar:navItemCount");
+
+if (navItemCount != null) {
+	navItemCount.increment();
 }
 %>

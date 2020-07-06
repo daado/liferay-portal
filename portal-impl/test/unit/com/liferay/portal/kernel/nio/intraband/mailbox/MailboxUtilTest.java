@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -15,26 +15,29 @@
 package com.liferay.portal.kernel.nio.intraband.mailbox;
 
 import com.liferay.portal.kernel.io.BigEndianCodec;
-import com.liferay.portal.kernel.nio.intraband.CompletionHandler;
 import com.liferay.portal.kernel.nio.intraband.Datagram;
-import com.liferay.portal.kernel.nio.intraband.DatagramHelper;
-import com.liferay.portal.kernel.nio.intraband.MockIntraband;
-import com.liferay.portal.kernel.nio.intraband.MockRegistrationReference;
-import com.liferay.portal.kernel.nio.intraband.RegistrationReference;
-import com.liferay.portal.kernel.test.CodeCoverageAssertor;
+import com.liferay.portal.kernel.nio.intraband.test.MockIntraband;
+import com.liferay.portal.kernel.nio.intraband.test.MockRegistrationReference;
+import com.liferay.portal.kernel.test.ReflectionTestUtil;
+import com.liferay.portal.kernel.test.rule.AggregateTestRule;
+import com.liferay.portal.kernel.test.rule.CodeCoverageAssertor;
+import com.liferay.portal.kernel.test.rule.NewEnv;
+import com.liferay.portal.kernel.test.util.PropsTestUtil;
+import com.liferay.portal.kernel.util.HashMapBuilder;
 import com.liferay.portal.kernel.util.PropsKeys;
-import com.liferay.portal.kernel.util.PropsUtilAdvice;
-import com.liferay.portal.kernel.util.ReflectionUtil;
 import com.liferay.portal.kernel.util.ThreadUtil;
-import com.liferay.portal.test.AdviseWith;
-import com.liferay.portal.test.AspectJMockingNewJVMJUnitTestRunner;
+import com.liferay.portal.test.rule.AdviseWith;
+import com.liferay.portal.test.rule.AspectJNewEnvTestRule;
 
-import java.lang.Thread.UncaughtExceptionHandler;
+import java.io.IOException;
+
 import java.lang.reflect.Constructor;
-import java.lang.reflect.Field;
 
 import java.nio.ByteBuffer;
 
+import java.util.Collections;
+import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.BlockingQueue;
 
 import org.aspectj.lang.ProceedingJoinPoint;
@@ -43,29 +46,38 @@ import org.aspectj.lang.annotation.Aspect;
 
 import org.junit.Assert;
 import org.junit.ClassRule;
+import org.junit.Rule;
 import org.junit.Test;
-import org.junit.runner.RunWith;
 
 /**
  * @author Shuyang Zhou
  */
-@RunWith(AspectJMockingNewJVMJUnitTestRunner.class)
+@NewEnv(type = NewEnv.Type.JVM)
 public class MailboxUtilTest {
 
 	@ClassRule
-	public static CodeCoverageAssertor codeCoverageAssertor =
-		new CodeCoverageAssertor();
+	@Rule
+	public static final AggregateTestRule aggregateTestRule =
+		new AggregateTestRule(
+			AspectJNewEnvTestRule.INSTANCE, CodeCoverageAssertor.INSTANCE);
 
-	@AdviseWith(
-		adviceClasses = {PropsUtilAdvice.class, ReceiptStubAdvice.class}
-	)
+	@Test
+	public void testConstructor() {
+		PropsTestUtil.setProps(Collections.emptyMap());
+
+		new MailboxUtil();
+	}
+
 	@Test
 	public void testDepositMailWithReaperThreadDisabled() {
-		PropsUtilAdvice.setProps(
+		Map<String, Object> properties = HashMapBuilder.<String, Object>put(
 			PropsKeys.INTRABAND_MAILBOX_REAPER_THREAD_ENABLED,
-			Boolean.FALSE.toString());
-		PropsUtilAdvice.setProps(
-			PropsKeys.INTRABAND_MAILBOX_STORAGE_LIFE, String.valueOf(0));
+			Boolean.FALSE.toString()
+		).put(
+			PropsKeys.INTRABAND_MAILBOX_STORAGE_LIFE, String.valueOf(0)
+		).build();
+
+		PropsTestUtil.setProps(properties);
 
 		Assert.assertEquals(0, MailboxUtil.depositMail(ByteBuffer.allocate(0)));
 		Assert.assertEquals(1, MailboxUtil.depositMail(ByteBuffer.allocate(0)));
@@ -91,16 +103,17 @@ public class MailboxUtilTest {
 		Assert.assertNull(reaperThread);
 	}
 
-	@AdviseWith(
-		adviceClasses = {PropsUtilAdvice.class, ReceiptStubAdvice.class}
-	)
+	@AdviseWith(adviceClasses = ReceiptStubAdvice.class)
 	@Test
 	public void testDepositMailWithReaperThreadEnabled() throws Exception {
-		PropsUtilAdvice.setProps(
+		Map<String, Object> properties = HashMapBuilder.<String, Object>put(
 			PropsKeys.INTRABAND_MAILBOX_REAPER_THREAD_ENABLED,
-			Boolean.TRUE.toString());
-		PropsUtilAdvice.setProps(
-			PropsKeys.INTRABAND_MAILBOX_STORAGE_LIFE, String.valueOf(0));
+			Boolean.TRUE.toString()
+		).put(
+			PropsKeys.INTRABAND_MAILBOX_STORAGE_LIFE, String.valueOf(0)
+		).build();
+
+		PropsTestUtil.setProps(properties);
 
 		Assert.assertEquals(0, MailboxUtil.depositMail(ByteBuffer.allocate(0)));
 		Assert.assertEquals(1, MailboxUtil.depositMail(ByteBuffer.allocate(0)));
@@ -111,7 +124,7 @@ public class MailboxUtilTest {
 
 		for (Thread thread : ThreadUtil.getThreads()) {
 			if ((thread != null) &&
-				thread.getName().equals(MailboxUtil.class.getName())) {
+				Objects.equals(thread.getName(), MailboxUtil.class.getName())) {
 
 				reaperThread = thread;
 
@@ -127,7 +140,9 @@ public class MailboxUtilTest {
 
 		Assert.assertTrue(reaperThread.isAlive());
 
-		BlockingQueue<Object> overdueMailQueue = getOverdueMailQueue();
+		BlockingQueue<Object> overdueMailQueue =
+			ReflectionTestUtil.getFieldValue(
+				MailboxUtil.class, "_overdueMailQueue");
 
 		while (!overdueMailQueue.isEmpty());
 
@@ -141,26 +156,28 @@ public class MailboxUtilTest {
 
 		overdueMailQueue.offer(createReceiptStub());
 
-		reaperThread.join(1000);
+		reaperThread.join();
 
 		Assert.assertSame(
-			reaperThread, RecorderUncaughtExceptionHandler._thread);
+			reaperThread, recorderUncaughtExceptionHandler._thread);
 
-		Throwable throwable = RecorderUncaughtExceptionHandler._throwable;
+		Throwable throwable = recorderUncaughtExceptionHandler._throwable;
 
 		Assert.assertSame(IllegalStateException.class, throwable.getClass());
 
 		Assert.assertFalse(reaperThread.isAlive());
 	}
 
-	@AdviseWith(adviceClasses = {PropsUtilAdvice.class})
 	@Test
 	public void testReceiveMailWithReaperThreadDisabled() {
-		PropsUtilAdvice.setProps(
+		Map<String, Object> properties = HashMapBuilder.<String, Object>put(
 			PropsKeys.INTRABAND_MAILBOX_REAPER_THREAD_ENABLED,
-			Boolean.FALSE.toString());
-		PropsUtilAdvice.setProps(
-			PropsKeys.INTRABAND_MAILBOX_STORAGE_LIFE, String.valueOf(10000));
+			Boolean.FALSE.toString()
+		).put(
+			PropsKeys.INTRABAND_MAILBOX_STORAGE_LIFE, String.valueOf(10000)
+		).build();
+
+		PropsTestUtil.setProps(properties);
 
 		Assert.assertNull(MailboxUtil.receiveMail(0));
 
@@ -173,17 +190,20 @@ public class MailboxUtilTest {
 		long receipt2 = MailboxUtil.depositMail(byteBuffer2);
 
 		Assert.assertSame(byteBuffer2, MailboxUtil.receiveMail(receipt2));
+
 		Assert.assertSame(byteBuffer1, MailboxUtil.receiveMail(receipt1));
 	}
 
-	@AdviseWith(adviceClasses = {PropsUtilAdvice.class})
 	@Test
 	public void testReceiveMailWithReaperThreadEnabled() {
-		PropsUtilAdvice.setProps(
+		Map<String, Object> properties = HashMapBuilder.<String, Object>put(
 			PropsKeys.INTRABAND_MAILBOX_REAPER_THREAD_ENABLED,
-			Boolean.TRUE.toString());
-		PropsUtilAdvice.setProps(
-			PropsKeys.INTRABAND_MAILBOX_STORAGE_LIFE, String.valueOf(10000));
+			Boolean.TRUE.toString()
+		).put(
+			PropsKeys.INTRABAND_MAILBOX_STORAGE_LIFE, String.valueOf(10000)
+		).build();
+
+		PropsTestUtil.setProps(properties);
 
 		Assert.assertNull(MailboxUtil.receiveMail(0));
 
@@ -196,23 +216,19 @@ public class MailboxUtilTest {
 		long receipt2 = MailboxUtil.depositMail(byteBuffer2);
 
 		Assert.assertSame(byteBuffer2, MailboxUtil.receiveMail(receipt2));
+
 		Assert.assertSame(byteBuffer1, MailboxUtil.receiveMail(receipt1));
 	}
 
-	@AdviseWith(adviceClasses = {PropsUtilAdvice.class})
 	@Test
 	public void testSendMailFail() {
-		MockIntraband mockIntraband = new MockIntraband() {
+		PropsTestUtil.setProps(Collections.emptyMap());
 
-			@Override
-			protected void doSendDatagram(
-				RegistrationReference registrationReference,
-				Datagram datagram) {
+		MockIntraband mockIntraband = new MockIntraband();
 
-				throw new RuntimeException();
-			}
+		IOException ioException = new IOException();
 
-		};
+		mockIntraband.setIOException(ioException);
 
 		try {
 			MailboxUtil.sendMail(
@@ -221,36 +237,27 @@ public class MailboxUtilTest {
 
 			Assert.fail();
 		}
-		catch (MailboxException me) {
-			Throwable throwable = me.getCause();
-
-			Assert.assertEquals(RuntimeException.class, throwable.getClass());
+		catch (MailboxException mailboxException) {
+			Assert.assertSame(ioException, mailboxException.getCause());
 		}
 	}
 
-	@AdviseWith(adviceClasses = {PropsUtilAdvice.class})
 	@Test
 	public void testSendMailSuccess() throws MailboxException {
+		PropsTestUtil.setProps(Collections.emptyMap());
+
 		final long receipt = 100;
 
 		MockIntraband mockIntraband = new MockIntraband() {
 
 			@Override
-			protected void doSendDatagram(
-				RegistrationReference registrationReference,
-				Datagram datagram) {
-
+			protected Datagram processDatagram(Datagram datagram) {
 				byte[] data = new byte[8];
 
 				BigEndianCodec.putLong(data, 0, receipt);
 
-				CompletionHandler<?> completionHandler =
-					DatagramHelper.getCompletionHandler(datagram);
-
-				completionHandler.replied(
-					null,
-					Datagram.createResponseDatagram(
-						datagram, ByteBuffer.wrap(data)));
+				return Datagram.createResponseDatagram(
+					datagram, ByteBuffer.wrap(data));
 			}
 
 		};
@@ -267,7 +274,8 @@ public class MailboxUtilTest {
 
 		@Around(
 			"execution(public long com.liferay.portal.kernel.nio.intraband." +
-				"mailbox.MailboxUtil$ReceiptStub.getReceipt())")
+				"mailbox.MailboxUtil$ReceiptStub.getReceipt())"
+		)
 		public Object getReceipt(ProceedingJoinPoint proceedingJoinPoint)
 			throws Throwable {
 
@@ -278,7 +286,7 @@ public class MailboxUtilTest {
 			return proceedingJoinPoint.proceed();
 		}
 
-		private static boolean _throwException;
+		private static volatile boolean _throwException;
 
 	}
 
@@ -288,20 +296,19 @@ public class MailboxUtilTest {
 		Class<?> clazz = Class.forName(
 			mailboxUtilClassName.concat("$ReceiptStub"));
 
-		Constructor<?> constructor = clazz.getConstructor(long.class);
+		Constructor<?> constructor = clazz.getDeclaredConstructor(long.class);
 
-		return constructor.newInstance(0);
-	}
+		constructor.setAccessible(true);
 
-	protected BlockingQueue<Object> getOverdueMailQueue() throws Exception {
-		Field overdueMailQueueField = ReflectionUtil.getDeclaredField(
-			MailboxUtil.class, "_overdueMailQueue");
+		Object object = constructor.newInstance(0);
 
-		return (BlockingQueue<Object>)overdueMailQueueField.get(null);
+		Assert.assertEquals(0, object.hashCode());
+
+		return object;
 	}
 
 	private static class RecorderUncaughtExceptionHandler
-		implements UncaughtExceptionHandler {
+		implements Thread.UncaughtExceptionHandler {
 
 		@Override
 		public void uncaughtException(Thread thread, Throwable throwable) {
@@ -309,8 +316,8 @@ public class MailboxUtilTest {
 			_throwable = throwable;
 		}
 
-		private static volatile Thread _thread;
-		private static volatile Throwable _throwable;
+		private volatile Thread _thread;
+		private volatile Throwable _throwable;
 
 	}
 

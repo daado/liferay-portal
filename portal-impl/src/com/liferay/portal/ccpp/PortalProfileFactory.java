@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -27,7 +27,9 @@ import javax.servlet.http.HttpServletRequest;
  */
 public class PortalProfileFactory {
 
-	public static Profile getCCPPProfile(HttpServletRequest request) {
+	public static Profile getCCPPProfile(
+		HttpServletRequest httpServletRequest) {
+
 		ProfileFactory profileFactory = ProfileFactory.getInstance();
 
 		if (profileFactory == null) {
@@ -37,7 +39,7 @@ public class PortalProfileFactory {
 		}
 
 		Profile profile = profileFactory.newProfile(
-			request, ValidationMode.VALIDATIONMODE_NONE);
+			httpServletRequest, ValidationMode.VALIDATIONMODE_NONE);
 
 		if (profile == null) {
 			profile = _profile;

@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,13 +14,13 @@
 
 package com.liferay.portal.xml;
 
+import com.liferay.petra.string.StringPool;
+import com.liferay.petra.xml.Dom4jUtil;
 import com.liferay.portal.kernel.io.unsync.UnsyncByteArrayOutputStream;
-import com.liferay.portal.kernel.util.StringPool;
 import com.liferay.portal.kernel.xml.Document;
 import com.liferay.portal.kernel.xml.Element;
 import com.liferay.portal.kernel.xml.Node;
 import com.liferay.portal.kernel.xml.Visitor;
-import com.liferay.util.xml.XMLFormatter;
 
 import java.io.IOException;
 import java.io.Writer;
@@ -51,10 +51,10 @@ public class NodeImpl implements Node {
 
 	@Override
 	public Node asXPathResult(Element parent) {
-		ElementImpl parentImpl = (ElementImpl)parent;
+		ElementImpl parentElementImpl = (ElementImpl)parent;
 
 		org.dom4j.Node node = _node.asXPathResult(
-			parentImpl.getWrappedElement());
+			parentElementImpl.getWrappedElement());
 
 		if (node == null) {
 			return null;
@@ -63,9 +63,8 @@ public class NodeImpl implements Node {
 		if (node instanceof org.dom4j.Element) {
 			return new ElementImpl((org.dom4j.Element)node);
 		}
-		else {
-			return new NodeImpl(node);
-		}
+
+		return new NodeImpl(node);
 	}
 
 	@Override
@@ -94,41 +93,42 @@ public class NodeImpl implements Node {
 		if (node instanceof org.dom4j.Element) {
 			return new ElementImpl((org.dom4j.Element)node);
 		}
-		else {
-			return new NodeImpl(node);
-		}
+
+		return new NodeImpl(node);
 	}
 
 	@Override
-	public boolean equals(Object obj) {
-		if (this == obj) {
+	public boolean equals(Object object) {
+		if (this == object) {
 			return true;
 		}
 
-		if (!(obj instanceof NodeImpl)) {
+		if (!(object instanceof NodeImpl)) {
 			return false;
 		}
 
-		org.dom4j.Node node = ((NodeImpl)obj).getWrappedNode();
+		NodeImpl nodeImpl = (NodeImpl)object;
+
+		org.dom4j.Node node = nodeImpl.getWrappedNode();
 
 		return _node.equals(node);
 	}
 
 	@Override
 	public String formattedString() throws IOException {
-		return XMLFormatter.toString(_node);
+		return Dom4jUtil.toString(_node);
 	}
 
 	@Override
 	public String formattedString(String indent) throws IOException {
-		return XMLFormatter.toString(_node, indent);
+		return Dom4jUtil.toString(_node, indent);
 	}
 
 	@Override
 	public String formattedString(String indent, boolean expandEmptyElements)
 		throws IOException {
 
-		return XMLFormatter.toString(_node, indent, expandEmptyElements);
+		return Dom4jUtil.toString(_node, indent, expandEmptyElements);
 	}
 
 	@Override
@@ -136,8 +136,7 @@ public class NodeImpl implements Node {
 			String indent, boolean expandEmptyElements, boolean trimText)
 		throws IOException {
 
-		return XMLFormatter.toString(
-			_node, indent, expandEmptyElements, trimText);
+		return Dom4jUtil.toString(_node, indent, expandEmptyElements, trimText);
 	}
 
 	@Override
@@ -147,9 +146,8 @@ public class NodeImpl implements Node {
 		if (document == null) {
 			return null;
 		}
-		else {
-			return new DocumentImpl(document);
-		}
+
+		return new DocumentImpl(document);
 	}
 
 	@Override
@@ -164,9 +162,8 @@ public class NodeImpl implements Node {
 		if (element == null) {
 			return null;
 		}
-		else {
-			return new ElementImpl(element);
-		}
+
+		return new ElementImpl(element);
 	}
 
 	@Override
@@ -176,9 +173,9 @@ public class NodeImpl implements Node {
 
 	@Override
 	public String getPath(Element context) {
-		ElementImpl contextImpl = (ElementImpl)context;
+		ElementImpl contextElementImpl = (ElementImpl)context;
 
-		return _node.getPath(contextImpl.getWrappedElement());
+		return _node.getPath(contextElementImpl.getWrappedElement());
 	}
 
 	@Override
@@ -198,9 +195,9 @@ public class NodeImpl implements Node {
 
 	@Override
 	public String getUniquePath(Element context) {
-		ElementImpl contextImpl = (ElementImpl)context;
+		ElementImpl contextElementImpl = (ElementImpl)context;
 
-		return _node.getUniquePath(contextImpl.getWrappedElement());
+		return _node.getUniquePath(contextElementImpl.getWrappedElement());
 	}
 
 	public org.dom4j.Node getWrappedNode() {
@@ -257,17 +254,16 @@ public class NodeImpl implements Node {
 
 	@Override
 	public Object selectObject(String xPathExpression) {
-		Object obj = _node.selectObject(xPathExpression);
+		Object object = _node.selectObject(xPathExpression);
 
-		if (obj == null) {
+		if (object == null) {
 			return null;
 		}
-		else if (obj instanceof List<?>) {
-			return SAXReaderImpl.toNewNodes((List<org.dom4j.Node>)obj);
+		else if (object instanceof List<?>) {
+			return SAXReaderImpl.toNewNodes((List<org.dom4j.Node>)object);
 		}
-		else {
-			return obj;
-		}
+
+		return object;
 	}
 
 	@Override
@@ -281,9 +277,8 @@ public class NodeImpl implements Node {
 		if (node instanceof org.dom4j.Element) {
 			return new ElementImpl((org.dom4j.Element)node);
 		}
-		else {
-			return new NodeImpl(node);
-		}
+
+		return new NodeImpl(node);
 	}
 
 	@Override
@@ -316,6 +311,6 @@ public class NodeImpl implements Node {
 		_node.write(writer);
 	}
 
-	private org.dom4j.Node _node;
+	private final org.dom4j.Node _node;
 
 }

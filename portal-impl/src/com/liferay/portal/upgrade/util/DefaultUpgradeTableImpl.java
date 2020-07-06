@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,12 +14,14 @@
 
 package com.liferay.portal.upgrade.util;
 
+import com.liferay.petra.string.StringBundler;
 import com.liferay.portal.kernel.upgrade.StagnantRowException;
 import com.liferay.portal.kernel.upgrade.util.UpgradeColumn;
 import com.liferay.portal.kernel.upgrade.util.UpgradeTable;
 import com.liferay.portal.kernel.util.Validator;
 import com.liferay.portal.tools.comparator.ColumnsComparator;
 
+import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 
@@ -33,6 +35,14 @@ import java.util.List;
  */
 public class DefaultUpgradeTableImpl
 	extends BaseUpgradeTableImpl implements UpgradeTable {
+
+	@Override
+	public void copyTable(
+			Connection sourceConnection, Connection targetConnection)
+		throws Exception {
+
+		updateTable(sourceConnection, targetConnection, false);
+	}
 
 	@Override
 	public String getExportedData(ResultSet rs) throws Exception {
@@ -68,13 +78,14 @@ public class DefaultUpgradeTableImpl
 
 					appendColumn(sb, newValue, last);
 				}
-				catch (StagnantRowException sre) {
+				catch (StagnantRowException stagnantRowException) {
 					_upgradeColumns[i].setNewValue(null);
 
 					throw new StagnantRowException(
-						"Column " + columns[i][0] + " with value " +
-							sre.getMessage(),
-						sre);
+						StringBundler.concat(
+							"Column ", columns[i][0], " with value ",
+							stagnantRowException.getMessage()),
+						stagnantRowException);
 				}
 			}
 		}
@@ -111,13 +122,13 @@ public class DefaultUpgradeTableImpl
 
 		columns = columns.clone();
 
-		List<String> sortedColumnNames = new ArrayList<String>();
+		List<String> sortedColumnNames = new ArrayList<>();
 
 		for (UpgradeColumn upgradeColumn : upgradeColumns) {
 			getSortedColumnName(sortedColumnNames, upgradeColumn);
 		}
 
-		if (sortedColumnNames.size() > 0) {
+		if (!sortedColumnNames.isEmpty()) {
 			Arrays.sort(columns, new ColumnsComparator(sortedColumnNames));
 		}
 
@@ -160,6 +171,6 @@ public class DefaultUpgradeTableImpl
 		}
 	}
 
-	private UpgradeColumn[] _upgradeColumns;
+	private final UpgradeColumn[] _upgradeColumns;
 
 }

@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,15 +14,16 @@
 
 package com.liferay.util.bridges.wai;
 
+import com.liferay.petra.string.CharPool;
+import com.liferay.petra.string.StringBundler;
+import com.liferay.petra.string.StringPool;
+import com.liferay.portal.kernel.model.PortletConstants;
 import com.liferay.portal.kernel.portlet.FriendlyURLMapper;
 import com.liferay.portal.kernel.portlet.LiferayPortletURL;
 import com.liferay.portal.kernel.portlet.LiferayWindowState;
 import com.liferay.portal.kernel.portlet.Router;
-import com.liferay.portal.kernel.util.CharPool;
 import com.liferay.portal.kernel.util.GetterUtil;
-import com.liferay.portal.kernel.util.StringPool;
-import com.liferay.portal.model.PortletConstants;
-import com.liferay.portal.util.PortalUtil;
+import com.liferay.portal.kernel.util.PortalUtil;
 
 import java.util.Map;
 
@@ -51,8 +52,9 @@ public class WAIFriendlyURLMapper implements FriendlyURLMapper {
 
 		liferayPortletURL.addParameterIncludedInPath("p_p_id");
 
-		return StringPool.SLASH + _MAPPING + StringPool.SLASH + prefix +
-			StringPool.SLASH + appUrl;
+		return StringBundler.concat(
+			StringPool.SLASH, _MAPPING, StringPool.SLASH, prefix,
+			StringPool.SLASH, appUrl);
 	}
 
 	@Override
@@ -86,6 +88,7 @@ public class WAIFriendlyURLMapper implements FriendlyURLMapper {
 		Map<String, Object> requestContext) {
 
 		int x = friendlyURLPath.indexOf(_MAPPING);
+
 		int y = friendlyURLPath.indexOf(
 			CharPool.SLASH, x + _MAPPING.length() + 1);
 
@@ -98,6 +101,7 @@ public class WAIFriendlyURLMapper implements FriendlyURLMapper {
 		String portletId = prefix + PortletConstants.WAR_SEPARATOR + prefix;
 
 		parameterMap.put("p_p_id", new String[] {portletId});
+
 		parameterMap.put("p_p_lifecycle", new String[] {"0"});
 
 		if (hasBinaryExtension(friendlyURLPath)) {
@@ -139,9 +143,7 @@ public class WAIFriendlyURLMapper implements FriendlyURLMapper {
 	}
 
 	protected boolean hasBinaryExtension(String friendlyURLPath) {
-		for (int i = 0; i < _BINARY_EXTENSIONS.length; i++) {
-			String binaryExtension = _BINARY_EXTENSIONS[i];
-
+		for (String binaryExtension : _BINARY_EXTENSIONS) {
 			if (friendlyURLPath.endsWith(binaryExtension)) {
 				return true;
 			}
@@ -152,9 +154,9 @@ public class WAIFriendlyURLMapper implements FriendlyURLMapper {
 
 	protected Router router;
 
-	private static final String[] _BINARY_EXTENSIONS = new String[] {
+	private static final String[] _BINARY_EXTENSIONS = {
 		".css", ".doc", ".gif", ".jpeg", ".jpg", ".js", ".odp", ".png", ".ppt",
-		".tgz", ".xls", ".zip",
+		".tgz", ".xls", ".zip"
 	};
 
 	private static final boolean _CHECK_MAPPING_WITH_PREFIX = true;

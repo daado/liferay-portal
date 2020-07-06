@@ -1,0 +1,39 @@
+.content-dashboard-management-toolbar {
+	.navbar-expand-md .container-fluid {
+		padding: 0;
+	}
+	.navbar-form {
+		padding-right: 0;
+	}
+	@media (min-width: 768px) {
+		.management-bar.navbar-expand-md .navbar-form {
+			padding-right: 0;
+		}
+	}
+}
+
+.lfr-search-container-wrapper {
+	.taglib-search-iterator-page-iterator-bottom {
+		margin-top: 24px;
+	}
+}
+
+.empty-state {
+	left: 50%;
+	max-width: 350px;
+	position: absolute;
+	transform: translate(-40%, 10%);
+	z-index: 1;
+}
+
+.no-categories-selected {
+	transform: translate(-40%, 80%);
+}
+
+.recharts-wrapper {
+	.recharts-cartesian-grid-vertical line:not(:last-child),
+	.recharts-cartesian-grid-horizontal
+		line:not(:last-child):not(:first-child) {
+		stroke-opacity: 0;
+	}
+}

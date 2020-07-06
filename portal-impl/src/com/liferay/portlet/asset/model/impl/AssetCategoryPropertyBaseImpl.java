@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,10 +14,8 @@
 
 package com.liferay.portlet.asset.model.impl;
 
-import com.liferay.portal.kernel.exception.SystemException;
-
-import com.liferay.portlet.asset.model.AssetCategoryProperty;
-import com.liferay.portlet.asset.service.AssetCategoryPropertyLocalServiceUtil;
+import com.liferay.asset.kernel.model.AssetCategoryProperty;
+import com.liferay.asset.kernel.service.AssetCategoryPropertyLocalServiceUtil;
 
 /**
  * The extended model base implementation for the AssetCategoryProperty service. Represents a row in the &quot;AssetCategoryProperty&quot; database table, with each column mapped to a property of this class.
@@ -28,23 +26,29 @@ import com.liferay.portlet.asset.service.AssetCategoryPropertyLocalServiceUtil;
  *
  * @author Brian Wing Shun Chan
  * @see AssetCategoryPropertyImpl
- * @see com.liferay.portlet.asset.model.AssetCategoryProperty
+ * @see AssetCategoryProperty
+ * @deprecated
  * @generated
  */
+@Deprecated
 public abstract class AssetCategoryPropertyBaseImpl
 	extends AssetCategoryPropertyModelImpl implements AssetCategoryProperty {
+
 	/*
 	 * NOTE FOR DEVELOPERS:
 	 *
-	 * Never modify or reference this class directly. All methods that expect a asset category property model instance should use the {@link AssetCategoryProperty} interface instead.
+	 * Never modify or reference this class directly. All methods that expect a asset category property model instance should use the <code>AssetCategoryProperty</code> interface instead.
 	 */
 	@Override
-	public void persist() throws SystemException {
+	public void persist() {
 		if (this.isNew()) {
-			AssetCategoryPropertyLocalServiceUtil.addAssetCategoryProperty(this);
+			AssetCategoryPropertyLocalServiceUtil.addAssetCategoryProperty(
+				this);
 		}
 		else {
-			AssetCategoryPropertyLocalServiceUtil.updateAssetCategoryProperty(this);
+			AssetCategoryPropertyLocalServiceUtil.updateAssetCategoryProperty(
+				this);
 		}
 	}
+
 }

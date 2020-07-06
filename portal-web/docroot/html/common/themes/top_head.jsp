@@ -1,6 +1,6 @@
 <%--
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -15,96 +15,78 @@
 --%>
 
 <%@ include file="/html/common/themes/init.jsp" %>
-
-<c:if test="<%= PropsValues.MONITORING_PORTAL_REQUEST %>">
-	<%@ include file="/html/common/themes/top_monitoring.jspf" %>
-</c:if>
-
 <%@ include file="/html/common/themes/top_meta.jspf" %>
 <%@ include file="/html/common/themes/top_meta-ext.jsp" %>
 
-<link href="<%= themeDisplay.getPathThemeImages() %>/<%= PropsValues.THEME_SHORTCUT_ICON %>" rel="Shortcut Icon" />
+<liferay-util:dynamic-include key="/html/common/themes/top_head.jsp#pre" />
 
-<%-- Available Translations --%>
-
-<%
-if (!themeDisplay.isSignedIn() && layout.isPublicLayout()) {
-	String completeURL = PortalUtil.getCurrentCompleteURL(request);
-
-	String canonicalURL = PortalUtil.getCanonicalURL(completeURL, themeDisplay, layout);
-%>
-
-	<link href="<%= HtmlUtil.escapeAttribute(canonicalURL) %>" rel="canonical" />
-
-	<%
-	Locale[] availableLocales = LanguageUtil.getAvailableLocales(themeDisplay.getSiteGroupId());
-
-	if (availableLocales.length > 1) {
-		for (Locale availableLocale : availableLocales) {
-	%>
-
-			<c:if test="<%= availableLocale.equals(LocaleUtil.getDefault()) %>">
-				<link href="<%= canonicalURL %>" hreflang="x-default" rel="alternate" />
-			</c:if>
-
-			<link href="<%= HtmlUtil.escapeAttribute(PortalUtil.getAlternateURL(canonicalURL, themeDisplay, availableLocale, layout)) %>" hreflang="<%= LocaleUtil.toW3cLanguageId(availableLocale) %>" rel="alternate" />
-
-	<%
-		}
-	}
-	%>
-
-<%
-}
-%>
+<link href="<%= BrowserSnifferUtil.isIe(request) ? StringPool.BLANK : themeDisplay.getPathThemeImages() %>/<%= PropsValues.THEME_SHORTCUT_ICON %>" rel="icon" />
 
 <%-- Portal CSS --%>
 
-<link class="lfr-css-file" href="<%= HtmlUtil.escapeAttribute(PortalUtil.getStaticResourceURL(request, themeDisplay.getPathThemeCss() + "/aui.css")) %>" rel="stylesheet" type="text/css" />
+<link class="lfr-css-file" data-senna-track="temporary" href="<%= HtmlUtil.escapeAttribute(PortalUtil.getStaticResourceURL(request, themeDisplay.getPathThemeCss() + "/clay.css")) %>" id="liferayAUICSS" rel="stylesheet" type="text/css" />
 
-<link href="<%= HtmlUtil.escapeAttribute(PortalUtil.getStaticResourceURL(request, themeDisplay.getCDNDynamicResourcesHost() + themeDisplay.getPathContext() + "/html/css/main.css")) %>" rel="stylesheet" type="text/css" />
+<%
+long cssLastModifiedTime = PortalWebResourcesUtil.getLastModified(PortalWebResourceConstants.RESOURCE_TYPE_CSS);
+%>
+
+<link data-senna-track="temporary" href="<%= HtmlUtil.escapeAttribute(PortalUtil.getStaticResourceURL(request, themeDisplay.getCDNDynamicResourcesHost() + PortalWebResourcesUtil.getContextPath(PortalWebResourceConstants.RESOURCE_TYPE_CSS) + "/main.css", cssLastModifiedTime)) %>" id="liferayPortalCSS" rel="stylesheet" type="text/css" />
 
 <%
 List<Portlet> portlets = null;
 
+if (layoutTypePortlet != null) {
+	portlets = layoutTypePortlet.getAllPortlets();
+}
+
 if (layout != null) {
 	String ppid = ParamUtil.getString(request, "p_p_id");
 
-	if (ppid.equals(PortletKeys.PORTLET_CONFIGURATION)) {
-		portlets = new ArrayList<Portlet>();
-
-		portlets.add(PortletLocalServiceUtil.getPortletById(company.getCompanyId(), PortletKeys.PORTLET_CONFIGURATION));
-
-		ppid = ParamUtil.getString(request, PortalUtil.getPortletNamespace(ppid) + "portletResource");
-
+	if ((layout.isTypeEmbedded() || layout.isTypePortlet()) && (themeDisplay.isStateMaximized() || themeDisplay.isStatePopUp() || (layout.isSystem() && Objects.equals(layout.getFriendlyURL(), PropsValues.CONTROL_PANEL_LAYOUT_FRIENDLY_URL)))) {
 		if (Validator.isNotNull(ppid)) {
 			Portlet portlet = PortletLocalServiceUtil.getPortletById(company.getCompanyId(), ppid);
 
-			if (portlet != null) {
+			if ((portlet != null) && !portlets.contains(portlet)) {
 				portlets.add(portlet);
 			}
 		}
 	}
-	else if (layout.isTypePortlet()) {
-		portlets = layoutTypePortlet.getAllPortlets();
+	else if (layout.isTypeControlPanel() || layout.isTypePanel()) {
+		portlets = new ArrayList<Portlet>();
 
-		if (themeDisplay.isStateMaximized() || themeDisplay.isStatePopUp()) {
-			if (Validator.isNotNull(ppid)) {
-				Portlet portlet = PortletLocalServiceUtil.getPortletById(company.getCompanyId(), ppid);
+		portlets.addAll(layout.getEmbeddedPortlets());
 
-				if ((portlet != null) && !portlets.contains(portlet)) {
-					portlets.add(portlet);
-				}
+		if (Validator.isNotNull(ppid)) {
+			Portlet portlet = PortletLocalServiceUtil.getPortletById(company.getCompanyId(), ppid);
+
+			if ((portlet != null) && !portlets.contains(portlet)) {
+				portlets.add(portlet);
 			}
 		}
 	}
-	else if ((layout.isTypeControlPanel() || layout.isTypePanel()) && Validator.isNotNull(ppid)) {
-		portlets = new ArrayList<Portlet>();
 
-		Portlet portlet = PortletLocalServiceUtil.getPortletById(company.getCompanyId(), ppid);
+	String portletResource = ParamUtil.getString(request, PortalUtil.getPortletNamespace(ppid) + "portletResource");
 
-		if (portlet != null) {
+	if (Validator.isNotNull(portletResource)) {
+		Portlet portlet = PortletLocalServiceUtil.getPortletById(company.getCompanyId(), portletResource);
+
+		if ((portlet != null) && !portlets.contains(portlet)) {
 			portlets.add(portlet);
+		}
+	}
+
+	Iterator<Portlet> portletsIterator = portlets.iterator();
+
+	LayoutTypeAccessPolicy layoutTypeAccessPolicy = LayoutTypeAccessPolicyTracker.getLayoutTypeAccessPolicy(layout);
+
+	while (portletsIterator.hasNext()) {
+		Portlet portlet = portletsIterator.next();
+
+		try {
+			layoutTypeAccessPolicy.checkAccessAllowedToPortlet(request, layout, portlet);
+		}
+		catch (PrincipalException pe) {
+			portletsIterator.remove();
 		}
 	}
 
@@ -140,7 +122,7 @@ if (markupHeaders != null) {
 	}
 }
 
-StringBundler pageTopSB = OutputTag.getData(request, WebKeys.PAGE_TOP);
+com.liferay.petra.string.StringBundler pageTopSB = OutputTag.getDataSB(request, WebKeys.PAGE_TOP);
 %>
 
 <c:if test="<%= pageTopSB != null %>">
@@ -151,26 +133,56 @@ StringBundler pageTopSB = OutputTag.getData(request, WebKeys.PAGE_TOP);
 
 </c:if>
 
+<%
+boolean portletHubRequired = false;
+
+for (Portlet portlet : portlets) {
+	List<PortletDependency> portletDependencies = portlet.getPortletDependencies();
+
+	for (PortletDependency portletDependency : portletDependencies) {
+		if (Objects.equals(portletDependency.getName(), "PortletHub") && Objects.equals(portletDependency.getScope(), "javax.portlet")) {
+			portletHubRequired = true;
+
+			break;
+		}
+	}
+
+	if (portletHubRequired) {
+		break;
+	}
+}
+%>
+
+<c:if test="<%= portletHubRequired %>">
+	<script type="text/javascript">
+		var portlet = portlet || {};
+
+		portlet.data = portlet.data || {};
+
+		portlet.data.pageRenderState = <%= RenderStateUtil.generateJSON(request, themeDisplay) %>;
+	</script>
+</c:if>
+
 <%-- Theme CSS --%>
 
-<link class="lfr-css-file" href="<%= HtmlUtil.escapeAttribute(PortalUtil.getStaticResourceURL(request, themeDisplay.getPathThemeCss() + "/main.css")) %>" rel="stylesheet" type="text/css" />
+<link class="lfr-css-file" data-senna-track="temporary" href="<%= HtmlUtil.escapeAttribute(PortalUtil.getStaticResourceURL(request, themeDisplay.getPathThemeCss() + "/main.css")) %>" id="liferayThemeCSS" rel="stylesheet" type="text/css" />
 
 <%-- User Inputted Layout CSS --%>
 
 <c:if test="<%= (layout != null) && Validator.isNotNull(layout.getCssText()) %>">
-	<style type="text/css">
-		<%= layout.getCssText() %>
+	<style data-senna-track="temporary" type="text/css">
+		<%= _escapeCssBlock(layout.getCssText()) %>
 	</style>
 </c:if>
 
 <%-- User Inputted Portlet CSS --%>
 
 <c:if test="<%= portlets != null %>">
-	<style type="text/css">
+	<style data-senna-track="temporary" type="text/css">
 
 		<%
 		for (Portlet portlet : portlets) {
-			PortletPreferences portletSetup = PortletPreferencesFactoryUtil.getStrictLayoutPortletSetup(layout, portlet.getPortletId());
+			PortletPreferences portletSetup = themeDisplay.getStrictLayoutPortletSetup(layout, portlet.getPortletId());
 
 			String portletSetupCss = portletSetup.getValue("portletSetupCss", StringPool.BLANK);
 		%>
@@ -201,6 +213,12 @@ StringBundler pageTopSB = OutputTag.getData(request, WebKeys.PAGE_TOP);
 	</style>
 </c:if>
 
+<liferay-util:dynamic-include key="/html/common/themes/top_head.jsp#post" />
+
 <%!
-private static Log _log = LogFactoryUtil.getLog("portal-web.docroot.html.common.themes.top_head_jsp");
+private String _escapeCssBlock(String css) {
+	return StringUtil.replace(css, new String[] {"<", "expression("}, new String[] {"\\3c", ""});
+}
+
+private static Log _log = LogFactoryUtil.getLog("portal_web.docroot.html.common.themes.top_head_jsp");
 %>

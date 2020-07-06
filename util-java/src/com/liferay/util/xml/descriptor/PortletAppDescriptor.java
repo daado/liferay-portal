@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -17,6 +17,7 @@ package com.liferay.util.xml.descriptor;
 import com.liferay.util.xml.ElementIdentifier;
 
 import org.dom4j.Document;
+import org.dom4j.Element;
 
 /**
  * @author Jorge Ferrer
@@ -25,7 +26,11 @@ public class PortletAppDescriptor extends SimpleXMLDescriptor {
 
 	@Override
 	public boolean canHandleType(String doctype, Document root) {
-		return root.getRootElement().getName().equals("portlet-app");
+		Element element = root.getRootElement();
+
+		String name = element.getName();
+
+		return name.equals("portlet-app");
 	}
 
 	@Override
@@ -34,7 +39,7 @@ public class PortletAppDescriptor extends SimpleXMLDescriptor {
 	}
 
 	private static final ElementIdentifier[] _ELEMENTS_IDENTIFIED_BY_CHILD = {
-		new ElementIdentifier("portlet", "portlet-name"),
+		new ElementIdentifier("portlet", "portlet-name")
 	};
 
 }

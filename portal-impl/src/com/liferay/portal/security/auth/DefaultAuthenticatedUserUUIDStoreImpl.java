@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,15 +14,17 @@
 
 package com.liferay.portal.security.auth;
 
-import com.liferay.portal.kernel.concurrent.ConcurrentHashSet;
-import com.liferay.portal.kernel.security.pacl.DoPrivileged;
+import com.liferay.portal.kernel.security.auth.AuthenticatedUserUUIDStore;
 
+import java.util.Collections;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * @author Michael C. Han
+ * @author     Michael C. Han
+ * @deprecated As of Judson (7.1.x), with no direct replacement
  */
-@DoPrivileged
+@Deprecated
 public class DefaultAuthenticatedUserUUIDStoreImpl
 	implements AuthenticatedUserUUIDStore {
 
@@ -41,6 +43,7 @@ public class DefaultAuthenticatedUserUUIDStoreImpl
 		return _userUUIDStore.remove(userUUID);
 	}
 
-	private Set<String> _userUUIDStore = new ConcurrentHashSet<String>();
+	private final Set<String> _userUUIDStore = Collections.newSetFromMap(
+		new ConcurrentHashMap<>());
 
 }

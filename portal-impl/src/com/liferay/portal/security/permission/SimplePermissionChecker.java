@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,6 +14,10 @@
 
 package com.liferay.portal.security.permission;
 
+import com.liferay.portal.kernel.model.Group;
+import com.liferay.portal.kernel.security.permission.ActionKeys;
+import com.liferay.portal.kernel.security.permission.UserBag;
+
 /**
  * @author Brian Wing Shun Chan
  */
@@ -22,6 +26,11 @@ public class SimplePermissionChecker extends BasePermissionChecker {
 	@Override
 	public SimplePermissionChecker clone() {
 		return new SimplePermissionChecker();
+	}
+
+	@Override
+	public UserBag getUserBag() {
+		return null;
 	}
 
 	@Override
@@ -34,15 +43,7 @@ public class SimplePermissionChecker extends BasePermissionChecker {
 
 	@Override
 	public boolean hasPermission(
-		long groupId, String name, String primKey, String actionId) {
-
-		return hasPermission(actionId);
-	}
-
-	@Override
-	public boolean hasUserPermission(
-		long groupId, String name, String primKey, String actionId,
-		boolean checkAdmin) {
+		Group group, String name, String primKey, String actionId) {
 
 		return hasPermission(actionId);
 	}
@@ -95,9 +96,8 @@ public class SimplePermissionChecker extends BasePermissionChecker {
 		if (actionId.equals(ActionKeys.VIEW)) {
 			return true;
 		}
-		else {
-			return false;
-		}
+
+		return false;
 	}
 
 }

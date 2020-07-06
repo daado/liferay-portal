@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,15 +14,22 @@
 
 package com.liferay.portal.notifications;
 
+import com.liferay.portal.kernel.cluster.ClusterExecutorUtil;
+import com.liferay.portal.kernel.cluster.ClusterInvokeThreadLocal;
+import com.liferay.portal.kernel.cluster.ClusterRequest;
+import com.liferay.portal.kernel.log.Log;
+import com.liferay.portal.kernel.log.LogFactoryUtil;
 import com.liferay.portal.kernel.notifications.Channel;
 import com.liferay.portal.kernel.notifications.ChannelException;
 import com.liferay.portal.kernel.notifications.ChannelHub;
 import com.liferay.portal.kernel.notifications.ChannelHubManager;
+import com.liferay.portal.kernel.notifications.ChannelHubManagerUtil;
 import com.liferay.portal.kernel.notifications.ChannelListener;
 import com.liferay.portal.kernel.notifications.DuplicateChannelHubException;
 import com.liferay.portal.kernel.notifications.NotificationEvent;
 import com.liferay.portal.kernel.notifications.UnknownChannelHubException;
-import com.liferay.portal.kernel.security.pacl.DoPrivileged;
+import com.liferay.portal.kernel.util.MethodHandler;
+import com.liferay.portal.kernel.util.MethodKey;
 
 import java.util.Collection;
 import java.util.Collections;
@@ -35,7 +42,6 @@ import java.util.concurrent.ConcurrentMap;
  * @author Brian Wing Shun
  * @author Shuyang Zhou
  */
-@DoPrivileged
 public class ChannelHubManagerImpl implements ChannelHubManager {
 
 	@Override
@@ -88,7 +94,7 @@ public class ChannelHubManagerImpl implements ChannelHubManager {
 
 	@Override
 	public ChannelHub createChannelHub(long companyId) throws ChannelException {
-		ChannelHub channelHub = _channelHub.clone(companyId);
+		ChannelHub channelHub = new ChannelHubImpl(companyId);
 
 		if (_channelHubs.putIfAbsent(companyId, channelHub) != null) {
 			throw new DuplicateChannelHubException(
@@ -124,9 +130,33 @@ public class ChannelHubManagerImpl implements ChannelHubManager {
 	public void destroyChannel(long companyId, long userId)
 		throws ChannelException {
 
-		ChannelHub channelHub = getChannelHub(companyId);
+		ChannelHub channelHub = fetchChannelHub(companyId);
 
-		channelHub.destroyChannel(userId);
+		if (channelHub != null) {
+			channelHub.destroyChannel(userId);
+		}
+
+		if (!ClusterExecutorUtil.isEnabled() ||
+			!ClusterInvokeThreadLocal.isEnabled()) {
+
+			return;
+		}
+
+		MethodHandler methodHandler = new MethodHandler(
+			_destroyChannelMethodKey, companyId, userId);
+
+		ClusterRequest clusterRequest = ClusterRequest.createMulticastRequest(
+			methodHandler, true);
+
+		clusterRequest.setFireAndForget(true);
+
+		try {
+			ClusterExecutorUtil.execute(clusterRequest);
+		}
+		catch (Exception exception) {
+			throw new ChannelException(
+				"Unable to destroy channel across cluster", exception);
+		}
 	}
 
 	@Override
@@ -150,13 +180,11 @@ public class ChannelHubManagerImpl implements ChannelHubManager {
 		ChannelHub channelHub = _channelHubs.get(companyId);
 
 		if (channelHub == null) {
-			synchronized(_channelHubs) {
+			synchronized (_channelHubs) {
 				channelHub = _channelHubs.get(companyId);
 
-				if (channelHub == null) {
-					if (createIfAbsent) {
-						channelHub = createChannelHub(companyId);
-					}
+				if ((channelHub == null) && createIfAbsent) {
+					channelHub = createChannelHub(companyId);
 				}
 			}
 		}
@@ -307,9 +335,32 @@ public class ChannelHubManagerImpl implements ChannelHubManager {
 			long companyId, long userId, NotificationEvent notificationEvent)
 		throws ChannelException {
 
-		ChannelHub channelHub = getChannelHub(companyId);
+		ChannelHub channelHub = fetchChannelHub(companyId);
 
-		channelHub.sendNotificationEvent(userId, notificationEvent);
+		if (channelHub != null) {
+			channelHub.sendNotificationEvent(userId, notificationEvent);
+		}
+
+		if (!ClusterExecutorUtil.isEnabled() ||
+			!ClusterInvokeThreadLocal.isEnabled()) {
+
+			return;
+		}
+
+		MethodHandler methodHandler = new MethodHandler(
+			_storeNotificationEventMethodKey, companyId, userId,
+			notificationEvent);
+
+		ClusterRequest clusterRequest = ClusterRequest.createMulticastRequest(
+			methodHandler, true);
+
+		try {
+			ClusterExecutorUtil.execute(clusterRequest);
+		}
+		catch (Exception exception) {
+			throw new ChannelException(
+				"Unable to notify cluster of event", exception);
+		}
 	}
 
 	@Override
@@ -323,8 +374,19 @@ public class ChannelHubManagerImpl implements ChannelHubManager {
 		channelHub.sendNotificationEvents(userId, notificationEvents);
 	}
 
-	public void setChannelHubPrototype(ChannelHub channelHub) {
-		_channelHub = channelHub;
+	@Override
+	public void storeNotificationEvent(
+			long companyId, long userId, NotificationEvent notificationEvent)
+		throws ChannelException {
+
+		ChannelHub channelHub = fetchChannelHub(companyId);
+
+		if (channelHub != null) {
+			channelHub.storeNotificationEvent(userId, notificationEvent);
+		}
+		else if (_log.isDebugEnabled()) {
+			_log.debug("No channel hub exists for company " + companyId);
+		}
 	}
 
 	@Override
@@ -337,8 +399,17 @@ public class ChannelHubManagerImpl implements ChannelHubManager {
 		channelHub.unregisterChannelListener(userId, channelListener);
 	}
 
-	private ChannelHub _channelHub;
-	private ConcurrentMap<Long, ChannelHub> _channelHubs =
-		new ConcurrentHashMap<Long, ChannelHub>();
+	private static final Log _log = LogFactoryUtil.getLog(
+		ChannelHubManagerImpl.class);
+
+	private static final MethodKey _destroyChannelMethodKey = new MethodKey(
+		ChannelHubManagerUtil.class, "destroyChannel", long.class, long.class);
+	private static final MethodKey _storeNotificationEventMethodKey =
+		new MethodKey(
+			ChannelHubManagerUtil.class, "storeNotificationEvent", long.class,
+			long.class, NotificationEvent.class);
+
+	private final ConcurrentMap<Long, ChannelHub> _channelHubs =
+		new ConcurrentHashMap<>();
 
 }

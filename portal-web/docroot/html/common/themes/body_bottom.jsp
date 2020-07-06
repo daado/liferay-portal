@@ -1,6 +1,6 @@
 <%--
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -16,18 +16,12 @@
 
 <%@ include file="/html/common/themes/init.jsp" %>
 
-<%-- Raw Text --%>
-
 <%
-StringBundler bodyBottomSB = OutputTag.getData(request, WebKeys.PAGE_BODY_BOTTOM);
-%>
+com.liferay.petra.string.StringBundler bodyBottomSB = OutputTag.getDataSB(request, WebKeys.PAGE_BODY_BOTTOM);
 
-<c:if test="<%= bodyBottomSB != null %>">
-
-	<%
+if (bodyBottomSB != null) {
 	bodyBottomSB.writeTo(out);
-	%>
-
-</c:if>
+}
+%>
 
 <liferay-util:include page="/html/common/themes/body_bottom-ext.jsp" />

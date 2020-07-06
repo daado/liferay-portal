@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,9 +14,9 @@
 
 package com.liferay.portlet;
 
+import com.liferay.portal.kernel.model.PortletApp;
+import com.liferay.portal.kernel.model.PortletURLListener;
 import com.liferay.portal.kernel.util.InstanceFactory;
-import com.liferay.portal.model.PortletApp;
-import com.liferay.portal.model.PortletURLListener;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -24,6 +24,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import javax.portlet.PortletException;
 import javax.portlet.PortletURLGenerationListener;
 import javax.portlet.UnavailableException;
+
+import javax.servlet.ServletContext;
 
 /**
  * @author Brian Wing Shun Chan
@@ -34,16 +36,15 @@ public class PortletURLListenerFactory {
 			PortletURLListener portletURLListener)
 		throws PortletException {
 
-		return _instance._create(portletURLListener);
+		return _portletURLListenerFactory._create(portletURLListener);
 	}
 
 	public static void destroy(PortletURLListener portletURLListener) {
-		_instance._destroy(portletURLListener);
+		_portletURLListenerFactory._destroy(portletURLListener);
 	}
 
 	private PortletURLListenerFactory() {
-		_pool = new ConcurrentHashMap
-			<String, Map<String, PortletURLGenerationListener>>();
+		_pool = new ConcurrentHashMap<>();
 	}
 
 	private PortletURLGenerationListener _create(
@@ -57,8 +58,7 @@ public class PortletURLListenerFactory {
 				portletApp.getServletContextName());
 
 		if (portletURLGenerationListeners == null) {
-			portletURLGenerationListeners =
-				new ConcurrentHashMap<String, PortletURLGenerationListener>();
+			portletURLGenerationListeners = new ConcurrentHashMap<>();
 
 			_pool.put(
 				portletApp.getServletContextName(),
@@ -74,15 +74,20 @@ public class PortletURLListenerFactory {
 		}
 
 		if (portletApp.isWARFile()) {
+			ServletContext servletContext = portletApp.getServletContext();
+
 			PortletContextBag portletContextBag = PortletContextBagPool.get(
 				portletApp.getServletContextName());
 
-			portletURLGenerationListener =
-				portletContextBag.getPortletURLListeners().get(
-					portletURLListener.getListenerClass());
+			Map<String, PortletURLGenerationListener> portletURLListenersMap =
+				portletContextBag.getPortletURLListeners();
+
+			portletURLGenerationListener = portletURLListenersMap.get(
+				portletURLListener.getListenerClass());
 
 			portletURLGenerationListener = _init(
-				portletURLListener, portletURLGenerationListener);
+				servletContext.getClassLoader(), portletURLListener,
+				portletURLGenerationListener);
 		}
 		else {
 			portletURLGenerationListener = _init(portletURLListener);
@@ -119,14 +124,7 @@ public class PortletURLListenerFactory {
 	}
 
 	private PortletURLGenerationListener _init(
-			PortletURLListener portletURLListener)
-		throws PortletException {
-
-		return _init(portletURLListener, null);
-	}
-
-	private PortletURLGenerationListener _init(
-			PortletURLListener portletURLListener,
+			ClassLoader classLoader, PortletURLListener portletURLListener,
 			PortletURLGenerationListener portletURLGenerationListener)
 		throws PortletException {
 
@@ -134,19 +132,26 @@ public class PortletURLListenerFactory {
 			if (portletURLGenerationListener == null) {
 				portletURLGenerationListener =
 					(PortletURLGenerationListener)InstanceFactory.newInstance(
-						portletURLListener.getListenerClass());
+						classLoader, portletURLListener.getListenerClass());
 			}
 		}
-		catch (Exception e) {
-			throw new UnavailableException(e.getMessage());
+		catch (Exception exception) {
+			throw new UnavailableException(exception.getMessage());
 		}
 
 		return portletURLGenerationListener;
 	}
 
-	private static PortletURLListenerFactory _instance =
+	private PortletURLGenerationListener _init(
+			PortletURLListener portletURLListener)
+		throws PortletException {
+
+		return _init(null, portletURLListener, null);
+	}
+
+	private static final PortletURLListenerFactory _portletURLListenerFactory =
 		new PortletURLListenerFactory();
 
-	private Map<String, Map<String, PortletURLGenerationListener>> _pool;
+	private final Map<String, Map<String, PortletURLGenerationListener>> _pool;
 
 }

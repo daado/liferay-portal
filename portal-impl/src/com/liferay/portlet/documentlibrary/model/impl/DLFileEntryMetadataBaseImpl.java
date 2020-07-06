@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,10 +14,8 @@
 
 package com.liferay.portlet.documentlibrary.model.impl;
 
-import com.liferay.portal.kernel.exception.SystemException;
-
-import com.liferay.portlet.documentlibrary.model.DLFileEntryMetadata;
-import com.liferay.portlet.documentlibrary.service.DLFileEntryMetadataLocalServiceUtil;
+import com.liferay.document.library.kernel.model.DLFileEntryMetadata;
+import com.liferay.document.library.kernel.service.DLFileEntryMetadataLocalServiceUtil;
 
 /**
  * The extended model base implementation for the DLFileEntryMetadata service. Represents a row in the &quot;DLFileEntryMetadata&quot; database table, with each column mapped to a property of this class.
@@ -28,18 +26,19 @@ import com.liferay.portlet.documentlibrary.service.DLFileEntryMetadataLocalServi
  *
  * @author Brian Wing Shun Chan
  * @see DLFileEntryMetadataImpl
- * @see com.liferay.portlet.documentlibrary.model.DLFileEntryMetadata
+ * @see DLFileEntryMetadata
  * @generated
  */
 public abstract class DLFileEntryMetadataBaseImpl
 	extends DLFileEntryMetadataModelImpl implements DLFileEntryMetadata {
+
 	/*
 	 * NOTE FOR DEVELOPERS:
 	 *
-	 * Never modify or reference this class directly. All methods that expect a document library file entry metadata model instance should use the {@link DLFileEntryMetadata} interface instead.
+	 * Never modify or reference this class directly. All methods that expect a document library file entry metadata model instance should use the <code>DLFileEntryMetadata</code> interface instead.
 	 */
 	@Override
-	public void persist() throws SystemException {
+	public void persist() {
 		if (this.isNew()) {
 			DLFileEntryMetadataLocalServiceUtil.addDLFileEntryMetadata(this);
 		}
@@ -47,4 +46,5 @@ public abstract class DLFileEntryMetadataBaseImpl
 			DLFileEntryMetadataLocalServiceUtil.updateDLFileEntryMetadata(this);
 		}
 	}
+
 }

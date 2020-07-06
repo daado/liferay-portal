@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,21 +14,22 @@
 
 package com.liferay.portal.sharepoint;
 
+import com.liferay.petra.string.StringBundler;
+import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
+import com.liferay.portal.kernel.model.User;
 import com.liferay.portal.kernel.servlet.HttpHeaders;
 import com.liferay.portal.kernel.servlet.ServletResponseUtil;
-import com.liferay.portal.kernel.util.StringBundler;
-import com.liferay.portal.kernel.util.StringPool;
+import com.liferay.portal.kernel.util.WebKeys;
 import com.liferay.portal.kernel.webdav.WebDAVUtil;
-import com.liferay.portal.model.User;
 import com.liferay.portal.sharepoint.methods.Method;
 import com.liferay.portal.sharepoint.methods.MethodFactory;
-import com.liferay.portal.util.WebKeys;
 
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import javax.servlet.http.HttpSession;
 
 /**
  * @author Bruno Farache
@@ -37,41 +38,46 @@ public class SharepointServlet extends HttpServlet {
 
 	@Override
 	public void doGet(
-		HttpServletRequest request, HttpServletResponse response) {
+		HttpServletRequest httpServletRequest,
+		HttpServletResponse httpServletResponse) {
 
 		if (_log.isInfoEnabled()) {
 			_log.info(
-				request.getHeader(HttpHeaders.USER_AGENT) + " " +
-					request.getMethod() + " " + request.getRequestURI());
+				StringBundler.concat(
+					httpServletRequest.getHeader(HttpHeaders.USER_AGENT), " ",
+					httpServletRequest.getMethod(), " ",
+					httpServletRequest.getRequestURI()));
 		}
 
 		try {
-			String uri = request.getRequestURI();
+			String uri = httpServletRequest.getRequestURI();
 
 			if (uri.equals("/_vti_inf.html")) {
-				vtiInfHtml(response);
+				vtiInfHtml(httpServletResponse);
 			}
 		}
-		catch (Exception e) {
-			_log.error(e, e);
+		catch (Exception exception) {
+			_log.error(exception, exception);
 		}
 	}
 
 	@Override
 	public void doPost(
-		HttpServletRequest request, HttpServletResponse response) {
+		HttpServletRequest httpServletRequest,
+		HttpServletResponse httpServletResponse) {
 
 		try {
-			String uri = request.getRequestURI();
+			String uri = httpServletRequest.getRequestURI();
 
 			if (uri.equals("/_vti_bin/shtml.dll/_vti_rpc") ||
 				uri.equals("/sharepoint/_vti_bin/_vti_aut/author.dll")) {
 
-				User user = (User)request.getSession().getAttribute(
-					WebKeys.USER);
+				HttpSession session = httpServletRequest.getSession();
+
+				User user = (User)session.getAttribute(WebKeys.USER);
 
 				SharepointRequest sharepointRequest = new SharepointRequest(
-					request, response, user);
+					httpServletRequest, httpServletResponse, user);
 
 				Method method = MethodFactory.create(sharepointRequest);
 
@@ -97,15 +103,16 @@ public class SharepointServlet extends HttpServlet {
 
 				sharepointRequest.setRootPath(rootPath);
 
-				SharepointStorage storage = SharepointUtil.getStorage(rootPath);
-
-				sharepointRequest.setSharepointStorage(storage);
+				sharepointRequest.setSharepointStorage(
+					SharepointUtil.getStorage(rootPath));
 
 				if (_log.isInfoEnabled()) {
 					_log.info(
-						request.getHeader(HttpHeaders.USER_AGENT) + " " +
-							method.getMethodName() + " " + uri + " " +
-								rootPath);
+						StringBundler.concat(
+							httpServletRequest.getHeader(
+								HttpHeaders.USER_AGENT),
+							" ", method.getMethodName(), " ", uri, " ",
+							rootPath));
 				}
 
 				method.process(sharepointRequest);
@@ -113,17 +120,21 @@ public class SharepointServlet extends HttpServlet {
 			else {
 				if (_log.isInfoEnabled()) {
 					_log.info(
-						request.getHeader(HttpHeaders.USER_AGENT) + " " +
-							request.getMethod() + " " + uri);
+						StringBundler.concat(
+							httpServletRequest.getHeader(
+								HttpHeaders.USER_AGENT),
+							" ", httpServletRequest.getMethod(), " ", uri));
 				}
 			}
 		}
-		catch (SharepointException se) {
-			_log.error(se, se);
+		catch (SharepointException sharepointException) {
+			_log.error(sharepointException, sharepointException);
 		}
 	}
 
-	protected void vtiInfHtml(HttpServletResponse response) throws Exception {
+	protected void vtiInfHtml(HttpServletResponse httpServletResponse)
+		throws Exception {
+
 		StringBundler sb = new StringBundler(13);
 
 		sb.append("<!-- FrontPage Configuration Information");
@@ -140,9 +151,10 @@ public class SharepointServlet extends HttpServlet {
 		sb.append(StringPool.NEW_LINE);
 		sb.append("-->");
 
-		ServletResponseUtil.write(response, sb.toString());
+		ServletResponseUtil.write(httpServletResponse, sb.toString());
 	}
 
-	private static Log _log = LogFactoryUtil.getLog(SharepointServlet.class);
+	private static final Log _log = LogFactoryUtil.getLog(
+		SharepointServlet.class);
 
 }

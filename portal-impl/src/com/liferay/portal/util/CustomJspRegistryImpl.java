@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,10 +14,10 @@
 
 package com.liferay.portal.util;
 
-import com.liferay.portal.kernel.security.pacl.DoPrivileged;
-import com.liferay.portal.kernel.util.CharPool;
-import com.liferay.portal.kernel.util.StringBundler;
-import com.liferay.portal.kernel.util.StringPool;
+import com.liferay.petra.string.CharPool;
+import com.liferay.petra.string.StringBundler;
+import com.liferay.petra.string.StringPool;
+import com.liferay.portal.kernel.util.CustomJspRegistry;
 
 import java.util.Map;
 import java.util.Set;
@@ -27,11 +27,10 @@ import java.util.concurrent.ConcurrentHashMap;
  * @author Ryan Park
  * @author Brian Wing Shun Chan
  */
-@DoPrivileged
 public class CustomJspRegistryImpl implements CustomJspRegistry {
 
 	public CustomJspRegistryImpl() {
-		_servletContextNames = new ConcurrentHashMap<String, String>();
+		_servletContextNames = new ConcurrentHashMap<>();
 	}
 
 	@Override
@@ -41,8 +40,11 @@ public class CustomJspRegistryImpl implements CustomJspRegistry {
 		int pos = fileName.lastIndexOf(CharPool.PERIOD);
 
 		if (pos == -1) {
-			return fileName.concat(StringPool.PERIOD).concat(
-				servletContextName);
+			return fileName.concat(
+				StringPool.PERIOD
+			).concat(
+				servletContextName
+			);
 		}
 
 		StringBundler sb = new StringBundler(4);
@@ -77,6 +79,6 @@ public class CustomJspRegistryImpl implements CustomJspRegistry {
 		_servletContextNames.remove(servletContextName);
 	}
 
-	private Map<String, String> _servletContextNames;
+	private final Map<String, String> _servletContextNames;
 
 }

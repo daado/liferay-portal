@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,36 +14,48 @@
 
 package com.liferay.portal.service.impl;
 
-import com.liferay.portal.LayoutSetVirtualHostException;
-import com.liferay.portal.NoSuchImageException;
-import com.liferay.portal.NoSuchVirtualHostException;
+import com.liferay.exportimport.kernel.staging.LayoutStagingUtil;
+import com.liferay.petra.string.StringPool;
+import com.liferay.portal.kernel.dao.orm.EntityCacheUtil;
+import com.liferay.portal.kernel.exception.LayoutSetVirtualHostException;
+import com.liferay.portal.kernel.exception.NoSuchImageException;
+import com.liferay.portal.kernel.exception.NoSuchVirtualHostException;
 import com.liferay.portal.kernel.exception.PortalException;
 import com.liferay.portal.kernel.exception.SystemException;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
+import com.liferay.portal.kernel.model.Group;
+import com.liferay.portal.kernel.model.Image;
+import com.liferay.portal.kernel.model.LayoutSet;
+import com.liferay.portal.kernel.model.LayoutSetBranch;
+import com.liferay.portal.kernel.model.LayoutSetStagingHandler;
+import com.liferay.portal.kernel.model.VirtualHost;
+import com.liferay.portal.kernel.service.ServiceContext;
+import com.liferay.portal.kernel.transaction.TransactionCommitCallbackUtil;
 import com.liferay.portal.kernel.util.ColorSchemeFactoryUtil;
+import com.liferay.portal.kernel.util.FileUtil;
+import com.liferay.portal.kernel.util.PortalUtil;
 import com.liferay.portal.kernel.util.PropsKeys;
-import com.liferay.portal.kernel.util.StringPool;
 import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.util.ThemeFactoryUtil;
+import com.liferay.portal.kernel.util.TreeMapBuilder;
+import com.liferay.portal.kernel.util.UnicodeProperties;
 import com.liferay.portal.kernel.util.Validator;
-import com.liferay.portal.model.Group;
-import com.liferay.portal.model.Image;
-import com.liferay.portal.model.LayoutSet;
-import com.liferay.portal.model.VirtualHost;
-import com.liferay.portal.service.ServiceContext;
+import com.liferay.portal.model.impl.LayoutSetImpl;
 import com.liferay.portal.service.base.LayoutSetLocalServiceBaseImpl;
 import com.liferay.portal.util.PrefsPropsUtil;
 import com.liferay.portal.util.PropsValues;
 
-import java.io.ByteArrayInputStream;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 
+import java.net.IDN;
+
 import java.util.Date;
 import java.util.List;
+import java.util.TreeMap;
+import java.util.concurrent.Callable;
 
 /**
  * @author Brian Wing Shun Chan
@@ -54,13 +66,14 @@ public class LayoutSetLocalServiceImpl extends LayoutSetLocalServiceBaseImpl {
 
 	@Override
 	public LayoutSet addLayoutSet(long groupId, boolean privateLayout)
-		throws PortalException, SystemException {
+		throws PortalException {
 
 		Group group = groupPersistence.findByPrimaryKey(groupId);
 
 		Date now = new Date();
 
-		long layoutSetId = counterLocalService.increment();
+		long layoutSetId = counterLocalService.increment(
+			LayoutSet.class.getName());
 
 		LayoutSet layoutSet = layoutSetPersistence.create(layoutSetId);
 
@@ -72,15 +85,13 @@ public class LayoutSetLocalServiceImpl extends LayoutSetLocalServiceBaseImpl {
 
 		layoutSet = initLayoutSet(layoutSet);
 
-		layoutSetPersistence.update(layoutSet);
-
-		return layoutSet;
+		return layoutSetPersistence.update(layoutSet);
 	}
 
 	@Override
 	public void deleteLayoutSet(
 			long groupId, boolean privateLayout, ServiceContext serviceContext)
-		throws PortalException, SystemException {
+		throws PortalException {
 
 		Group group = groupPersistence.findByPrimaryKey(groupId);
 
@@ -102,10 +113,11 @@ public class LayoutSetLocalServiceImpl extends LayoutSetLocalServiceBaseImpl {
 			try {
 				imageLocalService.deleteImage(layoutSet.getLogoId());
 			}
-			catch (NoSuchImageException nsie) {
+			catch (NoSuchImageException noSuchImageException) {
 				if (_log.isWarnEnabled()) {
 					_log.warn(
-						"Unable to delete image " + layoutSet.getLogoId());
+						"Unable to delete image " + layoutSet.getLogoId(),
+						noSuchImageException);
 				}
 			}
 		}
@@ -119,7 +131,7 @@ public class LayoutSetLocalServiceImpl extends LayoutSetLocalServiceBaseImpl {
 
 			layoutSet.setLogoId(layoutSet.getLogoId());
 
-			layoutSetPersistence.update(layoutSet);
+			layoutSet = layoutSetPersistence.update(layoutSet);
 		}
 		else {
 			layoutSetPersistence.removeByG_P(groupId, privateLayout);
@@ -127,22 +139,27 @@ public class LayoutSetLocalServiceImpl extends LayoutSetLocalServiceBaseImpl {
 
 		// Virtual host
 
-		try {
-			virtualHostPersistence.removeByC_L(
-				layoutSet.getCompanyId(), layoutSet.getLayoutSetId());
-		}
-		catch (NoSuchVirtualHostException nsvhe) {
-		}
+		virtualHostPersistence.removeByC_L(
+			layoutSet.getCompanyId(), layoutSet.getLayoutSetId());
 	}
 
 	@Override
-	public LayoutSet fetchLayoutSet(String virtualHostname)
-		throws SystemException {
+	public LayoutSet fetchLayoutSet(long groupId, boolean privateLayout) {
+		return layoutSetPersistence.fetchByG_P(groupId, privateLayout);
+	}
 
-		virtualHostname = StringUtil.toLowerCase(virtualHostname.trim());
+	@Override
+	public LayoutSet fetchLayoutSet(String virtualHostname) {
+		virtualHostname = StringUtil.toLowerCase(
+			StringUtil.trim(virtualHostname));
 
 		VirtualHost virtualHost = virtualHostPersistence.fetchByHostname(
 			virtualHostname);
+
+		if ((virtualHost == null) && virtualHostname.contains("xn--")) {
+			virtualHost = virtualHostPersistence.fetchByHostname(
+				IDN.toUnicode(virtualHostname));
+		}
 
 		if ((virtualHost == null) || (virtualHost.getLayoutSetId() == 0)) {
 			return null;
@@ -153,20 +170,41 @@ public class LayoutSetLocalServiceImpl extends LayoutSetLocalServiceBaseImpl {
 	}
 
 	@Override
+	public LayoutSet fetchLayoutSetByLogoId(boolean privateLayout, long logoId)
+		throws PortalException {
+
+		return layoutSetPersistence.fetchByP_L(privateLayout, logoId);
+	}
+
+	@Override
 	public LayoutSet getLayoutSet(long groupId, boolean privateLayout)
-		throws PortalException, SystemException {
+		throws PortalException {
 
 		return layoutSetPersistence.findByG_P(groupId, privateLayout);
 	}
 
 	@Override
 	public LayoutSet getLayoutSet(String virtualHostname)
-		throws PortalException, SystemException {
+		throws PortalException {
 
-		virtualHostname = StringUtil.toLowerCase(virtualHostname.trim());
+		virtualHostname = StringUtil.toLowerCase(
+			StringUtil.trim(virtualHostname));
 
-		VirtualHost virtualHost = virtualHostPersistence.findByHostname(
-			virtualHostname);
+		VirtualHost virtualHost = null;
+
+		try {
+			virtualHost = virtualHostPersistence.findByHostname(
+				virtualHostname);
+		}
+		catch (NoSuchVirtualHostException noSuchVirtualHostException) {
+			if (virtualHostname.contains("xn--")) {
+				virtualHost = virtualHostPersistence.findByHostname(
+					IDN.toUnicode(virtualHostname));
+			}
+			else {
+				throw noSuchVirtualHostException;
+			}
+		}
 
 		if (virtualHost.getLayoutSetId() == 0) {
 			throw new LayoutSetVirtualHostException(
@@ -180,170 +218,158 @@ public class LayoutSetLocalServiceImpl extends LayoutSetLocalServiceBaseImpl {
 
 	@Override
 	public List<LayoutSet> getLayoutSetsByLayoutSetPrototypeUuid(
-			String layoutSetPrototypeUuid)
-		throws SystemException {
+		String layoutSetPrototypeUuid) {
 
 		return layoutSetPersistence.findByLayoutSetPrototypeUuid(
 			layoutSetPrototypeUuid);
 	}
 
-	/**
-	 * Updates the state of the layout set prototype link.
-	 *
-	 * <p>
-	 * This method can disable the layout set prototype's link by setting
-	 * <code>layoutSetPrototypeLinkEnabled</code> to <code>false</code>.
-	 * However, this method can only enable the layout set prototype's link if
-	 * the layout set prototype's current uuid is not <code>null</code>. Setting
-	 * the <code>layoutSetPrototypeLinkEnabled</code> to <code>true</code> when
-	 * the layout set prototype's current uuid is <code>null</code> will have no
-	 * effect.
-	 * </p>
-	 *
-	 * @param      groupId the primary key of the group
-	 * @param      privateLayout whether the layout set is private to the group
-	 * @param      layoutSetPrototypeLinkEnabled whether the layout set
-	 *             prototype is link enabled
-	 * @throws     PortalException if a portal exception occurred
-	 * @throws     SystemException if a system exception occurred
-	 * @deprecated As of 6.1.0, replaced by {@link
-	 *             #updateLayoutSetPrototypeLinkEnabled(long, boolean, boolean,
-	 *             String)}
-	 */
 	@Override
-	public void updateLayoutSetPrototypeLinkEnabled(
-			long groupId, boolean privateLayout,
-			boolean layoutSetPrototypeLinkEnabled)
-		throws PortalException, SystemException {
-
-		updateLayoutSetPrototypeLinkEnabled(
-			groupId, privateLayout, layoutSetPrototypeLinkEnabled, null);
+	public int getPageCount(long groupId, boolean privateLayout) {
+		return layoutPersistence.countByG_P(groupId, privateLayout);
 	}
 
 	/**
 	 * Updates the state of the layout set prototype link.
 	 *
-	 * @param  groupId the primary key of the group
-	 * @param  privateLayout whether the layout set is private to the group
-	 * @param  layoutSetPrototypeLinkEnabled whether the layout set prototype is
-	 *         link enabled
-	 * @param  layoutSetPrototypeUuid the uuid of the layout set prototype to
-	 *         link with
-	 * @throws PortalException if a portal exception occurred
-	 * @throws SystemException if a system exception occurred
+	 * @param groupId the primary key of the group
+	 * @param privateLayout whether the layout set is private to the group
+	 * @param layoutSetPrototypeLinkEnabled whether the layout set prototype is
+	 *        link enabled
+	 * @param layoutSetPrototypeUuid the uuid of the layout set prototype to
+	 *        link with
 	 */
 	@Override
 	public void updateLayoutSetPrototypeLinkEnabled(
 			long groupId, boolean privateLayout,
 			boolean layoutSetPrototypeLinkEnabled,
 			String layoutSetPrototypeUuid)
-		throws PortalException, SystemException {
+		throws PortalException {
 
 		LayoutSet layoutSet = layoutSetPersistence.findByG_P(
 			groupId, privateLayout);
 
-		if (Validator.isNull(layoutSetPrototypeUuid)) {
-			layoutSetPrototypeUuid = layoutSet.getLayoutSetPrototypeUuid();
+		LayoutSetBranch layoutSetBranch = _getLayoutSetBranch(layoutSet);
+
+		if (layoutSetBranch == null) {
+			if (Validator.isNull(layoutSetPrototypeUuid)) {
+				layoutSetPrototypeUuid = layoutSet.getLayoutSetPrototypeUuid();
+			}
+
+			if (Validator.isNull(layoutSetPrototypeUuid)) {
+				layoutSetPrototypeLinkEnabled = false;
+			}
+
+			layoutSet.setLayoutSetPrototypeUuid(layoutSetPrototypeUuid);
+			layoutSet.setLayoutSetPrototypeLinkEnabled(
+				layoutSetPrototypeLinkEnabled);
+
+			layoutSetPersistence.update(layoutSet);
+
+			return;
 		}
 
 		if (Validator.isNull(layoutSetPrototypeUuid)) {
-			layoutSetPrototypeLinkEnabled = false;
+			layoutSetPrototypeUuid =
+				layoutSetBranch.getLayoutSetPrototypeUuid();
 		}
 
-		layoutSet.setLayoutSetPrototypeLinkEnabled(
+		if (Validator.isNull(layoutSetPrototypeUuid) &&
+			layoutSetPrototypeLinkEnabled) {
+
+			throw new IllegalStateException(
+				"Cannot set layoutSetPrototypeLinkEnabled to true when " +
+					"layoutSetPrototypeUuid is null");
+		}
+
+		layoutSetBranch.setLayoutSetPrototypeUuid(layoutSetPrototypeUuid);
+		layoutSetBranch.setLayoutSetPrototypeLinkEnabled(
 			layoutSetPrototypeLinkEnabled);
-		layoutSet.setLayoutSetPrototypeUuid(layoutSetPrototypeUuid);
 
-		layoutSetPersistence.update(layoutSet);
+		layoutSetBranchPersistence.update(layoutSetBranch);
 	}
 
 	@Override
 	public LayoutSet updateLogo(
-			long groupId, boolean privateLayout, boolean logo, byte[] bytes)
-		throws PortalException, SystemException {
-
-		InputStream is = null;
-
-		if (logo) {
-			is = new ByteArrayInputStream(bytes);
-		}
-
-		return updateLogo(groupId, privateLayout, logo, is);
-	}
-
-	@Override
-	public LayoutSet updateLogo(
-			long groupId, boolean privateLayout, boolean logo, File file)
-		throws PortalException, SystemException {
-
-		InputStream is = null;
-
-		if (logo) {
-			try {
-				is = new FileInputStream(file);
-			}
-			catch (IOException ioe) {
-				throw new SystemException(ioe);
-			}
-		}
-
-		return updateLogo(groupId, privateLayout, logo, is);
-	}
-
-	@Override
-	public LayoutSet updateLogo(
-			long groupId, boolean privateLayout, boolean logo, InputStream is)
-		throws PortalException, SystemException {
-
-		return updateLogo(groupId, privateLayout, logo, is, true);
-	}
-
-	@Override
-	public LayoutSet updateLogo(
-			long groupId, boolean privateLayout, boolean logo, InputStream is,
-			boolean cleanUpStream)
-		throws PortalException, SystemException {
+			long groupId, boolean privateLayout, boolean hasLogo, byte[] bytes)
+		throws PortalException {
 
 		LayoutSet layoutSet = layoutSetPersistence.findByG_P(
 			groupId, privateLayout);
 
-		layoutSet.setModifiedDate(new Date());
-		layoutSet.setLogo(logo);
+		LayoutSetBranch layoutSetBranch = _getLayoutSetBranch(layoutSet);
 
-		if (logo) {
-			long logoId = layoutSet.getLogoId();
+		if (layoutSetBranch == null) {
+			layoutSet.setModifiedDate(new Date());
 
-			if (logoId <= 0) {
-				logoId = counterLocalService.increment();
+			PortalUtil.updateImageId(
+				layoutSet, hasLogo, bytes, "logoId", 0, 0, 0);
 
-				layoutSet.setLogoId(logoId);
-			}
-		}
-		else {
-			layoutSet.setLogoId(0);
+			return layoutSetPersistence.update(layoutSet);
 		}
 
-		if (logo) {
-			imageLocalService.updateImage(
-				layoutSet.getLogoId(), is, cleanUpStream);
+		layoutSetBranch.setModifiedDate(new Date());
+
+		PortalUtil.updateImageId(
+			layoutSetBranch, hasLogo, bytes, "logoId", 0, 0, 0);
+
+		layoutSetBranchPersistence.update(layoutSetBranch);
+
+		return layoutSet;
+	}
+
+	@Override
+	public LayoutSet updateLogo(
+			long groupId, boolean privateLayout, boolean hasLogo, File file)
+		throws PortalException {
+
+		byte[] bytes = null;
+
+		try {
+			bytes = FileUtil.getBytes(file);
 		}
-		else {
-			imageLocalService.deleteImage(layoutSet.getLogoId());
+		catch (IOException ioException) {
+			throw new SystemException(ioException);
 		}
 
-		return layoutSetPersistence.update(layoutSet);
+		return updateLogo(groupId, privateLayout, hasLogo, bytes);
+	}
+
+	@Override
+	public LayoutSet updateLogo(
+			long groupId, boolean privateLayout, boolean hasLogo,
+			InputStream is)
+		throws PortalException {
+
+		return updateLogo(groupId, privateLayout, hasLogo, is, true);
+	}
+
+	@Override
+	public LayoutSet updateLogo(
+			long groupId, boolean privateLayout, boolean hasLogo,
+			InputStream is, boolean cleanUpStream)
+		throws PortalException {
+
+		byte[] bytes = null;
+
+		try {
+			bytes = FileUtil.getBytes(is, -1, cleanUpStream);
+		}
+		catch (IOException ioException) {
+			throw new SystemException(ioException);
+		}
+
+		return updateLogo(groupId, privateLayout, hasLogo, bytes);
 	}
 
 	@Override
 	public LayoutSet updateLookAndFeel(
 			long groupId, boolean privateLayout, String themeId,
-			String colorSchemeId, String css, boolean wapTheme)
-		throws PortalException, SystemException {
+			String colorSchemeId, String css)
+		throws PortalException {
 
 		LayoutSet layoutSet = layoutSetPersistence.findByG_P(
 			groupId, privateLayout);
-
-		layoutSet.setModifiedDate(new Date());
 
 		if (Validator.isNull(themeId)) {
 			themeId = ThemeFactoryUtil.getDefaultRegularThemeId(
@@ -355,150 +381,166 @@ public class LayoutSetLocalServiceImpl extends LayoutSetLocalServiceBaseImpl {
 				ColorSchemeFactoryUtil.getDefaultRegularColorSchemeId();
 		}
 
-		if (wapTheme) {
-			layoutSet.setWapThemeId(themeId);
-			layoutSet.setWapColorSchemeId(colorSchemeId);
-		}
-		else {
+		LayoutSetBranch layoutSetBranch = _getLayoutSetBranch(layoutSet);
+
+		if (layoutSetBranch == null) {
+			layoutSet.setModifiedDate(new Date());
 			layoutSet.setThemeId(themeId);
 			layoutSet.setColorSchemeId(colorSchemeId);
 			layoutSet.setCss(css);
-		}
 
-		layoutSetPersistence.update(layoutSet);
+			layoutSet = layoutSetPersistence.update(layoutSet);
 
-		if (PrefsPropsUtil.getBoolean(
-				PropsKeys.THEME_SYNC_ON_GROUP,
-				PropsValues.THEME_SYNC_ON_GROUP)) {
+			if (PrefsPropsUtil.getBoolean(
+					PropsKeys.THEME_SYNC_ON_GROUP,
+					PropsValues.THEME_SYNC_ON_GROUP)) {
 
-			LayoutSet otherLayoutSet = layoutSetPersistence.findByG_P(
-				layoutSet.getGroupId(), layoutSet.isPrivateLayout());
+				LayoutSet otherLayoutSet = layoutSetPersistence.findByG_P(
+					layoutSet.getGroupId(), layoutSet.isPrivateLayout());
 
-			if (wapTheme) {
-				otherLayoutSet.setWapThemeId(themeId);
-				otherLayoutSet.setWapColorSchemeId(colorSchemeId);
-			}
-			else {
 				otherLayoutSet.setThemeId(themeId);
 				otherLayoutSet.setColorSchemeId(colorSchemeId);
+
+				layoutSetPersistence.update(otherLayoutSet);
 			}
 
-			layoutSetPersistence.update(otherLayoutSet);
+			return layoutSet;
 		}
+
+		layoutSetBranch.setModifiedDate(new Date());
+		layoutSetBranch.setThemeId(themeId);
+		layoutSetBranch.setColorSchemeId(colorSchemeId);
+		layoutSetBranch.setCss(css);
+
+		layoutSetBranchPersistence.update(layoutSetBranch);
 
 		return layoutSet;
 	}
 
 	@Override
 	public void updateLookAndFeel(
-			long groupId, String themeId, String colorSchemeId, String css,
-			boolean wapTheme)
-		throws PortalException, SystemException {
+			long groupId, String themeId, String colorSchemeId, String css)
+		throws PortalException {
 
-		updateLookAndFeel(
-			groupId, false, themeId, colorSchemeId, css, wapTheme);
-		updateLookAndFeel(groupId, true, themeId, colorSchemeId, css, wapTheme);
-	}
-
-	@Override
-	public LayoutSet updatePageCount(long groupId, boolean privateLayout)
-		throws PortalException, SystemException {
-
-		int pageCount = layoutPersistence.countByG_P(groupId, privateLayout);
-
-		LayoutSet layoutSet = layoutSetPersistence.findByG_P(
-			groupId, privateLayout);
-
-		layoutSet.setModifiedDate(new Date());
-		layoutSet.setPageCount(pageCount);
-
-		layoutSetPersistence.update(layoutSet);
-
-		return layoutSet;
+		updateLookAndFeel(groupId, false, themeId, colorSchemeId, css);
+		updateLookAndFeel(groupId, true, themeId, colorSchemeId, css);
 	}
 
 	@Override
 	public LayoutSet updateSettings(
 			long groupId, boolean privateLayout, String settings)
-		throws PortalException, SystemException {
+		throws PortalException {
+
+		UnicodeProperties settingsUnicodeProperties = new UnicodeProperties();
+
+		settingsUnicodeProperties.fastLoad(settings);
 
 		LayoutSet layoutSet = layoutSetPersistence.findByG_P(
 			groupId, privateLayout);
 
-		layoutSet.setModifiedDate(new Date());
-		layoutSet.setSettings(settings);
+		LayoutSetBranch layoutSetBranch = _getLayoutSetBranch(layoutSet);
 
-		layoutSetPersistence.update(layoutSet);
+		if (layoutSetBranch == null) {
+			layoutSet.setModifiedDate(new Date());
+
+			validateSettings(
+				layoutSet.getSettingsProperties(), settingsUnicodeProperties);
+
+			layoutSet.setSettingsProperties(settingsUnicodeProperties);
+
+			return layoutSetPersistence.update(layoutSet);
+		}
+
+		layoutSetBranch.setModifiedDate(new Date());
+
+		validateSettings(
+			layoutSetBranch.getSettingsProperties(), settingsUnicodeProperties);
+
+		layoutSetBranch.setSettingsProperties(settingsUnicodeProperties);
+
+		layoutSetBranchPersistence.update(layoutSetBranch);
 
 		return layoutSet;
 	}
 
+	/**
+	 * @deprecated As of Mueller (7.2.x), replaced by {@link
+	 *             #updateVirtualHosts(long, boolean, TreeMap)}
+	 */
+	@Deprecated
 	@Override
 	public LayoutSet updateVirtualHost(
 			long groupId, boolean privateLayout, String virtualHostname)
-		throws PortalException, SystemException {
+		throws PortalException {
 
-		virtualHostname = StringUtil.toLowerCase(virtualHostname.trim());
+		return updateVirtualHosts(
+			groupId, privateLayout,
+			TreeMapBuilder.put(
+				virtualHostname, StringPool.BLANK
+			).build());
+	}
 
-		if (Validator.isNotNull(virtualHostname) &&
-			!Validator.isDomain(virtualHostname)) {
+	@Override
+	public LayoutSet updateVirtualHosts(
+			long groupId, boolean privateLayout,
+			TreeMap<String, String> virtualHostnames)
+		throws PortalException {
 
-			throw new LayoutSetVirtualHostException();
+		for (String curVirtualHostname : virtualHostnames.keySet()) {
+			if (!Validator.isDomain(curVirtualHostname)) {
+				throw new LayoutSetVirtualHostException(
+					"Invalid host name {" + curVirtualHostname + "}");
+			}
 		}
 
 		LayoutSet layoutSet = layoutSetPersistence.findByG_P(
 			groupId, privateLayout);
 
-		if (Validator.isNotNull(virtualHostname)) {
-			VirtualHost virtualHost = virtualHostPersistence.fetchByHostname(
-				virtualHostname);
-
-			if (virtualHost == null) {
-				virtualHostLocalService.updateVirtualHost(
-					layoutSet.getCompanyId(), layoutSet.getLayoutSetId(),
-					virtualHostname);
-			}
-			else {
-				if ((virtualHost.getCompanyId() != layoutSet.getCompanyId()) ||
-					(virtualHost.getLayoutSetId() !=
-						layoutSet.getLayoutSetId())) {
-
-					throw new LayoutSetVirtualHostException();
-				}
-			}
+		if (!virtualHostnames.isEmpty()) {
+			virtualHostLocalService.updateVirtualHosts(
+				layoutSet.getCompanyId(), layoutSet.getLayoutSetId(),
+				virtualHostnames);
 		}
 		else {
-			try {
-				virtualHostPersistence.removeByC_L(
-					layoutSet.getCompanyId(), layoutSet.getLayoutSetId());
-			}
-			catch (NoSuchVirtualHostException nsvhe) {
-			}
+			virtualHostPersistence.removeByC_L(
+				layoutSet.getCompanyId(), layoutSet.getLayoutSetId());
+
+			layoutSetPersistence.clearCache(layoutSet);
+
+			TransactionCommitCallbackUtil.registerCallback(
+				new Callable<Void>() {
+
+					@Override
+					public Void call() {
+						EntityCacheUtil.removeResult(
+							LayoutSetImpl.class, layoutSet.getLayoutSetId());
+
+						return null;
+					}
+
+				});
 		}
 
 		return layoutSet;
 	}
 
 	protected LayoutSet initLayoutSet(LayoutSet layoutSet)
-		throws PortalException, SystemException {
+		throws PortalException {
 
 		Group group = layoutSet.getGroup();
-
-		boolean privateLayout = layoutSet.isPrivateLayout();
 
 		if (group.isStagingGroup()) {
 			LayoutSet liveLayoutSet = null;
 
 			Group liveGroup = group.getLiveGroup();
 
-			if (privateLayout) {
+			if (layoutSet.isPrivateLayout()) {
 				liveLayoutSet = liveGroup.getPrivateLayoutSet();
 			}
 			else {
 				liveLayoutSet = liveGroup.getPublicLayoutSet();
 			}
 
-			layoutSet.setLogo(liveLayoutSet.getLogo());
 			layoutSet.setLogoId(liveLayoutSet.getLogoId());
 
 			if (liveLayoutSet.isLogo()) {
@@ -517,8 +559,6 @@ public class LayoutSetLocalServiceImpl extends LayoutSetLocalServiceBaseImpl {
 
 			layoutSet.setThemeId(liveLayoutSet.getThemeId());
 			layoutSet.setColorSchemeId(liveLayoutSet.getColorSchemeId());
-			layoutSet.setWapThemeId(liveLayoutSet.getWapThemeId());
-			layoutSet.setWapColorSchemeId(liveLayoutSet.getWapColorSchemeId());
 			layoutSet.setCss(liveLayoutSet.getCss());
 			layoutSet.setSettings(liveLayoutSet.getSettings());
 		}
@@ -528,10 +568,6 @@ public class LayoutSetLocalServiceImpl extends LayoutSetLocalServiceBaseImpl {
 					group.getCompanyId()));
 			layoutSet.setColorSchemeId(
 				ColorSchemeFactoryUtil.getDefaultRegularColorSchemeId());
-			layoutSet.setWapThemeId(
-				ThemeFactoryUtil.getDefaultWapThemeId(group.getCompanyId()));
-			layoutSet.setWapColorSchemeId(
-				ColorSchemeFactoryUtil.getDefaultWapColorSchemeId());
 			layoutSet.setCss(StringPool.BLANK);
 			layoutSet.setSettings(StringPool.BLANK);
 		}
@@ -539,7 +575,44 @@ public class LayoutSetLocalServiceImpl extends LayoutSetLocalServiceBaseImpl {
 		return layoutSet;
 	}
 
-	private static Log _log = LogFactoryUtil.getLog(
+	protected void validateSettings(
+		UnicodeProperties oldSettingsUnicodeProperties,
+		UnicodeProperties newSettingsUnicodeProperties) {
+
+		boolean enableJavaScript =
+			PropsValues.
+				FIELD_ENABLE_COM_LIFERAY_PORTAL_KERNEL_MODEL_LAYOUTSET_JAVASCRIPT;
+
+		if (!enableJavaScript) {
+			String javaScript = oldSettingsUnicodeProperties.getProperty(
+				"javascript");
+
+			newSettingsUnicodeProperties.setProperty("javascript", javaScript);
+		}
+	}
+
+	private LayoutSetBranch _getLayoutSetBranch(LayoutSet layoutSet)
+		throws PortalException {
+
+		LayoutSetStagingHandler layoutSetStagingHandler =
+			LayoutStagingUtil.getLayoutSetStagingHandler(layoutSet);
+
+		if (layoutSetStagingHandler != null) {
+			return layoutSetStagingHandler.getLayoutSetBranch();
+		}
+
+		if (LayoutStagingUtil.isBranchingLayoutSet(
+				layoutSet.getGroup(), layoutSet.isPrivateLayout())) {
+
+			layoutSetStagingHandler = new LayoutSetStagingHandler(layoutSet);
+
+			return layoutSetStagingHandler.getLayoutSetBranch();
+		}
+
+		return null;
+	}
+
+	private static final Log _log = LogFactoryUtil.getLog(
 		LayoutSetLocalServiceImpl.class);
 
 }

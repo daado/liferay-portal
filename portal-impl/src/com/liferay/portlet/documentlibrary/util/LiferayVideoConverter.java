@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,11 +14,12 @@
 
 package com.liferay.portlet.documentlibrary.util;
 
+import com.liferay.petra.string.StringBundler;
+import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
 import com.liferay.portal.kernel.util.GetterUtil;
 import com.liferay.portal.kernel.util.PropsKeys;
-import com.liferay.portal.kernel.util.StringPool;
 
 import com.xuggle.xuggler.Configuration;
 import com.xuggle.xuggler.IAudioResampler;
@@ -27,7 +28,7 @@ import com.xuggle.xuggler.ICodec;
 import com.xuggle.xuggler.IContainer;
 import com.xuggle.xuggler.IContainerFormat;
 import com.xuggle.xuggler.IPacket;
-import com.xuggle.xuggler.IPixelFormat.Type;
+import com.xuggle.xuggler.IPixelFormat;
 import com.xuggle.xuggler.IRational;
 import com.xuggle.xuggler.IStream;
 import com.xuggle.xuggler.IStreamCoder;
@@ -57,10 +58,12 @@ public class LiferayVideoConverter extends LiferayConverter {
 
 		_height = GetterUtil.getInteger(
 			videoProperties.getProperty(
-				PropsKeys.DL_FILE_ENTRY_PREVIEW_VIDEO_HEIGHT), _height);
+				PropsKeys.DL_FILE_ENTRY_PREVIEW_VIDEO_HEIGHT),
+			_height);
 		_width = GetterUtil.getInteger(
 			videoProperties.getProperty(
-				PropsKeys.DL_FILE_ENTRY_PREVIEW_VIDEO_WIDTH), _width);
+				PropsKeys.DL_FILE_ENTRY_PREVIEW_VIDEO_WIDTH),
+			_width);
 
 		initVideoBitRate(videoProperties);
 		initVideoFrameRate(videoProperties);
@@ -72,11 +75,11 @@ public class LiferayVideoConverter extends LiferayConverter {
 			doConvert();
 		}
 		finally {
-			if (_inputIContainer.isOpened()) {
+			if ((_inputIContainer != null) && _inputIContainer.isOpened()) {
 				_inputIContainer.close();
 			}
 
-			if (_outputIContainer.isOpened()) {
+			if ((_outputIContainer != null) && _outputIContainer.isOpened()) {
 				_outputIContainer.close();
 			}
 		}
@@ -102,7 +105,7 @@ public class LiferayVideoConverter extends LiferayConverter {
 				tempFile.renameTo(videoFile);
 			}
 		}
-		catch (Exception e) {
+		catch (Exception exception) {
 			if (_log.isWarnEnabled()) {
 				_log.warn("Unable to move MOOV atom to front of MP4 file");
 			}
@@ -177,7 +180,7 @@ public class LiferayVideoConverter extends LiferayConverter {
 		}
 
 		boolean keyPacketFound = false;
-		int nonKeyAfterKeyCount = 0;
+		int nonkeyAfterKeyCount = 0;
 		boolean onlyDecodeKeyPackets = false;
 		int previousPacketSize = -1;
 
@@ -192,6 +195,7 @@ public class LiferayVideoConverter extends LiferayConverter {
 			int streamIndex = inputIPacket.getStreamIndex();
 
 			IStreamCoder inputIStreamCoder = inputIStreamCoders[streamIndex];
+
 			IStreamCoder outputIStreamCoder = outputIStreamCoders[streamIndex];
 
 			if (outputIStreamCoder == null) {
@@ -218,12 +222,12 @@ public class LiferayVideoConverter extends LiferayConverter {
 
 				keyPacketFound = isKeyPacketFound(inputIPacket, keyPacketFound);
 
-				nonKeyAfterKeyCount = countNonKeyAfterKey(
-					inputIPacket, keyPacketFound, nonKeyAfterKeyCount);
+				nonkeyAfterKeyCount = countNonKeyAfterKey(
+					inputIPacket, keyPacketFound, nonkeyAfterKeyCount);
 
 				if (isStartDecoding(
 						inputIPacket, inputIStreamCoder, keyPacketFound,
-						nonKeyAfterKeyCount, onlyDecodeKeyPackets)) {
+						nonkeyAfterKeyCount, onlyDecodeKeyPackets)) {
 
 					int value = decodeVideo(
 						iVideoResamplers[streamIndex],
@@ -287,10 +291,9 @@ public class LiferayVideoConverter extends LiferayConverter {
 		if (outputFormat.equals("mp4")) {
 			return ICodec.findEncodingCodec(ICodec.ID.CODEC_ID_H264);
 		}
-		else {
-			return ICodec.guessEncodingCodec(
-				null, null, outputURL, null, inputICodecType);
-		}
+
+		return ICodec.guessEncodingCodec(
+			null, null, outputURL, null, inputICodecType);
 	}
 
 	protected IRational getVideoFrameRate(IRational originalFrameRate) {
@@ -311,22 +314,26 @@ public class LiferayVideoConverter extends LiferayConverter {
 	protected void initVideoFrameRate(Properties videoProperties) {
 		int numerator = GetterUtil.getInteger(
 			videoProperties.getProperty(
-				PropsKeys.DL_FILE_ENTRY_PREVIEW_VIDEO_FRAME_RATE_NUMERATOR +
-					"[" + _videoContainer + "]"));
+				StringBundler.concat(
+					PropsKeys.DL_FILE_ENTRY_PREVIEW_VIDEO_FRAME_RATE_NUMERATOR,
+					"[", _videoContainer, "]")));
 		int denominator = GetterUtil.getInteger(
 			videoProperties.getProperty(
-				PropsKeys.DL_FILE_ENTRY_PREVIEW_VIDEO_FRAME_RATE_DENOMINATOR +
-					StringPool.OPEN_BRACKET + _videoContainer +
-						StringPool.CLOSE_BRACKET));
+				StringBundler.concat(
+					PropsKeys.
+						DL_FILE_ENTRY_PREVIEW_VIDEO_FRAME_RATE_DENOMINATOR,
+					StringPool.OPEN_BRACKET, _videoContainer,
+					StringPool.CLOSE_BRACKET)));
 
 		if ((numerator > 0) && (denominator > 0)) {
 			_videoFrameRate = IRational.make(numerator, denominator);
 
 			if (_log.isInfoEnabled()) {
 				_log.info(
-					"Default frame rate for " + _videoContainer +
-						" configured to " + _videoFrameRate.getNumerator() +
-							"/" + _videoFrameRate.getDenominator());
+					StringBundler.concat(
+						"Default frame rate for ", _videoContainer,
+						" configured to ", _videoFrameRate.getNumerator(), "/",
+						_videoFrameRate.getDenominator()));
 			}
 		}
 	}
@@ -344,8 +351,9 @@ public class LiferayVideoConverter extends LiferayConverter {
 
 		if (iCodec == null) {
 			throw new RuntimeException(
-				"Unable to determine " + inputICodecType + " encoder for " +
-					outputURL);
+				StringBundler.concat(
+					"Unable to determine ", inputICodecType, " encoder for ",
+					outputURL));
 		}
 
 		IStream outputIStream = outputIContainer.addNewStream(iCodec);
@@ -374,16 +382,18 @@ public class LiferayVideoConverter extends LiferayConverter {
 
 		if (_log.isInfoEnabled()) {
 			_log.info(
-				"Original frame rate " + iRational.getNumerator() + "/" +
-					iRational.getDenominator());
+				StringBundler.concat(
+					"Original frame rate ", iRational.getNumerator(), "/",
+					iRational.getDenominator()));
 		}
 
 		iRational = getVideoFrameRate(iRational);
 
 		if (_log.isInfoEnabled()) {
 			_log.info(
-				"Modified frame rate " + iRational.getNumerator() + "/" +
-					iRational.getDenominator());
+				StringBundler.concat(
+					"Modified frame rate ", iRational.getNumerator(), "/",
+					iRational.getDenominator()));
 		}
 
 		outputIStreamCoder.setFrameRate(iRational);
@@ -393,9 +403,13 @@ public class LiferayVideoConverter extends LiferayConverter {
 				"Unable to determine height for " + _inputURL);
 		}
 
+		if (_height == 0) {
+			_height = inputIStreamCoder.getHeight();
+		}
+
 		outputIStreamCoder.setHeight(_height);
 
-		outputIStreamCoder.setPixelType(Type.YUV420P);
+		outputIStreamCoder.setPixelType(IPixelFormat.Type.YUV420P);
 		outputIStreamCoder.setTimeBase(
 			IRational.make(
 				iRational.getDenominator(), iRational.getNumerator()));
@@ -403,6 +417,10 @@ public class LiferayVideoConverter extends LiferayConverter {
 		if (inputIStreamCoder.getWidth() <= 0) {
 			throw new RuntimeException(
 				"Unable to determine width for " + _inputURL);
+		}
+
+		if (_width == 0) {
+			_width = inputIStreamCoder.getWidth();
 		}
 
 		outputIStreamCoder.setWidth(_width);
@@ -428,18 +446,18 @@ public class LiferayVideoConverter extends LiferayConverter {
 
 	private static final int _VIDEO_BIT_RATE_MAX = 1200000;
 
-	private static Log _log = LogFactoryUtil.getLog(
+	private static final Log _log = LogFactoryUtil.getLog(
 		LiferayVideoConverter.class);
 
-	private Properties _ffpresetProperties;
-	private int _height = 240;
+	private final Properties _ffpresetProperties;
+	private int _height;
 	private IContainer _inputIContainer;
-	private String _inputURL;
+	private final String _inputURL;
 	private IContainer _outputIContainer;
-	private String _outputURL;
+	private final String _outputURL;
 	private int _videoBitRate;
-	private String _videoContainer;
+	private final String _videoContainer;
 	private IRational _videoFrameRate;
-	private int _width = 320;
+	private int _width;
 
 }

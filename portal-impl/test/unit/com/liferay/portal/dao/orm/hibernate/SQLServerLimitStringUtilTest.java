@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -25,8 +25,9 @@ public class SQLServerLimitStringUtilTest {
 	@Test
 	public void testInnerOrderBy() throws Exception {
 		String sql = SQLServerLimitStringUtil.getLimitString(
-			"SELECT articleId, userName FROM JournalArticle" +
-				" ORDER BY modifiedDate ASC", 10, 30);
+			"SELECT articleId, userName FROM JournalArticle ORDER BY " +
+				"modifiedDate ASC",
+			10, 30);
 
 		Assert.assertTrue(sql.indexOf("30") > 0);
 		Assert.assertTrue(sql.indexOf("11") > 0);
@@ -36,8 +37,9 @@ public class SQLServerLimitStringUtilTest {
 	@Test
 	public void testNoInnerOrderBy() throws Exception {
 		String sql = SQLServerLimitStringUtil.getLimitString(
-			"SELECT articleId, userName FROM JournalArticle" +
-				" ORDER BY userName ASC", 10, 30);
+			"SELECT articleId, userName FROM JournalArticle ORDER BY " +
+				"userName ASC",
+			10, 30);
 
 		Assert.assertTrue(sql.indexOf("30") > 0);
 		Assert.assertTrue(sql.indexOf("11") > 0);
@@ -47,8 +49,8 @@ public class SQLServerLimitStringUtilTest {
 	@Test
 	public void testUnionWithFieldsQuery() throws Exception {
 		String sql = SQLServerLimitStringUtil.getLimitString(
-			"( SELECT articleId, userName FROM JournalArticle )" +
-				" UNION ALL ( SELECT articleId, userName FROM JournalArticle )",
+			"( SELECT articleId, userName FROM JournalArticle ) UNION ALL ( " +
+				"SELECT articleId, userName FROM JournalArticle )",
 			10, 30);
 
 		Assert.assertTrue(sql.indexOf("30") > 0);

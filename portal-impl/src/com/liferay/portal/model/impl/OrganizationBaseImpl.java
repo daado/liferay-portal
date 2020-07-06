@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,12 +14,10 @@
 
 package com.liferay.portal.model.impl;
 
+import com.liferay.petra.string.StringBundler;
 import com.liferay.portal.kernel.exception.PortalException;
-import com.liferay.portal.kernel.exception.SystemException;
-import com.liferay.portal.kernel.util.StringBundler;
-import com.liferay.portal.kernel.util.StringPool;
-import com.liferay.portal.model.Organization;
-import com.liferay.portal.service.OrganizationLocalServiceUtil;
+import com.liferay.portal.kernel.model.Organization;
+import com.liferay.portal.kernel.service.OrganizationLocalServiceUtil;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -33,18 +31,19 @@ import java.util.List;
  *
  * @author Brian Wing Shun Chan
  * @see OrganizationImpl
- * @see com.liferay.portal.model.Organization
+ * @see Organization
  * @generated
  */
-public abstract class OrganizationBaseImpl extends OrganizationModelImpl
-	implements Organization {
+public abstract class OrganizationBaseImpl
+	extends OrganizationModelImpl implements Organization {
+
 	/*
 	 * NOTE FOR DEVELOPERS:
 	 *
-	 * Never modify or reference this class directly. All methods that expect a organization model instance should use the {@link Organization} interface instead.
+	 * Never modify or reference this class directly. All methods that expect a organization model instance should use the <code>Organization</code> interface instead.
 	 */
 	@Override
-	public void persist() throws SystemException {
+	public void persist() {
 		if (this.isNew()) {
 			OrganizationLocalServiceUtil.addOrganization(this);
 		}
@@ -55,7 +54,7 @@ public abstract class OrganizationBaseImpl extends OrganizationModelImpl
 
 	@Override
 	@SuppressWarnings("unused")
-	public String buildTreePath() throws PortalException, SystemException {
+	public String buildTreePath() throws PortalException {
 		List<Organization> organizations = new ArrayList<Organization>();
 
 		Organization organization = this;
@@ -63,29 +62,31 @@ public abstract class OrganizationBaseImpl extends OrganizationModelImpl
 		while (organization != null) {
 			organizations.add(organization);
 
-			organization = OrganizationLocalServiceUtil.fetchOrganization(organization.getParentOrganizationId());
+			organization = OrganizationLocalServiceUtil.fetchOrganization(
+				organization.getParentOrganizationId());
 		}
 
-		StringBundler sb = new StringBundler((organizations.size() * 2) + 1);
+		StringBundler sb = new StringBundler(organizations.size() * 2 + 1);
 
-		sb.append(StringPool.SLASH);
+		sb.append("/");
 
 		for (int i = organizations.size() - 1; i >= 0; i--) {
 			organization = organizations.get(i);
 
 			sb.append(organization.getOrganizationId());
-			sb.append(StringPool.SLASH);
+			sb.append("/");
 		}
 
 		return sb.toString();
 	}
 
 	@Override
-	public void updateTreePath(String treePath) throws SystemException {
+	public void updateTreePath(String treePath) {
 		Organization organization = this;
 
 		organization.setTreePath(treePath);
 
 		OrganizationLocalServiceUtil.updateOrganization(organization);
 	}
+
 }

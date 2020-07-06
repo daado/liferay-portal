@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,18 +14,24 @@
 
 package com.liferay.portal.jsonwebservice;
 
+import com.liferay.petra.string.CharPool;
+import com.liferay.petra.string.StringPool;
+import com.liferay.portal.kernel.log.Log;
+import com.liferay.portal.kernel.log.LogFactoryUtil;
+import com.liferay.portal.kernel.service.ServiceContext;
+import com.liferay.portal.kernel.service.ServiceContextFactory;
+import com.liferay.portal.kernel.upload.FileItem;
 import com.liferay.portal.kernel.upload.UploadServletRequest;
 import com.liferay.portal.kernel.util.CamelCaseUtil;
-import com.liferay.portal.kernel.util.CharPool;
-import com.liferay.portal.kernel.util.StringPool;
+import com.liferay.portal.kernel.util.FileUtil;
 import com.liferay.portal.kernel.util.StringUtil;
-import com.liferay.portal.kernel.util.Validator;
-import com.liferay.portal.service.ServiceContext;
-import com.liferay.portal.service.ServiceContextFactory;
 
-import java.util.ArrayList;
+import java.io.File;
+import java.io.IOException;
+
+import java.util.Collections;
 import java.util.Enumeration;
-import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -40,33 +46,30 @@ import jodd.util.NameValue;
 public class JSONWebServiceActionParameters {
 
 	public void collectAll(
-		HttpServletRequest request, String parameterPath,
+		HttpServletRequest httpServletRequest, String parameterPath,
 		JSONRPCRequest jsonRPCRequest, Map<String, Object> parameterMap) {
 
 		_jsonRPCRequest = jsonRPCRequest;
 
 		try {
-			_serviceContext = ServiceContextFactory.getInstance(request);
+			_serviceContext = ServiceContextFactory.getInstance(
+				httpServletRequest);
 		}
-		catch (Exception e) {
+		catch (Exception exception) {
 		}
 
 		_addDefaultParameters();
 
-		_collectDefaultsFromRequestAttributes(request);
+		_collectDefaultsFromRequestAttributes(httpServletRequest);
 
 		_collectFromPath(parameterPath);
-		_collectFromRequestParameters(request);
+		_collectFromRequestParameters(httpServletRequest);
 		_collectFromJSONRPCRequest(jsonRPCRequest);
 		_collectFromMap(parameterMap);
 	}
 
 	public List<NameValue<String, Object>> getInnerParameters(String baseName) {
-		if (_innerParameters == null) {
-			return null;
-		}
-
-		return _innerParameters.get(baseName);
+		return _jsonWebServiceActionParameters.getInnerParameters(baseName);
 	}
 
 	public JSONRPCRequest getJSONRPCRequest() {
@@ -74,15 +77,15 @@ public class JSONWebServiceActionParameters {
 	}
 
 	public Object getParameter(String name) {
-		return _parameters.get(name);
+		return _jsonWebServiceActionParameters.get(name);
 	}
 
 	public String[] getParameterNames() {
-		String[] names = new String[_parameters.size()];
+		String[] names = new String[_jsonWebServiceActionParameters.size()];
 
 		int i = 0;
 
-		for (String key : _parameters.keySet()) {
+		for (String key : _jsonWebServiceActionParameters.keySet()) {
 			names[i] = key;
 
 			i++;
@@ -92,32 +95,34 @@ public class JSONWebServiceActionParameters {
 	}
 
 	public String getParameterTypeName(String name) {
-		if (_parameterTypes == null) {
-			return null;
-		}
-
-		return _parameterTypes.get(name);
+		return _jsonWebServiceActionParameters.getParameterTypeName(name);
 	}
 
 	public ServiceContext getServiceContext() {
 		return _serviceContext;
 	}
 
+	public boolean includeDefaultParameters() {
+		return _jsonWebServiceActionParameters.includeDefaultParameters();
+	}
+
 	private void _addDefaultParameters() {
-		_parameters.put("serviceContext", Void.TYPE);
+		_jsonWebServiceActionParameters.put("serviceContext", Void.TYPE);
 	}
 
 	private void _collectDefaultsFromRequestAttributes(
-		HttpServletRequest request) {
+		HttpServletRequest httpServletRequest) {
 
-		Enumeration<String> enu = request.getAttributeNames();
+		Enumeration<String> enumeration =
+			httpServletRequest.getAttributeNames();
 
-		while (enu.hasMoreElements()) {
-			String attributeName = enu.nextElement();
+		while (enumeration.hasMoreElements()) {
+			String attributeName = enumeration.nextElement();
 
-			Object value = request.getAttribute(attributeName);
+			Object value = httpServletRequest.getAttribute(attributeName);
 
-			_parameters.put(attributeName, value);
+			_jsonWebServiceActionParameters.putDefaultParameter(
+				attributeName, value);
 		}
 	}
 
@@ -133,7 +138,7 @@ public class JSONWebServiceActionParameters {
 
 			parameterName = CamelCaseUtil.normalizeCamelCase(parameterName);
 
-			_parameters.put(parameterName, value);
+			_jsonWebServiceActionParameters.put(parameterName, value);
 		}
 	}
 
@@ -145,9 +150,8 @@ public class JSONWebServiceActionParameters {
 		for (Map.Entry<String, Object> entry : parameterMap.entrySet()) {
 			String parameterName = entry.getKey();
 
-			Object value = entry.getValue();
-
-			_parameters.put(parameterName, value);
+			_jsonWebServiceActionParameters.put(
+				parameterName, entry.getValue());
 		}
 	}
 
@@ -192,33 +196,72 @@ public class JSONWebServiceActionParameters {
 
 			name = CamelCaseUtil.toCamelCase(name);
 
-			_parameters.put(name, value);
+			_jsonWebServiceActionParameters.put(name, value);
 
 			i++;
 		}
 	}
 
-	private void _collectFromRequestParameters(HttpServletRequest request) {
-		UploadServletRequest uploadServletRequest = null;
+	private void _collectFromRequestParameters(
+		HttpServletRequest httpServletRequest) {
 
-		if (request instanceof UploadServletRequest) {
-			uploadServletRequest = (UploadServletRequest)request;
+		Map<String, FileItem[]> multipartParameterMap = null;
+
+		Set<String> parameterNames = new HashSet<>(
+			Collections.list(httpServletRequest.getParameterNames()));
+
+		if (httpServletRequest instanceof UploadServletRequest) {
+			UploadServletRequest uploadServletRequest =
+				(UploadServletRequest)httpServletRequest;
+
+			multipartParameterMap =
+				uploadServletRequest.getMultipartParameterMap();
+
+			parameterNames.addAll(multipartParameterMap.keySet());
 		}
 
-		Enumeration<String> enu = request.getParameterNames();
-
-		while (enu.hasMoreElements()) {
-			String name = enu.nextElement();
-
+		for (String parameterName : parameterNames) {
 			Object value = null;
 
-			if ((uploadServletRequest != null) &&
-				(uploadServletRequest.getFileName(name) != null)) {
+			if ((multipartParameterMap != null) &&
+				multipartParameterMap.containsKey(parameterName)) {
 
-				value = uploadServletRequest.getFile(name, true);
+				FileItem[] fileItems = multipartParameterMap.get(parameterName);
+
+				File[] files = new File[fileItems.length];
+
+				for (int i = 0; i < fileItems.length; i++) {
+					FileItem fileItem = fileItems[i];
+
+					File file = fileItem.getStoreLocation();
+
+					if (fileItem.isInMemory()) {
+						try {
+							FileUtil.write(file, fileItem.getInputStream());
+						}
+						catch (IOException ioException) {
+							if (_log.isWarnEnabled()) {
+								_log.warn(
+									"Unable to write temporary file " +
+										file.getAbsolutePath(),
+									ioException);
+							}
+						}
+					}
+
+					files[i] = file;
+				}
+
+				if (files.length == 1) {
+					value = files[0];
+				}
+				else {
+					value = files;
+				}
 			}
 			else {
-				String[] parameterValues = request.getParameterValues(name);
+				String[] parameterValues =
+					httpServletRequest.getParameterValues(parameterName);
 
 				if (parameterValues.length == 1) {
 					value = parameterValues[0];
@@ -228,78 +271,19 @@ public class JSONWebServiceActionParameters {
 				}
 			}
 
-			name = CamelCaseUtil.normalizeCamelCase(name);
+			parameterName = CamelCaseUtil.normalizeCamelCase(parameterName);
 
-			_parameters.put(name, value);
+			_jsonWebServiceActionParameters.put(parameterName, value);
 		}
 	}
 
-	private Map<String, List<NameValue<String, Object>>> _innerParameters;
+	private static final Log _log = LogFactoryUtil.getLog(
+		JSONWebServiceActionParameters.class);
+
 	private JSONRPCRequest _jsonRPCRequest;
-
-	private Map<String, Object> _parameters = new HashMap<String, Object>() {
-
-		@Override
-		public Object put(String key, Object value) {
-			if (key.startsWith(StringPool.DASH)) {
-				key = key.substring(1);
-
-				value = null;
-			}
-			else if (key.startsWith(StringPool.PLUS)) {
-				key = key.substring(1);
-
-				int pos = key.indexOf(CharPool.COLON);
-
-				if (pos != -1) {
-					value = key.substring(pos + 1);
-
-					key = key.substring(0, pos);
-				}
-
-				if (Validator.isNotNull(value)) {
-					if (_parameterTypes == null) {
-						_parameterTypes = new HashMap<String, String>();
-					}
-
-					_parameterTypes.put(key, value.toString());
-				}
-
-				value = Void.TYPE;
-			}
-
-			int pos = key.indexOf(CharPool.PERIOD);
-
-			if (pos != -1) {
-				String baseName = key.substring(0, pos);
-
-				String innerName = key.substring(pos + 1);
-
-				if (_innerParameters == null) {
-					_innerParameters =
-						new HashMap<String, List<NameValue<String, Object>>>();
-				}
-
-				List<NameValue<String, Object>> values = _innerParameters.get(
-					baseName);
-
-				if (values == null) {
-					values = new ArrayList<NameValue<String, Object>>();
-
-					_innerParameters.put(baseName, values);
-				}
-
-				values.add(new NameValue<String, Object>(innerName, value));
-
-				return value;
-			}
-
-			return super.put(key, value);
-		}
-
-	};
-
-	private Map<String, String> _parameterTypes;
+	private final JSONWebServiceActionParametersMap
+		_jsonWebServiceActionParameters =
+			new JSONWebServiceActionParametersMap();
 	private ServiceContext _serviceContext;
 
 }

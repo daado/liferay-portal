@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,22 +14,21 @@
 
 package com.liferay.taglib.ui;
 
+import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.bean.BeanPropertiesUtil;
 import com.liferay.portal.kernel.dao.search.ResultRow;
 import com.liferay.portal.kernel.dao.search.SearchContainer;
+import com.liferay.portal.kernel.model.BaseModel;
 import com.liferay.portal.kernel.repository.model.RepositoryModel;
 import com.liferay.portal.kernel.util.FriendlyURLNormalizerUtil;
 import com.liferay.portal.kernel.util.GetterUtil;
-import com.liferay.portal.kernel.util.ServerDetector;
 import com.liferay.portal.kernel.util.Validator;
-import com.liferay.portal.model.BaseModel;
 import com.liferay.taglib.util.ParamAndPropertyAncestorTagImpl;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.regex.Pattern;
 
 import javax.servlet.jsp.JspException;
 import javax.servlet.jsp.tagext.BodyTag;
@@ -55,16 +54,16 @@ public class SearchContainerRowTag<R>
 			_resultRow.setClassHoverName(value);
 		}
 		else if (name.equals("restricted")) {
-			_resultRow.setRestricted(GetterUtil.getBoolean(value, false));
+			_resultRow.setRestricted(GetterUtil.getBoolean(value));
 		}
 		else {
-			Object obj = pageContext.getAttribute(value);
+			Object object = pageContext.getAttribute(value);
 
-			if (obj == null) {
-				obj = value;
+			if (object == null) {
+				object = value;
 			}
 
-			_resultRow.setParameter(name, obj);
+			_resultRow.setParameter(name, object);
 		}
 	}
 
@@ -74,6 +73,7 @@ public class SearchContainerRowTag<R>
 			!_headerNames.isEmpty()) {
 
 			_searchContainer.setHeaderNames(_headerNames);
+			_searchContainer.setHelpMessages(_helpMessages);
 			_searchContainer.setOrderableHeaders(_orderableHeaders);
 
 			_headerNamesAssigned = true;
@@ -90,9 +90,8 @@ public class SearchContainerRowTag<R>
 
 			return EVAL_BODY_AGAIN;
 		}
-		else {
-			return SKIP_BODY;
-		}
+
+		return SKIP_BODY;
 	}
 
 	@Override
@@ -103,18 +102,19 @@ public class SearchContainerRowTag<R>
 		_rowIndex = 0;
 		_resultRow = null;
 
-		if (!ServerDetector.isResin()) {
-			_bold = false;
-			_className = null;
-			_escapedModel = false;
-			_indexVar = DEFAULT_INDEX_VAR;
-			_keyProperty = null;
-			_modelVar = DEFAULT_MODEL_VAR;
-			_orderableHeaders = null;
-			_rowIdProperty = null;
-			_rowVar = DEFAULT_ROW_VAR;
-			_stringKey = false;
-		}
+		_bold = false;
+		_className = null;
+		_cssClass = StringPool.BLANK;
+		_escapedModel = false;
+		_helpMessages = null;
+		_indexVar = DEFAULT_INDEX_VAR;
+		_keyProperty = null;
+		_modelVar = DEFAULT_MODEL_VAR;
+		_orderableHeaders = null;
+		_rowIdProperty = null;
+		_rowVar = DEFAULT_ROW_VAR;
+		_stringKey = false;
+		_state = StringPool.BLANK;
 
 		return EVAL_PAGE;
 	}
@@ -134,6 +134,7 @@ public class SearchContainerRowTag<R>
 		_searchContainer.setClassName(_className);
 
 		_resultRows = _searchContainer.getResultRows();
+
 		_results = _searchContainer.getResults();
 
 		if ((_results != null) && !_results.isEmpty()) {
@@ -141,21 +142,32 @@ public class SearchContainerRowTag<R>
 
 			return EVAL_BODY_INCLUDE;
 		}
-		else {
-			return SKIP_BODY;
-		}
+
+		return SKIP_BODY;
 	}
 
 	public String getClassName() {
 		return _className;
 	}
 
+	public String getCssClass() {
+		return _cssClass;
+	}
+
 	public List<String> getHeaderNames() {
 		if (_headerNames == null) {
-			_headerNames = new ArrayList<String>();
+			_headerNames = new ArrayList<>();
 		}
 
 		return _headerNames;
+	}
+
+	public Map<String, String> getHelpMessages() {
+		if (_helpMessages == null) {
+			_helpMessages = new LinkedHashMap<>();
+		}
+
+		return _helpMessages;
 	}
 
 	public String getIndexVar() {
@@ -172,7 +184,7 @@ public class SearchContainerRowTag<R>
 
 	public Map<String, String> getOrderableHeaders() {
 		if (_orderableHeaders == null) {
-			_orderableHeaders = new LinkedHashMap<String, String>();
+			_orderableHeaders = new LinkedHashMap<>();
 		}
 
 		return _orderableHeaders;
@@ -184,6 +196,10 @@ public class SearchContainerRowTag<R>
 
 	public String getRowVar() {
 		return _rowVar;
+	}
+
+	public String getState() {
+		return _state;
 	}
 
 	public boolean isBold() {
@@ -210,6 +226,10 @@ public class SearchContainerRowTag<R>
 		_className = className;
 	}
 
+	public void setCssClass(String cssClass) {
+		_cssClass = cssClass;
+	}
+
 	public void setEscapedModel(boolean escapedModel) {
 		_escapedModel = escapedModel;
 	}
@@ -220,6 +240,10 @@ public class SearchContainerRowTag<R>
 
 	public void setHeaderNamesAssigned(boolean headerNamesAssigned) {
 		_headerNamesAssigned = headerNamesAssigned;
+	}
+
+	public void setHelpMessages(Map<String, String> helpMessages) {
+		_helpMessages = helpMessages;
 	}
 
 	public void setIndexVar(String indexVar) {
@@ -250,6 +274,10 @@ public class SearchContainerRowTag<R>
 		_rowVar = rowVar;
 	}
 
+	public void setState(String state) {
+		_state = state;
+	}
+
 	public void setStringKey(boolean stringKey) {
 		_stringKey = stringKey;
 	}
@@ -276,13 +304,14 @@ public class SearchContainerRowTag<R>
 			primaryKey = String.valueOf(model);
 		}
 		else if (isStringKey()) {
-			primaryKey = BeanPropertiesUtil.getString(model, _keyProperty);
+			primaryKey = BeanPropertiesUtil.getStringSilent(
+				model, _keyProperty);
 		}
 		else {
-			Object primaryKeyObj = BeanPropertiesUtil.getObject(
+			Object primaryKeyObject = BeanPropertiesUtil.getObjectSilent(
 				model, _keyProperty);
 
-			primaryKey = String.valueOf(primaryKeyObj);
+			primaryKey = String.valueOf(primaryKeyObject);
 		}
 
 		String rowId = null;
@@ -291,32 +320,34 @@ public class SearchContainerRowTag<R>
 			rowId = String.valueOf(_rowIndex + 1);
 		}
 		else {
-			Object rowIdObj = BeanPropertiesUtil.getObject(
+			Object rowIdObject = BeanPropertiesUtil.getObjectSilent(
 				model, _rowIdProperty);
 
-			if (Validator.isNull(rowIdObj)) {
+			if (Validator.isNull(rowIdObject)) {
 				rowId = String.valueOf(_rowIndex + 1);
 			}
 			else {
-				rowId = FriendlyURLNormalizerUtil.normalize(
-					String.valueOf(rowIdObj), _friendlyURLPattern);
+				rowId =
+					FriendlyURLNormalizerUtil.normalizeWithPeriodsAndSlashes(
+						String.valueOf(rowIdObject));
 			}
 		}
 
-		_resultRow = new ResultRow(rowId, model, primaryKey, _rowIndex, _bold);
+		_resultRow = new com.liferay.taglib.search.ResultRow(
+			rowId, model, primaryKey, _rowIndex, _bold, _cssClass, _state);
 
 		pageContext.setAttribute(_indexVar, _rowIndex);
 		pageContext.setAttribute(_modelVar, model);
 		pageContext.setAttribute(_rowVar, _resultRow);
 	}
 
-	private static Pattern _friendlyURLPattern = Pattern.compile("[^a-z0-9_-]");
-
 	private boolean _bold;
 	private String _className;
+	private String _cssClass = StringPool.BLANK;
 	private boolean _escapedModel;
 	private List<String> _headerNames;
 	private boolean _headerNamesAssigned;
+	private Map<String, String> _helpMessages;
 	private String _indexVar = DEFAULT_INDEX_VAR;
 	private String _keyProperty;
 	private String _modelVar = DEFAULT_MODEL_VAR;
@@ -328,6 +359,7 @@ public class SearchContainerRowTag<R>
 	private int _rowIndex;
 	private String _rowVar = DEFAULT_ROW_VAR;
 	private SearchContainer<R> _searchContainer;
+	private String _state = StringPool.BLANK;
 	private boolean _stringKey;
 
 }

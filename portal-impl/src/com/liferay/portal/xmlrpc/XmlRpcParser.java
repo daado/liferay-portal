@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,11 +14,11 @@
 
 package com.liferay.portal.xmlrpc;
 
+import com.liferay.petra.string.CharPool;
+import com.liferay.petra.string.StringBundler;
+import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.io.unsync.UnsyncStringReader;
-import com.liferay.portal.kernel.util.CharPool;
 import com.liferay.portal.kernel.util.GetterUtil;
-import com.liferay.portal.kernel.util.StringBundler;
-import com.liferay.portal.kernel.util.StringPool;
 import com.liferay.portal.kernel.util.Tuple;
 import com.liferay.portal.kernel.xmlrpc.Response;
 import com.liferay.portal.kernel.xmlrpc.XmlRpcException;
@@ -80,7 +80,8 @@ public class XmlRpcParser {
 			xmlStreamReader.next();
 
 			String methodName = xmlStreamReader.getText();
-			List<Object> arguments = new ArrayList<Object>();
+
+			List<Object> arguments = new ArrayList<>();
 
 			xmlStreamReader.nextTag();
 
@@ -91,65 +92,65 @@ public class XmlRpcParser {
 
 				name = xmlStreamReader.getLocalName();
 
-				if (name.equals("param")) {
-					xmlStreamReader.nextTag();
+				if (!name.equals("param")) {
+					continue;
+				}
 
+				xmlStreamReader.nextTag();
+
+				name = xmlStreamReader.getLocalName();
+
+				int event = xmlStreamReader.next();
+
+				if (event == XMLStreamConstants.START_ELEMENT) {
 					name = xmlStreamReader.getLocalName();
 
-					int event = xmlStreamReader.next();
+					xmlStreamReader.next();
 
-					if (event == XMLStreamConstants.START_ELEMENT) {
-						name = xmlStreamReader.getLocalName();
+					String text = xmlStreamReader.getText();
 
-						xmlStreamReader.next();
-
-						String text = xmlStreamReader.getText();
-
-						if (name.equals("string")) {
-							arguments.add(text);
-						}
-						else if (name.equals("int") || name.equals("i4")) {
-							arguments.add(GetterUtil.getInteger(text));
-						}
-						else if (name.equals("double")) {
-							arguments.add(GetterUtil.getDouble(text));
-						}
-						else if (name.equals("boolean")) {
-							arguments.add(GetterUtil.getBoolean(text));
-						}
-						else {
-							throw new IOException(
-								"XML-RPC not implemented for " + name);
-						}
-
-						xmlStreamReader.nextTag();
-						xmlStreamReader.nextTag();
-						xmlStreamReader.nextTag();
+					if (name.equals("string")) {
+						arguments.add(text);
+					}
+					else if (name.equals("int") || name.equals("i4")) {
+						arguments.add(GetterUtil.getInteger(text));
+					}
+					else if (name.equals("double")) {
+						arguments.add(GetterUtil.getDouble(text));
+					}
+					else if (name.equals("boolean")) {
+						arguments.add(GetterUtil.getBoolean(text));
 					}
 					else {
-						String text = xmlStreamReader.getText();
-
-						arguments.add(text);
-
-						xmlStreamReader.nextTag();
-						xmlStreamReader.nextTag();
+						throw new IOException(
+							"XML-RPC not implemented for " + name);
 					}
 
-					name = xmlStreamReader.getLocalName();
+					xmlStreamReader.nextTag();
+					xmlStreamReader.nextTag();
+					xmlStreamReader.nextTag();
 				}
+				else {
+					arguments.add(xmlStreamReader.getText());
+
+					xmlStreamReader.nextTag();
+					xmlStreamReader.nextTag();
+				}
+
+				name = xmlStreamReader.getLocalName();
 			}
 
 			return new Tuple(methodName, arguments.toArray());
 		}
-		catch (Exception e) {
-			throw new IOException(e.getMessage());
+		catch (Exception exception) {
+			throw new IOException(exception);
 		}
 		finally {
 			if (xmlStreamReader != null) {
 				try {
 					xmlStreamReader.close();
 				}
-				catch (Exception e) {
+				catch (Exception exception) {
 				}
 			}
 		}
@@ -249,15 +250,15 @@ public class XmlRpcParser {
 
 			return null;
 		}
-		catch (Exception e) {
-			throw new XmlRpcException(xml, e);
+		catch (Exception exception) {
+			throw new XmlRpcException(xml, exception);
 		}
 		finally {
 			if (xmlStreamReader != null) {
 				try {
 					xmlStreamReader.close();
 				}
-				catch (Exception e) {
+				catch (Exception exception) {
 				}
 			}
 		}
@@ -277,12 +278,12 @@ public class XmlRpcParser {
 			sb.append(value.toString());
 			sb.append("</string>");
 		}
-		else if ((value instanceof Integer) || (value instanceof Short)) {
+		else if (value instanceof Integer || value instanceof Short) {
 			sb.append("<i4>");
 			sb.append(value.toString());
 			sb.append("</i4>");
 		}
-		else if ((value instanceof Double) || (value instanceof Float)) {
+		else if (value instanceof Double || value instanceof Float) {
 			sb.append("<double>");
 			sb.append(value.toString());
 			sb.append("</double>");

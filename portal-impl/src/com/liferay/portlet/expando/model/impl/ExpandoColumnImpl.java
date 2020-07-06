@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,13 +14,13 @@
 
 package com.liferay.portlet.expando.model.impl;
 
+import com.liferay.expando.kernel.model.ExpandoColumnConstants;
+import com.liferay.expando.kernel.model.ExpandoValue;
 import com.liferay.portal.kernel.language.LanguageUtil;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
 import com.liferay.portal.kernel.util.TextFormatter;
 import com.liferay.portal.kernel.util.UnicodeProperties;
-import com.liferay.portlet.expando.model.ExpandoColumnConstants;
-import com.liferay.portlet.expando.model.ExpandoValue;
 
 import java.io.IOException;
 import java.io.Serializable;
@@ -32,9 +32,6 @@ import java.util.Locale;
  * @author Brian Wing Shun Chan
  */
 public class ExpandoColumnImpl extends ExpandoColumnBaseImpl {
-
-	public ExpandoColumnImpl() {
-	}
 
 	@Override
 	public Serializable getDefaultValue() {
@@ -70,6 +67,9 @@ public class ExpandoColumnImpl extends ExpandoColumnBaseImpl {
 			else if (type == ExpandoColumnConstants.FLOAT_ARRAY) {
 				return value.getFloatArray();
 			}
+			else if (type == ExpandoColumnConstants.GEOLOCATION) {
+				return value.getGeolocationJSONObject();
+			}
 			else if (type == ExpandoColumnConstants.INTEGER) {
 				return value.getInteger();
 			}
@@ -103,11 +103,10 @@ public class ExpandoColumnImpl extends ExpandoColumnBaseImpl {
 			else if (type == ExpandoColumnConstants.STRING_LOCALIZED) {
 				return (Serializable)value.getStringMap();
 			}
-			else {
-				return value.getString();
-			}
+
+			return value.getString();
 		}
-		catch (Exception e) {
+		catch (Exception exception) {
 			return null;
 		}
 	}
@@ -127,48 +126,48 @@ public class ExpandoColumnImpl extends ExpandoColumnBaseImpl {
 
 	@Override
 	public String getTypeSettings() {
-		if (_typeSettingsProperties == null) {
+		if (_typeSettingsUnicodeProperties == null) {
 			return super.getTypeSettings();
 		}
-		else {
-			return _typeSettingsProperties.toString();
-		}
+
+		return _typeSettingsUnicodeProperties.toString();
 	}
 
 	@Override
 	public UnicodeProperties getTypeSettingsProperties() {
-		if (_typeSettingsProperties == null) {
-			_typeSettingsProperties = new UnicodeProperties(true);
+		if (_typeSettingsUnicodeProperties == null) {
+			_typeSettingsUnicodeProperties = new UnicodeProperties(true);
 
 			try {
-				_typeSettingsProperties.load(super.getTypeSettings());
+				_typeSettingsUnicodeProperties.load(super.getTypeSettings());
 			}
-			catch (IOException ioe) {
-				_log.error(ioe, ioe);
+			catch (IOException ioException) {
+				_log.error(ioException, ioException);
 			}
 		}
 
-		return _typeSettingsProperties;
+		return _typeSettingsUnicodeProperties;
 	}
 
 	@Override
 	public void setTypeSettings(String typeSettings) {
-		_typeSettingsProperties = null;
+		_typeSettingsUnicodeProperties = null;
 
 		super.setTypeSettings(typeSettings);
 	}
 
 	@Override
 	public void setTypeSettingsProperties(
-		UnicodeProperties typeSettingsProperties) {
+		UnicodeProperties typeSettingsUnicodeProperties) {
 
-		_typeSettingsProperties = typeSettingsProperties;
+		_typeSettingsUnicodeProperties = typeSettingsUnicodeProperties;
 
-		super.setTypeSettings(_typeSettingsProperties.toString());
+		super.setTypeSettings(_typeSettingsUnicodeProperties.toString());
 	}
 
-	private static Log _log = LogFactoryUtil.getLog(ExpandoColumnImpl.class);
+	private static final Log _log = LogFactoryUtil.getLog(
+		ExpandoColumnImpl.class);
 
-	private UnicodeProperties _typeSettingsProperties;
+	private UnicodeProperties _typeSettingsUnicodeProperties;
 
 }

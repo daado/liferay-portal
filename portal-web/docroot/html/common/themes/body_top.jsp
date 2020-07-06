@@ -1,6 +1,6 @@
 <%--
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -19,7 +19,7 @@
 <%-- Raw Text --%>
 
 <%
-StringBundler bodyTopSB = OutputTag.getData(request, WebKeys.PAGE_BODY_TOP);
+com.liferay.petra.string.StringBundler bodyTopSB = OutputTag.getDataSB(request, WebKeys.PAGE_BODY_TOP);
 %>
 
 <c:if test="<%= bodyTopSB != null %>">
@@ -33,3 +33,5 @@ StringBundler bodyTopSB = OutputTag.getData(request, WebKeys.PAGE_BODY_TOP);
 <%@ include file="/html/common/themes/top_messages.jsp" %>
 
 <liferay-util:include page="/html/common/themes/body_top-ext.jsp" />
+
+<liferay-util:dynamic-include key="/html/common/themes/body_top.jsp#post" />

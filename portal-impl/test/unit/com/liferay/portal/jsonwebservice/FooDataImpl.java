@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -13,6 +13,8 @@
  */
 
 package com.liferay.portal.jsonwebservice;
+
+import com.liferay.petra.string.StringBundler;
 
 /**
  * @author Igor Spasic
@@ -55,7 +57,8 @@ public class FooDataImpl implements FooData {
 
 	@Override
 	public String toString() {
-		return "h=" + _height + "/id=" + _id + "/n=" + _name + "/v=" + _value;
+		return StringBundler.concat(
+			"h=", _height, "/id=", _id, "/n=", _name, "/v=", _value);
 	}
 
 	private int _height = 177;

@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,8 +14,8 @@
 
 package com.liferay.portal.model.impl;
 
-import com.liferay.portal.kernel.util.StringPool;
-import com.liferay.portal.model.ThemeSetting;
+import com.liferay.petra.string.StringPool;
+import com.liferay.portal.kernel.model.ThemeSetting;
 
 import java.io.Serializable;
 
@@ -30,7 +30,13 @@ public class ThemeSettingImpl implements Serializable, ThemeSetting {
 	}
 
 	public static String namespaceProperty(String device, String key) {
-		return namespaceProperty(device).concat(StringPool.COLON).concat(key);
+		return namespaceProperty(
+			device
+		).concat(
+			StringPool.COLON
+		).concat(
+			key
+		);
 	}
 
 	public ThemeSettingImpl(
@@ -71,7 +77,7 @@ public class ThemeSettingImpl implements Serializable, ThemeSetting {
 
 	@Override
 	public void setConfigurable(boolean configurable) {
-		this._configurable = configurable;
+		_configurable = configurable;
 	}
 
 	@Override

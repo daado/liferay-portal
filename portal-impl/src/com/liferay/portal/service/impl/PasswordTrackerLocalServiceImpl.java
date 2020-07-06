@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -15,11 +15,10 @@
 package com.liferay.portal.service.impl;
 
 import com.liferay.portal.kernel.exception.PortalException;
-import com.liferay.portal.kernel.exception.SystemException;
-import com.liferay.portal.model.PasswordPolicy;
-import com.liferay.portal.model.PasswordTracker;
-import com.liferay.portal.model.User;
-import com.liferay.portal.security.pwd.PasswordEncryptorUtil;
+import com.liferay.portal.kernel.model.PasswordPolicy;
+import com.liferay.portal.kernel.model.PasswordTracker;
+import com.liferay.portal.kernel.model.User;
+import com.liferay.portal.kernel.security.pwd.PasswordEncryptorUtil;
 import com.liferay.portal.service.base.PasswordTrackerLocalServiceBaseImpl;
 
 import java.util.Date;
@@ -33,13 +32,13 @@ public class PasswordTrackerLocalServiceImpl
 	extends PasswordTrackerLocalServiceBaseImpl {
 
 	@Override
-	public void deletePasswordTrackers(long userId) throws SystemException {
+	public void deletePasswordTrackers(long userId) {
 		passwordTrackerPersistence.removeByUserId(userId);
 	}
 
 	@Override
 	public boolean isSameAsCurrentPassword(long userId, String newClearTextPwd)
-		throws PortalException, SystemException {
+		throws PortalException {
 
 		User user = userPersistence.findByPrimaryKey(userId);
 
@@ -52,28 +51,25 @@ public class PasswordTrackerLocalServiceImpl
 			if (currentPwd.equals(newEncPwd)) {
 				return true;
 			}
-			else {
-				return false;
-			}
+
+			return false;
 		}
-		else {
-			if (currentPwd.equals(newClearTextPwd)) {
-				return true;
-			}
-			else {
-				return false;
-			}
+
+		if (currentPwd.equals(newClearTextPwd)) {
+			return true;
 		}
+
+		return false;
 	}
 
 	@Override
 	public boolean isValidPassword(long userId, String newClearTextPwd)
-		throws PortalException, SystemException {
+		throws PortalException {
 
 		PasswordPolicy passwordPolicy =
 			passwordPolicyLocalService.getPasswordPolicyByUserId(userId);
 
-		if ((passwordPolicy == null) || !passwordPolicy.getHistory()) {
+		if ((passwordPolicy == null) || !passwordPolicy.isHistory()) {
 			return true;
 		}
 
@@ -90,6 +86,7 @@ public class PasswordTrackerLocalServiceImpl
 			}
 
 			String oldEncPwd = passwordTracker.getPassword();
+
 			String newEncPwd = PasswordEncryptorUtil.encrypt(
 				newClearTextPwd, oldEncPwd);
 
@@ -105,7 +102,7 @@ public class PasswordTrackerLocalServiceImpl
 
 	@Override
 	public void trackPassword(long userId, String encPassword)
-		throws PortalException, SystemException {
+		throws PortalException {
 
 		PasswordPolicy passwordPolicy =
 			passwordPolicyLocalService.getPasswordPolicyByUserId(userId);

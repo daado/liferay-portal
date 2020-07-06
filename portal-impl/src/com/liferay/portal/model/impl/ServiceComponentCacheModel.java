@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,10 +14,11 @@
 
 package com.liferay.portal.model.impl;
 
-import com.liferay.portal.kernel.util.StringBundler;
-import com.liferay.portal.kernel.util.StringPool;
-import com.liferay.portal.model.CacheModel;
-import com.liferay.portal.model.ServiceComponent;
+import com.liferay.petra.lang.HashUtil;
+import com.liferay.petra.string.StringBundler;
+import com.liferay.portal.kernel.model.CacheModel;
+import com.liferay.portal.kernel.model.MVCCModel;
+import com.liferay.portal.kernel.model.ServiceComponent;
 
 import java.io.Externalizable;
 import java.io.IOException;
@@ -28,16 +29,58 @@ import java.io.ObjectOutput;
  * The cache model class for representing ServiceComponent in entity cache.
  *
  * @author Brian Wing Shun Chan
- * @see ServiceComponent
  * @generated
  */
-public class ServiceComponentCacheModel implements CacheModel<ServiceComponent>,
-	Externalizable {
+public class ServiceComponentCacheModel
+	implements CacheModel<ServiceComponent>, Externalizable, MVCCModel {
+
+	@Override
+	public boolean equals(Object object) {
+		if (this == object) {
+			return true;
+		}
+
+		if (!(object instanceof ServiceComponentCacheModel)) {
+			return false;
+		}
+
+		ServiceComponentCacheModel serviceComponentCacheModel =
+			(ServiceComponentCacheModel)object;
+
+		if ((serviceComponentId ==
+				serviceComponentCacheModel.serviceComponentId) &&
+			(mvccVersion == serviceComponentCacheModel.mvccVersion)) {
+
+			return true;
+		}
+
+		return false;
+	}
+
+	@Override
+	public int hashCode() {
+		int hashCode = HashUtil.hash(0, serviceComponentId);
+
+		return HashUtil.hash(hashCode, mvccVersion);
+	}
+
+	@Override
+	public long getMvccVersion() {
+		return mvccVersion;
+	}
+
+	@Override
+	public void setMvccVersion(long mvccVersion) {
+		this.mvccVersion = mvccVersion;
+	}
+
 	@Override
 	public String toString() {
-		StringBundler sb = new StringBundler(11);
+		StringBundler sb = new StringBundler(13);
 
-		sb.append("{serviceComponentId=");
+		sb.append("{mvccVersion=");
+		sb.append(mvccVersion);
+		sb.append(", serviceComponentId=");
 		sb.append(serviceComponentId);
 		sb.append(", buildNamespace=");
 		sb.append(buildNamespace);
@@ -56,10 +99,11 @@ public class ServiceComponentCacheModel implements CacheModel<ServiceComponent>,
 	public ServiceComponent toEntityModel() {
 		ServiceComponentImpl serviceComponentImpl = new ServiceComponentImpl();
 
+		serviceComponentImpl.setMvccVersion(mvccVersion);
 		serviceComponentImpl.setServiceComponentId(serviceComponentId);
 
 		if (buildNamespace == null) {
-			serviceComponentImpl.setBuildNamespace(StringPool.BLANK);
+			serviceComponentImpl.setBuildNamespace("");
 		}
 		else {
 			serviceComponentImpl.setBuildNamespace(buildNamespace);
@@ -69,7 +113,7 @@ public class ServiceComponentCacheModel implements CacheModel<ServiceComponent>,
 		serviceComponentImpl.setBuildDate(buildDate);
 
 		if (data == null) {
-			serviceComponentImpl.setData(StringPool.BLANK);
+			serviceComponentImpl.setData("");
 		}
 		else {
 			serviceComponentImpl.setData(data);
@@ -81,40 +125,50 @@ public class ServiceComponentCacheModel implements CacheModel<ServiceComponent>,
 	}
 
 	@Override
-	public void readExternal(ObjectInput objectInput) throws IOException {
+	public void readExternal(ObjectInput objectInput)
+		throws ClassNotFoundException, IOException {
+
+		mvccVersion = objectInput.readLong();
+
 		serviceComponentId = objectInput.readLong();
 		buildNamespace = objectInput.readUTF();
+
 		buildNumber = objectInput.readLong();
+
 		buildDate = objectInput.readLong();
-		data = objectInput.readUTF();
+		data = (String)objectInput.readObject();
 	}
 
 	@Override
-	public void writeExternal(ObjectOutput objectOutput)
-		throws IOException {
+	public void writeExternal(ObjectOutput objectOutput) throws IOException {
+		objectOutput.writeLong(mvccVersion);
+
 		objectOutput.writeLong(serviceComponentId);
 
 		if (buildNamespace == null) {
-			objectOutput.writeUTF(StringPool.BLANK);
+			objectOutput.writeUTF("");
 		}
 		else {
 			objectOutput.writeUTF(buildNamespace);
 		}
 
 		objectOutput.writeLong(buildNumber);
+
 		objectOutput.writeLong(buildDate);
 
 		if (data == null) {
-			objectOutput.writeUTF(StringPool.BLANK);
+			objectOutput.writeObject("");
 		}
 		else {
-			objectOutput.writeUTF(data);
+			objectOutput.writeObject(data);
 		}
 	}
 
+	public long mvccVersion;
 	public long serviceComponentId;
 	public String buildNamespace;
 	public long buildNumber;
 	public long buildDate;
 	public String data;
+
 }

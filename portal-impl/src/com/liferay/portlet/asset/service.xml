@@ -1,13 +1,13 @@
 <?xml version="1.0"?>
-<!DOCTYPE service-builder PUBLIC "-//Liferay//DTD Service Builder 7.0.0//EN" "http://www.liferay.com/dtd/liferay-service-builder_7_0_0.dtd">
+<!DOCTYPE service-builder PUBLIC "-//Liferay//DTD Service Builder 7.3.0//EN" "http://www.liferay.com/dtd/liferay-service-builder_7_3_0.dtd">
 
-<service-builder package-path="com.liferay.portlet.asset">
+<service-builder api-package-path="com.liferay.asset.kernel" auto-import-default-references="false" change-tracking-enabled="true" mvcc-enabled="true" package-path="com.liferay.portlet.asset">
 	<namespace>Asset</namespace>
-	<entity name="AssetCategory" uuid="true" uuid-accessor="true" local-service="true" remote-service="true">
+	<entity external-reference-code="true" local-service="true" name="AssetCategory" remote-service="true" uuid="true" uuid-accessor="true">
 
 		<!-- PK fields -->
 
-		<column name="categoryId" type="long" primary="true" accessor="true" />
+		<column accessor="true" name="categoryId" primary="true" type="long" />
 
 		<!-- Group instance -->
 
@@ -24,16 +24,16 @@
 		<!-- Other fields -->
 
 		<column name="parentCategoryId" type="long" />
-		<column name="leftCategoryId" type="long" />
-		<column name="rightCategoryId" type="long" />
-		<column name="name" type="String" accessor="true" />
-		<column name="title" type="String" localized="true" />
-		<column name="description" type="String" localized="true" />
+		<column name="treePath" type="String" />
+		<column accessor="true" name="name" type="String" />
+		<column localized="true" name="title" type="String" />
+		<column localized="true" name="description" type="String" />
 		<column name="vocabularyId" type="long" />
+		<column name="lastPublishDate" type="Date" />
 
 		<!-- Relationships -->
 
-		<column name="entries" type="Collection" entity="AssetEntry" mapping-table="AssetEntries_AssetCategories" />
+		<column entity="AssetEntry" mapping-table="AssetEntries_AssetCategories" name="entries" type="Collection" />
 
 		<!-- Order -->
 
@@ -52,9 +52,13 @@
 		<finder name="VocabularyId" return-type="Collection">
 			<finder-column name="vocabularyId" />
 		</finder>
+		<finder name="G_P" return-type="Collection">
+			<finder-column name="groupId" />
+			<finder-column name="parentCategoryId" />
+		</finder>
 		<finder name="G_V" return-type="Collection">
 			<finder-column name="groupId" />
-			<finder-column name="vocabularyId" arrayable-operator="OR" />
+			<finder-column arrayable-operator="OR" name="vocabularyId" />
 		</finder>
 		<finder name="P_N" return-type="Collection">
 			<finder-column name="parentCategoryId" />
@@ -73,28 +77,35 @@
 			<finder-column name="parentCategoryId" />
 			<finder-column name="vocabularyId" />
 		</finder>
+		<finder db-index="false" name="G_LikeT_V" return-type="Collection">
+			<finder-column name="groupId" />
+			<finder-column comparator="LIKE" name="treePath" />
+			<finder-column name="vocabularyId" />
+		</finder>
 		<finder name="G_LikeN_V" return-type="Collection">
 			<finder-column name="groupId" />
-			<finder-column name="name" case-sensitive="false" comparator="LIKE" />
-			<finder-column name="vocabularyId" arrayable-operator="OR" />
+			<finder-column case-sensitive="false" comparator="LIKE" name="name" />
+			<finder-column arrayable-operator="OR" name="vocabularyId" />
 		</finder>
 		<finder name="P_N_V" return-type="AssetCategory" unique="true">
 			<finder-column name="parentCategoryId" />
 			<finder-column name="name" />
 			<finder-column name="vocabularyId" />
 		</finder>
-		<finder name="G_P_N_V" return-type="Collection">
-			<finder-column name="groupId" />
-			<finder-column name="parentCategoryId" />
-			<finder-column name="name" />
-			<finder-column name="vocabularyId" />
-		</finder>
+
+		<!-- References -->
+
+		<reference entity="ClassName" package-path="com.liferay.portal" />
+		<reference entity="Resource" package-path="com.liferay.portal" />
+		<reference entity="User" package-path="com.liferay.portal" />
+		<reference entity="AssetEntry" package-path="com.liferay.portlet.asset" />
+		<reference entity="AssetVocabulary" package-path="com.liferay.portlet.asset" />
 	</entity>
-	<entity name="AssetCategoryProperty" local-service="true" remote-service="true">
+	<entity deprecated="true" local-service="true" name="AssetCategoryProperty" remote-service="true">
 
 		<!-- PK fields -->
 
-		<column name="categoryPropertyId" type="long" primary="true" />
+		<column name="categoryPropertyId" primary="true" type="long" />
 
 		<!-- Audit fields -->
 
@@ -133,11 +144,11 @@
 			<finder-column name="key" />
 		</finder>
 	</entity>
-	<entity name="AssetEntry" local-service="true" remote-service="true">
+	<entity local-service="true" name="AssetEntry" remote-service="true">
 
 		<!-- PK fields -->
 
-		<column name="entryId" type="long" primary="true" accessor="true" />
+		<column accessor="true" name="entryId" primary="true" type="long" />
 
 		<!-- Group instance -->
 
@@ -157,29 +168,32 @@
 		<column name="classPK" type="long" />
 		<column name="classUuid" type="String" />
 		<column name="classTypeId" type="long" />
+		<column name="listable" type="boolean" />
 		<column name="visible" type="boolean" />
 		<column name="startDate" type="Date" />
 		<column name="endDate" type="Date" />
 		<column name="publishDate" type="Date" />
 		<column name="expirationDate" type="Date" />
 		<column name="mimeType" type="String" />
-		<column name="title" type="String" localized="true" />
-		<column name="description" type="String" localized="true" />
-		<column name="summary" type="String" localized="true" />
+		<column localized="true" name="title" type="String" />
+		<column localized="true" name="description" type="String" />
+		<column localized="true" name="summary" type="String" />
 		<column name="url" type="String" />
 		<column name="layoutUuid" type="String" />
 		<column name="height" type="int" />
 		<column name="width" type="int" />
 		<column name="priority" type="double" />
-		<column name="viewCount" type="int" />
 
 		<!-- Relationships -->
 
-		<column name="categories" type="Collection" entity="AssetCategory" mapping-table="AssetEntries_AssetCategories" />
-		<column name="tags" type="Collection" entity="AssetTag" mapping-table="AssetEntries_AssetTags" />
+		<column entity="AssetCategory" mapping-table="AssetEntries_AssetCategories" name="categories" type="Collection" />
+		<column entity="AssetTag" mapping-table="AssetEntries_AssetTags" name="tags" type="Collection" />
 
 		<!-- Finder methods -->
 
+		<finder name="GroupId" return-type="Collection">
+			<finder-column name="groupId" />
+		</finder>
 		<finder name="CompanyId" return-type="Collection">
 			<finder-column name="companyId" />
 		</finder>
@@ -203,30 +217,33 @@
 			<finder-column name="classNameId" />
 			<finder-column name="classPK" />
 		</finder>
+		<finder name="G_C_V" return-type="Collection">
+			<finder-column name="groupId" />
+			<finder-column name="classNameId" />
+			<finder-column name="visible" />
+		</finder>
+		<finder name="G_C_P_E" return-type="Collection">
+			<finder-column name="groupId" />
+			<finder-column name="classNameId" />
+			<finder-column name="publishDate" />
+			<finder-column name="expirationDate" />
+		</finder>
 
 		<!-- References -->
 
-		<reference package-path="com.liferay.portal" entity="Company" />
-		<reference package-path="com.liferay.portal" entity="Group" />
-		<reference package-path="com.liferay.portal" entity="SystemEvent" />
-		<reference package-path="com.liferay.portlet.blogs" entity="BlogsEntry" />
-		<reference package-path="com.liferay.portlet.bookmarks" entity="BookmarksEntry" />
-		<reference package-path="com.liferay.portlet.documentlibrary" entity="DLApp" />
-		<reference package-path="com.liferay.portlet.documentlibrary" entity="DLFileEntry" />
-		<reference package-path="com.liferay.portlet.documentlibrary" entity="DLFolder" />
-		<reference package-path="com.liferay.portlet.journal" entity="JournalArticle" />
-		<reference package-path="com.liferay.portlet.journal" entity="JournalArticleResource" />
-		<reference package-path="com.liferay.portlet.messageboards" entity="MBMessage" />
-		<reference package-path="com.liferay.portlet.social" entity="SocialActivity" />
-		<reference package-path="com.liferay.portlet.social" entity="SocialActivityCounter" />
-		<reference package-path="com.liferay.portlet.wiki" entity="WikiPage" />
-		<reference package-path="com.liferay.portlet.wiki" entity="WikiPageResource" />
+		<reference entity="ClassName" package-path="com.liferay.portal" />
+		<reference entity="Group" package-path="com.liferay.portal" />
+		<reference entity="User" package-path="com.liferay.portal" />
+		<reference entity="AssetCategory" package-path="com.liferay.portlet.asset" />
+		<reference entity="AssetLink" package-path="com.liferay.portlet.asset" />
+		<reference entity="AssetTag" package-path="com.liferay.portlet.asset" />
+		<reference entity="SocialActivityCounter" package-path="com.liferay.portlet.social" />
 	</entity>
-	<entity name="AssetLink" local-service="true" remote-service="false">
+	<entity local-service="true" name="AssetLink" remote-service="false">
 
 		<!-- PK fields -->
 
-		<column name="linkId" type="long" primary="true" accessor="true" />
+		<column accessor="true" name="linkId" primary="true" type="long" />
 
 		<!-- Audit fields -->
 
@@ -238,7 +255,7 @@
 		<!-- Other fields -->
 
 		<column name="entryId1" type="long" />
-		<column name="entryId2" type="long" accessor="true" />
+		<column accessor="true" name="entryId2" type="long" />
 		<column name="type" type="int" />
 		<column name="weight" type="int" />
 
@@ -253,7 +270,6 @@
 		<finder name="E1" return-type="Collection">
 			<finder-column name="entryId1" />
 		</finder>
-
 		<finder name="E2" return-type="Collection">
 			<finder-column name="entryId2" />
 		</finder>
@@ -274,12 +290,18 @@
 			<finder-column name="entryId2" />
 			<finder-column name="type" />
 		</finder>
+
+		<!-- References -->
+
+		<reference entity="SystemEvent" package-path="com.liferay.portal" />
+		<reference entity="User" package-path="com.liferay.portal" />
+		<reference entity="AssetEntry" package-path="com.liferay.portlet.asset" />
 	</entity>
-	<entity name="AssetTag" local-service="true" remote-service="true">
+	<entity local-service="true" name="AssetTag" remote-service="true" uuid="true">
 
 		<!-- PK fields -->
 
-		<column name="tagId" type="long" primary="true" accessor="true" />
+		<column accessor="true" name="tagId" primary="true" type="long" />
 
 		<!-- Group instance -->
 
@@ -295,12 +317,13 @@
 
 		<!-- Other fields -->
 
-		<column name="name" type="String" accessor="true" />
-		<column name="assetCount" type="int" />
+		<column accessor="true" name="name" type="String" />
+		<column change-tracking-resolution-type="merge" name="assetCount" type="int" />
+		<column name="lastPublishDate" type="Date" />
 
 		<!-- Relationships -->
 
-		<column name="entries" type="Collection" entity="AssetEntry" mapping-table="AssetEntries_AssetTags" />
+		<column entity="AssetEntry" mapping-table="AssetEntries_AssetTags" name="entries" type="Collection" />
 
 		<!-- Order -->
 
@@ -311,97 +334,32 @@
 		<!-- Finder methods -->
 
 		<finder name="GroupId" return-type="Collection">
-			<finder-column name="groupId" />
+			<finder-column arrayable-operator="OR" name="groupId" />
 		</finder>
-		<finder name="G_N" return-type="AssetTag">
+		<finder name="Name" return-type="Collection">
+			<finder-column arrayable-operator="OR" name="name" />
+		</finder>
+		<finder name="G_N" return-type="AssetTag" unique="true">
 			<finder-column name="groupId" />
 			<finder-column name="name" />
+		</finder>
+		<finder name="G_LikeN" return-type="Collection">
+			<finder-column arrayable-operator="OR" name="groupId" />
+			<finder-column comparator="LIKE" name="name" />
 		</finder>
 
 		<!-- References -->
 
-		<reference package-path="com.liferay.portal" entity="Group" />
+		<reference entity="ClassName" package-path="com.liferay.portal" />
+		<reference entity="Group" package-path="com.liferay.portal" />
+		<reference entity="User" package-path="com.liferay.portal" />
+		<reference entity="AssetEntry" package-path="com.liferay.portlet.asset" />
 	</entity>
-	<entity name="AssetTagProperty" local-service="true" remote-service="true">
+	<entity external-reference-code="true" local-service="true" name="AssetVocabulary" remote-service="true" uuid="true">
 
 		<!-- PK fields -->
 
-		<column name="tagPropertyId" type="long" primary="true" />
-
-		<!-- Audit fields -->
-
-		<column name="companyId" type="long" />
-		<column name="userId" type="long" />
-		<column name="userName" type="String" />
-		<column name="createDate" type="Date" />
-		<column name="modifiedDate" type="Date" />
-
-		<!-- Other fields -->
-
-		<column name="tagId" type="long" />
-		<column name="key" type="String" />
-		<column name="value" type="String" />
-
-		<!-- Order -->
-
-		<order by="asc">
-			<order-column name="key" />
-		</order>
-
-		<!--Finder methods -->
-
-		<finder name="CompanyId" return-type="Collection">
-			<finder-column name="companyId" />
-		</finder>
-		<finder name="TagId" return-type="Collection">
-			<finder-column name="tagId" />
-		</finder>
-		<finder name="C_K" return-type="Collection">
-			<finder-column name="companyId" />
-			<finder-column name="key" />
-		</finder>
-		<finder name="T_K" return-type="AssetTagProperty" unique="true">
-			<finder-column name="tagId" />
-			<finder-column name="key" />
-		</finder>
-	</entity>
-	<entity name="AssetTagPropertyKey" local-service="false" remote-service="false" />
-	<entity name="AssetTagStats" local-service="true" remote-service="false">
-
-		<!-- PK fields -->
-
-		<column name="tagStatsId" type="long" primary="true" />
-
-		<!-- Other fields -->
-
-		<column name="tagId" type="long" />
-		<column name="classNameId" type="long" />
-		<column name="assetCount" type="int" />
-
-		<!-- Order -->
-
-		<order by="desc">
-			<order-column name="assetCount" />
-		</order>
-
-		<!-- Finder methods -->
-
-		<finder name="TagId" return-type="Collection">
-			<finder-column name="tagId" />
-		</finder>
-		<finder name="ClassNameId" return-type="Collection">
-			<finder-column name="classNameId" />
-		</finder>
-		<finder name="T_C" return-type="AssetTagStats" unique="true">
-			<finder-column name="tagId" />
-			<finder-column name="classNameId" />
-		</finder>
-	</entity>
-	<entity name="AssetVocabulary" uuid="true" local-service="true" remote-service="true">
-
-		<!-- PK fields -->
-
-		<column name="vocabularyId" type="long" primary="true" />
+		<column name="vocabularyId" primary="true" type="long" />
 
 		<!-- Group instance -->
 
@@ -418,9 +376,10 @@
 		<!-- Other fields -->
 
 		<column name="name" type="String" />
-		<column name="title" type="String" localized="true" />
-		<column name="description" type="String" localized="true" />
+		<column localized="true" name="title" type="String" />
+		<column localized="true" name="description" type="String" />
 		<column name="settings" type="String" />
+		<column name="lastPublishDate" type="Date" />
 
 		<!-- Order -->
 
@@ -431,7 +390,7 @@
 		<!-- Finder methods -->
 
 		<finder name="GroupId" return-type="Collection">
-			<finder-column name="groupId" />
+			<finder-column arrayable-operator="OR" name="groupId" />
 		</finder>
 		<finder name="CompanyId" return-type="Collection">
 			<finder-column name="companyId" />
@@ -442,27 +401,31 @@
 		</finder>
 		<finder name="G_LikeN" return-type="Collection">
 			<finder-column name="groupId" />
-			<finder-column name="name" case-sensitive="false" comparator="LIKE" />
+			<finder-column case-sensitive="false" comparator="LIKE" name="name" />
 		</finder>
 
 		<!-- References -->
 
-		<reference package-path="com.liferay.portal" entity="Group" />
+		<reference entity="Group" package-path="com.liferay.portal" />
+		<reference entity="Resource" package-path="com.liferay.portal" />
+		<reference entity="User" package-path="com.liferay.portal" />
+		<reference entity="AssetCategory" package-path="com.liferay.portlet.asset" />
 	</entity>
 	<exceptions>
 		<exception>AssetCategory</exception>
 		<exception>AssetCategoryName</exception>
 		<exception>AssetLink</exception>
 		<exception>AssetTag</exception>
+		<exception>AssetTagName</exception>
 		<exception>CategoryName</exception>
 		<exception>CategoryPropertyKey</exception>
 		<exception>CategoryPropertyValue</exception>
 		<exception>DuplicateCategory</exception>
+		<exception>DuplicateCategoryProperty</exception>
 		<exception>DuplicateQueryRule</exception>
 		<exception>DuplicateTag</exception>
 		<exception>DuplicateVocabulary</exception>
-		<exception>TagPropertyKey</exception>
-		<exception>TagPropertyValue</exception>
+		<exception>InvalidAssetCategory</exception>
 		<exception>VocabularyName</exception>
 	</exceptions>
 </service-builder>

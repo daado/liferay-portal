@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -27,39 +27,39 @@ import java.util.Properties;
 public class PortletProps {
 
 	public static void addProperties(Properties properties) {
-		_instance._configuration.addProperties(properties);
+		_portletProps._configuration.addProperties(properties);
 	}
 
 	public static boolean contains(String key) {
-		return _instance._configuration.contains(key);
+		return _portletProps._configuration.contains(key);
 	}
 
 	public static String get(String key) {
-		return _instance._configuration.get(key);
+		return _portletProps._configuration.get(key);
 	}
 
 	public static String get(String key, Filter filter) {
-		return _instance._configuration.get(key, filter);
+		return _portletProps._configuration.get(key, filter);
 	}
 
 	public static String[] getArray(String key) {
-		return _instance._configuration.getArray(key);
+		return _portletProps._configuration.getArray(key);
 	}
 
 	public static String[] getArray(String key, Filter filter) {
-		return _instance._configuration.getArray(key, filter);
+		return _portletProps._configuration.getArray(key, filter);
 	}
 
 	public static Properties getProperties() {
-		return _instance._configuration.getProperties();
+		return _portletProps._configuration.getProperties();
 	}
 
 	public static void removeProperties(Properties properties) {
-		_instance._configuration.removeProperties(properties);
+		_portletProps._configuration.removeProperties(properties);
 	}
 
 	public static void set(String key, String value) {
-		_instance._configuration.set(key, value);
+		_portletProps._configuration.set(key, value);
 	}
 
 	private PortletProps() {
@@ -67,8 +67,8 @@ public class PortletProps {
 			PortletClassLoaderUtil.getClassLoader(), "portlet");
 	}
 
-	private static PortletProps _instance = new PortletProps();
+	private static final PortletProps _portletProps = new PortletProps();
 
-	private Configuration _configuration;
+	private final Configuration _configuration;
 
 }

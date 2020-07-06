@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,9 +14,8 @@
 
 package com.liferay.portal.servlet;
 
+import com.liferay.portal.kernel.security.access.control.AccessControlThreadLocal;
 import com.liferay.portal.kernel.servlet.PluginContextListener;
-import com.liferay.portal.security.ac.AccessControlThreadLocal;
-import com.liferay.portal.util.ClassLoaderUtil;
 
 import java.io.IOException;
 
@@ -42,23 +41,26 @@ public class AxisServlet extends com.liferay.util.axis.AxisServlet {
 			super.init(servletConfig);
 		}
 		else {
+			Thread currentThread = Thread.currentThread();
+
 			ClassLoader contextClassLoader =
-				ClassLoaderUtil.getContextClassLoader();
+				currentThread.getContextClassLoader();
 
 			try {
-				ClassLoaderUtil.setContextClassLoader(_pluginClassLoader);
+				currentThread.setContextClassLoader(_pluginClassLoader);
 
 				super.init(servletConfig);
 			}
 			finally {
-				ClassLoaderUtil.setContextClassLoader(contextClassLoader);
+				currentThread.setContextClassLoader(contextClassLoader);
 			}
 		}
 	}
 
 	@Override
 	public void service(
-			HttpServletRequest request, HttpServletResponse response)
+			HttpServletRequest httpServletRequest,
+			HttpServletResponse httpServletResponse)
 		throws IOException, ServletException {
 
 		boolean remoteAccess = AccessControlThreadLocal.isRemoteAccess();
@@ -67,30 +69,32 @@ public class AxisServlet extends com.liferay.util.axis.AxisServlet {
 			AccessControlThreadLocal.setRemoteAccess(true);
 
 			if (_pluginClassLoader == null) {
-				super.service(request, response);
+				super.service(httpServletRequest, httpServletResponse);
 			}
 			else {
+				Thread currentThread = Thread.currentThread();
+
 				ClassLoader contextClassLoader =
-					ClassLoaderUtil.getContextClassLoader();
+					currentThread.getContextClassLoader();
 
 				try {
-					ClassLoaderUtil.setContextClassLoader(_pluginClassLoader);
+					currentThread.setContextClassLoader(_pluginClassLoader);
 
-					super.service(request, response);
+					super.service(httpServletRequest, httpServletResponse);
 				}
 				finally {
-					ClassLoaderUtil.setContextClassLoader(contextClassLoader);
+					currentThread.setContextClassLoader(contextClassLoader);
 				}
 			}
 		}
-		catch (IOException ioe) {
-			throw ioe;
+		catch (IOException ioException) {
+			throw ioException;
 		}
-		catch (ServletException se) {
-			throw se;
+		catch (ServletException servletException) {
+			throw servletException;
 		}
-		catch (Exception e) {
-			throw new ServletException(e);
+		catch (Exception exception) {
+			throw new ServletException(exception);
 		}
 		finally {
 			AccessControlThreadLocal.setRemoteAccess(remoteAccess);

@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -17,7 +17,6 @@ package com.liferay.portal.servlet;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
 import com.liferay.portal.kernel.util.ListUtil;
-import com.liferay.portal.kernel.util.Validator;
 import com.liferay.portal.util.PropsValues;
 import com.liferay.util.servlet.NullSession;
 
@@ -29,6 +28,7 @@ import java.util.Map;
 
 import javax.servlet.ServletContext;
 import javax.servlet.http.HttpSession;
+import javax.servlet.http.HttpSessionContext;
 
 /**
  * @author Brian Wing Shun Chan
@@ -45,32 +45,11 @@ public class SharedSessionWrapper implements HttpSession {
 				_log.warn("Wrapped portal session is null");
 			}
 		}
+		else {
+			_portalSession = portalSession;
+		}
 
-		_portalSession = portalSession;
 		_portletSession = portletSession;
-	}
-
-	@Override
-	public boolean equals(Object obj) {
-		if (this == obj) {
-			return true;
-		}
-
-		if (!(obj instanceof SharedSessionWrapper)) {
-			return false;
-		}
-
-		SharedSessionWrapper sharedSessionWrapper = (SharedSessionWrapper)obj;
-
-		if (Validator.equals(
-				_portalSession, sharedSessionWrapper._portalSession) &&
-			Validator.equals(
-				_portletSession, sharedSessionWrapper._portletSession)) {
-
-			return true;
-		}
-
-		return false;
 	}
 
 	@Override
@@ -84,26 +63,26 @@ public class SharedSessionWrapper implements HttpSession {
 	public Enumeration<String> getAttributeNames() {
 		HttpSession session = getSessionDelegate();
 
-		Enumeration<String> namesEnu = session.getAttributeNames();
+		Enumeration<String> namesEnumeration = session.getAttributeNames();
 
 		if (session == _portletSession) {
-			List<String> namesList = Collections.list(namesEnu);
+			List<String> namesList = Collections.list(namesEnumeration);
 
-			Enumeration<String> portalSessionNamesEnu =
+			Enumeration<String> portalSessionNamesEnumeration =
 				_portalSession.getAttributeNames();
 
-			while (portalSessionNamesEnu.hasMoreElements()) {
-				String name = portalSessionNamesEnu.nextElement();
+			while (portalSessionNamesEnumeration.hasMoreElements()) {
+				String name = portalSessionNamesEnumeration.nextElement();
 
 				if (containsSharedAttribute(name)) {
 					namesList.add(name);
 				}
 			}
 
-			namesEnu = Collections.enumeration(namesList);
+			namesEnumeration = Collections.enumeration(namesList);
 		}
 
-		return namesEnu;
+		return namesEnumeration;
 	}
 
 	@Override
@@ -142,38 +121,34 @@ public class SharedSessionWrapper implements HttpSession {
 	}
 
 	/**
-	 * @deprecated As of 6.1.0
+	 * @deprecated As of Paton (6.1.x)
 	 */
+	@Deprecated
 	@Override
-	public javax.servlet.http.HttpSessionContext getSessionContext() {
+	public HttpSessionContext getSessionContext() {
 		HttpSession session = getSessionDelegate();
 
 		return session.getSessionContext();
 	}
 
+	/**
+	 * @deprecated As of Wilberforce (7.0.x)
+	 */
+	@Deprecated
 	@Override
 	public Object getValue(String name) {
 		return getAttribute(name);
 	}
 
+	/**
+	 * @deprecated As of Wilberforce (7.0.x)
+	 */
+	@Deprecated
 	@Override
 	public String[] getValueNames() {
 		List<String> names = ListUtil.fromEnumeration(getAttributeNames());
 
-		return names.toArray(new String[names.size()]);
-	}
-
-	@Override
-	public int hashCode() {
-		if (_portletSession == null) {
-
-			// LPS-35558
-
-			return _portalSession.hashCode();
-		}
-		else {
-			return _portalSession.hashCode() ^ _portletSession.hashCode();
-		}
+		return names.toArray(new String[0]);
 	}
 
 	@Override
@@ -190,6 +165,10 @@ public class SharedSessionWrapper implements HttpSession {
 		return session.isNew();
 	}
 
+	/**
+	 * @deprecated As of Wilberforce (7.0.x)
+	 */
+	@Deprecated
 	@Override
 	public void putValue(String name, Object value) {
 		setAttribute(name, value);
@@ -202,6 +181,10 @@ public class SharedSessionWrapper implements HttpSession {
 		session.removeAttribute(name);
 	}
 
+	/**
+	 * @deprecated As of Wilberforce (7.0.x)
+	 */
+	@Deprecated
 	@Override
 	public void removeValue(String name) {
 		removeAttribute(name);
@@ -235,9 +218,8 @@ public class SharedSessionWrapper implements HttpSession {
 		if (_portletSession != null) {
 			return _portletSession;
 		}
-		else {
-			return _portalSession;
-		}
+
+		return _portalSession;
 	}
 
 	protected HttpSession getSessionDelegate(String name) {
@@ -251,24 +233,25 @@ public class SharedSessionWrapper implements HttpSession {
 		else if (containsSharedAttribute(name)) {
 			return _portalSession;
 		}
-		else {
-			return _portletSession;
-		}
+
+		return _portletSession;
 	}
 
-	private static Log _log = LogFactoryUtil.getLog(SharedSessionWrapper.class);
+	private static final Log _log = LogFactoryUtil.getLog(
+		SharedSessionWrapper.class);
 
-	private static Map<String, String> _sharedSessionAttributesExcludes;
+	private static final Map<String, String> _sharedSessionAttributesExcludes =
+		new HashMap<String, String>() {
+			{
+				for (String name :
+						PropsValues.SESSION_SHARED_ATTRIBUTES_EXCLUDES) {
 
-	static {
-		_sharedSessionAttributesExcludes = new HashMap<String, String>();
+					put(name, name);
+				}
+			}
+		};
 
-		for (String name : PropsValues.SESSION_SHARED_ATTRIBUTES_EXCLUDES) {
-			_sharedSessionAttributesExcludes.put(name, name);
-		}
-	}
-
-	private HttpSession _portalSession;
+	private final HttpSession _portalSession;
 	private HttpSession _portletSession;
 
 }

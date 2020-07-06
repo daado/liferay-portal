@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -17,14 +17,62 @@ package com.liferay.taglib.ui;
 import com.liferay.portal.kernel.dao.search.DisplayTerms;
 import com.liferay.portal.kernel.language.LanguageUtil;
 import com.liferay.portal.kernel.util.Validator;
-import com.liferay.taglib.util.IncludeTag;
+import com.liferay.taglib.BaseValidatorTagSupport;
+import com.liferay.taglib.util.TagResourceBundleUtil;
+
+import java.util.ResourceBundle;
 
 import javax.servlet.http.HttpServletRequest;
 
 /**
  * @author Roberto Díaz
  */
-public class InputSearchTag extends IncludeTag {
+public class InputSearchTag extends BaseValidatorTagSupport {
+
+	public String getButtonLabel() {
+		return _buttonLabel;
+	}
+
+	public String getCssClass() {
+		return _cssClass;
+	}
+
+	public String getId() {
+		return _id;
+	}
+
+	@Override
+	public String getInputName() {
+		return _name;
+	}
+
+	public String getMarkupView() {
+		return _markupView;
+	}
+
+	public String getName() {
+		return _name;
+	}
+
+	public String getPlaceholder() {
+		return _placeholder;
+	}
+
+	public String getTitle() {
+		return _title;
+	}
+
+	public boolean isAutoFocus() {
+		return _autoFocus;
+	}
+
+	public boolean isShowButton() {
+		return _showButton;
+	}
+
+	public boolean isUseNamespace() {
+		return _useNamespace;
+	}
 
 	public void setAutoFocus(boolean autoFocus) {
 		_autoFocus = autoFocus;
@@ -40,6 +88,10 @@ public class InputSearchTag extends IncludeTag {
 
 	public void setId(String id) {
 		_id = id;
+	}
+
+	public void setMarkupView(String markupView) {
+		_markupView = markupView;
 	}
 
 	public void setName(String name) {
@@ -58,6 +110,10 @@ public class InputSearchTag extends IncludeTag {
 		_title = title;
 	}
 
+	public void setUseNamespace(boolean useNamespace) {
+		_useNamespace = useNamespace;
+	}
+
 	@Override
 	protected void cleanUp() {
 		super.cleanUp();
@@ -66,41 +122,44 @@ public class InputSearchTag extends IncludeTag {
 		_buttonLabel = null;
 		_cssClass = null;
 		_id = null;
+		_markupView = null;
 		_name = null;
 		_placeholder = null;
 		_showButton = true;
 		_title = null;
+		_useNamespace = true;
 	}
 
 	@Override
 	protected String getPage() {
-		return _PAGE;
+		if (Validator.isNotNull(_markupView)) {
+			return "/html/taglib/ui/input_search/" + _markupView + "/page.jsp";
+		}
+
+		return "/html/taglib/ui/input_search/page.jsp";
 	}
 
 	@Override
-	protected void setAttributes(HttpServletRequest request) {
+	protected void setAttributes(HttpServletRequest httpServletRequest) {
 		String buttonLabel = _buttonLabel;
 
+		ResourceBundle resourceBundle = TagResourceBundleUtil.getResourceBundle(
+			pageContext);
+
 		if (Validator.isNull(buttonLabel)) {
-			buttonLabel = LanguageUtil.get(pageContext, "search");
+			buttonLabel = LanguageUtil.get(resourceBundle, "search");
 		}
 
 		String cssClass = _cssClass;
 
-		if (Validator.isNull(cssClass)) {
-			cssClass = "input-append";
-		}
-
-		String name = _name;
-
-		if (Validator.isNull(name)) {
-			name = DisplayTerms.KEYWORDS;
+		if (Validator.isNull(_name)) {
+			_name = DisplayTerms.KEYWORDS;
 		}
 
 		String id = _id;
 
 		if (Validator.isNull(id)) {
-			id = name;
+			id = _name;
 		}
 
 		String placeholder = _placeholder;
@@ -109,28 +168,38 @@ public class InputSearchTag extends IncludeTag {
 			placeholder = buttonLabel;
 		}
 
-		request.setAttribute(
-			"liferay-ui:input-search:autoFocus", String.valueOf(_autoFocus));
-		request.setAttribute(
-			"liferay-ui:input-search:buttonLabel", buttonLabel);
-		request.setAttribute("liferay-ui:input-search:cssClass", cssClass);
-		request.setAttribute("liferay-ui:input-search:id", id);
-		request.setAttribute("liferay-ui:input-search:name", name);
-		request.setAttribute(
-			"liferay-ui:input-search:placeholder", placeholder);
-		request.setAttribute("liferay-ui:input-search:showButton", _showButton);
-		request.setAttribute("liferay-ui:input-search:title", _title);
-	}
+		String title = _title;
 
-	private static final String _PAGE = "/html/taglib/ui/input_search/page.jsp";
+		if (title == null) {
+			title = LanguageUtil.get(resourceBundle, "search");
+		}
+
+		httpServletRequest.setAttribute(
+			"liferay-ui:input-search:autoFocus", String.valueOf(_autoFocus));
+		httpServletRequest.setAttribute(
+			"liferay-ui:input-search:buttonLabel", buttonLabel);
+		httpServletRequest.setAttribute(
+			"liferay-ui:input-search:cssClass", cssClass);
+		httpServletRequest.setAttribute("liferay-ui:input-search:id", id);
+		httpServletRequest.setAttribute("liferay-ui:input-search:name", _name);
+		httpServletRequest.setAttribute(
+			"liferay-ui:input-search:placeholder", placeholder);
+		httpServletRequest.setAttribute(
+			"liferay-ui:input-search:showButton", _showButton);
+		httpServletRequest.setAttribute("liferay-ui:input-search:title", title);
+		httpServletRequest.setAttribute(
+			"liferay-ui:input-search:useNamespace", _useNamespace);
+	}
 
 	private boolean _autoFocus;
 	private String _buttonLabel;
 	private String _cssClass;
 	private String _id;
+	private String _markupView;
 	private String _name;
 	private String _placeholder;
 	private boolean _showButton = true;
 	private String _title;
+	private boolean _useNamespace = true;
 
 }

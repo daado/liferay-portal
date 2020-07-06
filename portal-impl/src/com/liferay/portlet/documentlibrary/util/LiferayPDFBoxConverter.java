@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -17,21 +17,19 @@ package com.liferay.portlet.documentlibrary.util;
 import com.liferay.portal.image.ImageToolImpl;
 import com.liferay.portal.kernel.image.ImageTool;
 
-import java.awt.image.BufferedImage;
 import java.awt.image.RenderedImage;
 
 import java.io.File;
 
-import java.util.List;
-
 import javax.imageio.ImageIO;
 
 import org.apache.pdfbox.pdmodel.PDDocument;
-import org.apache.pdfbox.pdmodel.PDDocumentCatalog;
-import org.apache.pdfbox.pdmodel.PDPage;
+import org.apache.pdfbox.pdmodel.PDPageTree;
+import org.apache.pdfbox.rendering.ImageType;
+import org.apache.pdfbox.rendering.PDFRenderer;
 
 /**
- * @author Juan Gonzalez
+ * @author Juan González
  */
 public class LiferayPDFBoxConverter {
 
@@ -53,44 +51,35 @@ public class LiferayPDFBoxConverter {
 	}
 
 	public void generateImagesPB() throws Exception {
-		PDDocument pdDocument = null;
+		try (PDDocument pdDocument = PDDocument.load(_inputFile)) {
+			PDFRenderer pdfRenderer = new PDFRenderer(pdDocument);
 
-		try {
-			pdDocument = PDDocument.load(_inputFile);
+			PDPageTree pdPageTree = pdDocument.getPages();
 
-			PDDocumentCatalog pdDocumentCatalog =
-				pdDocument.getDocumentCatalog();
+			int count = pdPageTree.getCount();
 
-			List<PDPage> pdPages = pdDocumentCatalog.getAllPages();
-
-			for (int i = 0; i < pdPages.size(); i++) {
-				PDPage pdPage = pdPages.get(i);
-
+			for (int i = 0; i < count; i++) {
 				if (_generateThumbnail && (i == 0)) {
 					_generateImagesPB(
-						pdPage, i, _thumbnailFile, _thumbnailExtension);
+						pdfRenderer, i, _thumbnailFile, _thumbnailExtension);
 				}
 
 				if (!_generatePreview) {
 					break;
 				}
 
-				_generateImagesPB(pdPage, i + 1, _previewFiles[i], _extension);
-			}
-		}
-		finally {
-			if (pdDocument != null) {
-				pdDocument.close();
+				_generateImagesPB(pdfRenderer, i, _previewFiles[i], _extension);
 			}
 		}
 	}
 
 	private void _generateImagesPB(
-			PDPage pdPage, int index, File outputFile, String extension)
+			PDFRenderer pdfRenderer, int pageIndex, File outputFile,
+			String extension)
 		throws Exception {
 
-		RenderedImage renderedImage = pdPage.convertToImage(
-			BufferedImage.TYPE_INT_RGB, _dpi);
+		RenderedImage renderedImage = pdfRenderer.renderImageWithDPI(
+			pageIndex, _dpi, ImageType.RGB);
 
 		ImageTool imageTool = ImageToolImpl.getInstance();
 
@@ -106,15 +95,15 @@ public class LiferayPDFBoxConverter {
 		ImageIO.write(renderedImage, extension, outputFile);
 	}
 
-	private int _dpi;
-	private String _extension;
-	private boolean _generatePreview;
-	private boolean _generateThumbnail;
-	private int _height;
-	private File _inputFile;
-	private File[] _previewFiles;
-	private String _thumbnailExtension;
-	private File _thumbnailFile;
-	private int _width;
+	private final int _dpi;
+	private final String _extension;
+	private final boolean _generatePreview;
+	private final boolean _generateThumbnail;
+	private final int _height;
+	private final File _inputFile;
+	private final File[] _previewFiles;
+	private final String _thumbnailExtension;
+	private final File _thumbnailFile;
+	private final int _width;
 
 }

@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,12 +14,8 @@
 
 package com.liferay.portal.spring.transaction;
 
-import com.liferay.portal.kernel.log.Log;
-import com.liferay.portal.kernel.log.LogFactoryUtil;
-import com.liferay.portal.kernel.util.SortedProperties;
-import com.liferay.portal.util.ClassLoaderUtil;
+import com.liferay.portal.spring.hibernate.LastSessionRecorderHibernateTransactionManager;
 import com.liferay.portal.util.PropsUtil;
-import com.liferay.portal.util.PropsValues;
 
 import java.util.Enumeration;
 import java.util.Properties;
@@ -39,57 +35,29 @@ import org.springframework.transaction.support.AbstractPlatformTransactionManage
 public class TransactionManagerFactory {
 
 	public static AbstractPlatformTransactionManager createTransactionManager(
-			DataSource dataSource, SessionFactory sessionFactory)
-		throws Exception {
+		DataSource dataSource, SessionFactory sessionFactory) {
 
-		ClassLoader classLoader = ClassLoaderUtil.getPortalClassLoader();
-
-		Class<?> clazz = classLoader.loadClass(
-			PropsValues.TRANSACTION_MANAGER_IMPL);
-
-		AbstractPlatformTransactionManager abstractPlatformTransactionManager =
-			(AbstractPlatformTransactionManager)clazz.newInstance();
+		HibernateTransactionManager hibernateTransactionManager =
+			new LastSessionRecorderHibernateTransactionManager();
 
 		Properties properties = PropsUtil.getProperties(
 			"transaction.manager.property.", true);
 
-		Enumeration<String> enu =
+		Enumeration<String> enumeration =
 			(Enumeration<String>)properties.propertyNames();
 
-		while (enu.hasMoreElements()) {
-			String key = enu.nextElement();
+		while (enumeration.hasMoreElements()) {
+			String key = enumeration.nextElement();
 
 			String value = properties.getProperty(key);
 
-			BeanUtil.setProperty(
-				abstractPlatformTransactionManager, key, value);
+			BeanUtil.setProperty(hibernateTransactionManager, key, value);
 		}
 
-		if (abstractPlatformTransactionManager instanceof
-				HibernateTransactionManager) {
+		hibernateTransactionManager.setDataSource(dataSource);
+		hibernateTransactionManager.setSessionFactory(sessionFactory);
 
-			HibernateTransactionManager hibernateTransactionManager =
-				(HibernateTransactionManager)abstractPlatformTransactionManager;
-
-			hibernateTransactionManager.setDataSource(dataSource);
-			hibernateTransactionManager.setSessionFactory(sessionFactory);
-		}
-
-		if (_log.isDebugEnabled()) {
-			_log.debug(
-				"Created transaction manager " +
-					abstractPlatformTransactionManager.getClass().getName());
-
-			SortedProperties sortedProperties = new SortedProperties(
-				properties);
-
-			sortedProperties.list(System.out);
-		}
-
-		return abstractPlatformTransactionManager;
+		return hibernateTransactionManager;
 	}
-
-	private static Log _log = LogFactoryUtil.getLog(
-		TransactionManagerFactory.class);
 
 }

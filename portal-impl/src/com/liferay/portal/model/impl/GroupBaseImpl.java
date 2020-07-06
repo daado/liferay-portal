@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,12 +14,10 @@
 
 package com.liferay.portal.model.impl;
 
+import com.liferay.petra.string.StringBundler;
 import com.liferay.portal.kernel.exception.PortalException;
-import com.liferay.portal.kernel.exception.SystemException;
-import com.liferay.portal.kernel.util.StringBundler;
-import com.liferay.portal.kernel.util.StringPool;
-import com.liferay.portal.model.Group;
-import com.liferay.portal.service.GroupLocalServiceUtil;
+import com.liferay.portal.kernel.model.Group;
+import com.liferay.portal.kernel.service.GroupLocalServiceUtil;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -33,17 +31,18 @@ import java.util.List;
  *
  * @author Brian Wing Shun Chan
  * @see GroupImpl
- * @see com.liferay.portal.model.Group
+ * @see Group
  * @generated
  */
 public abstract class GroupBaseImpl extends GroupModelImpl implements Group {
+
 	/*
 	 * NOTE FOR DEVELOPERS:
 	 *
-	 * Never modify or reference this class directly. All methods that expect a group model instance should use the {@link Group} interface instead.
+	 * Never modify or reference this class directly. All methods that expect a group model instance should use the <code>Group</code> interface instead.
 	 */
 	@Override
-	public void persist() throws SystemException {
+	public void persist() {
 		if (this.isNew()) {
 			GroupLocalServiceUtil.addGroup(this);
 		}
@@ -54,7 +53,7 @@ public abstract class GroupBaseImpl extends GroupModelImpl implements Group {
 
 	@Override
 	@SuppressWarnings("unused")
-	public String buildTreePath() throws PortalException, SystemException {
+	public String buildTreePath() throws PortalException {
 		List<Group> groups = new ArrayList<Group>();
 
 		Group group = this;
@@ -65,26 +64,27 @@ public abstract class GroupBaseImpl extends GroupModelImpl implements Group {
 			group = GroupLocalServiceUtil.fetchGroup(group.getParentGroupId());
 		}
 
-		StringBundler sb = new StringBundler((groups.size() * 2) + 1);
+		StringBundler sb = new StringBundler(groups.size() * 2 + 1);
 
-		sb.append(StringPool.SLASH);
+		sb.append("/");
 
 		for (int i = groups.size() - 1; i >= 0; i--) {
 			group = groups.get(i);
 
 			sb.append(group.getGroupId());
-			sb.append(StringPool.SLASH);
+			sb.append("/");
 		}
 
 		return sb.toString();
 	}
 
 	@Override
-	public void updateTreePath(String treePath) throws SystemException {
+	public void updateTreePath(String treePath) {
 		Group group = this;
 
 		group.setTreePath(treePath);
 
 		GroupLocalServiceUtil.updateGroup(group);
 	}
+
 }

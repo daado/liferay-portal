@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,6 +14,7 @@
 
 package com.liferay.portal.dao.orm.hibernate;
 
+import com.liferay.petra.string.StringBundler;
 import com.liferay.portal.kernel.dao.orm.Criterion;
 import com.liferay.portal.kernel.dao.orm.DynamicQuery;
 import com.liferay.portal.kernel.dao.orm.Order;
@@ -193,7 +194,7 @@ public class PropertyImpl extends ProjectionImpl implements Property {
 
 	@Override
 	public Criterion in(char[] values) {
-		return in(ListUtil.toList(values));
+		return in(ListUtil.fromArray(values));
 	}
 
 	@Override
@@ -203,7 +204,7 @@ public class PropertyImpl extends ProjectionImpl implements Property {
 
 	@Override
 	public Criterion in(double[] values) {
-		return in(ListUtil.toList(values));
+		return in(ListUtil.fromArray(values));
 	}
 
 	@Override
@@ -216,17 +217,17 @@ public class PropertyImpl extends ProjectionImpl implements Property {
 
 	@Override
 	public Criterion in(float[] values) {
-		return in(ListUtil.toList(values));
+		return in(ListUtil.fromArray(values));
 	}
 
 	@Override
 	public Criterion in(int[] values) {
-		return in(ListUtil.toList(values));
+		return in(ListUtil.fromArray(values));
 	}
 
 	@Override
 	public Criterion in(long[] values) {
-		return in(ListUtil.toList(values));
+		return in(ListUtil.fromArray(values));
 	}
 
 	@Override
@@ -236,7 +237,7 @@ public class PropertyImpl extends ProjectionImpl implements Property {
 
 	@Override
 	public Criterion in(short[] values) {
-		return in(ListUtil.toList(values));
+		return in(ListUtil.fromArray(values));
 	}
 
 	@Override
@@ -392,6 +393,17 @@ public class PropertyImpl extends ProjectionImpl implements Property {
 			_property.notIn(dynamicQueryImpl.getDetachedCriteria()));
 	}
 
-	private org.hibernate.criterion.Property _property;
+	@Override
+	public String toString() {
+		StringBundler sb = new StringBundler(3);
+
+		sb.append("{_property=");
+		sb.append(String.valueOf(_property));
+		sb.append("}");
+
+		return sb.toString();
+	}
+
+	private final org.hibernate.criterion.Property _property;
 
 }

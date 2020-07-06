@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -18,9 +18,11 @@ import com.liferay.portal.bean.BeanLocatorImpl;
 import com.liferay.portal.kernel.bean.PortalBeanLocatorUtil;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
+import com.liferay.portal.spring.bean.LiferayBeanFactory;
 
 import java.io.FileNotFoundException;
 
+import org.springframework.beans.factory.support.DefaultListableBeanFactory;
 import org.springframework.beans.factory.xml.XmlBeanDefinitionReader;
 import org.springframework.context.ApplicationContext;
 import org.springframework.web.context.support.XmlWebApplicationContext;
@@ -43,6 +45,11 @@ public class TunnelApplicationContext extends XmlWebApplicationContext {
 	}
 
 	@Override
+	protected DefaultListableBeanFactory createBeanFactory() {
+		return new LiferayBeanFactory(getInternalParentBeanFactory());
+	}
+
+	@Override
 	protected void loadBeanDefinitions(
 		XmlBeanDefinitionReader xmlBeanDefinitionReader) {
 
@@ -56,8 +63,8 @@ public class TunnelApplicationContext extends XmlWebApplicationContext {
 			try {
 				xmlBeanDefinitionReader.loadBeanDefinitions(configLocation);
 			}
-			catch (Exception e) {
-				Throwable cause = e.getCause();
+			catch (Exception exception) {
+				Throwable cause = exception.getCause();
 
 				if (cause instanceof FileNotFoundException) {
 					if (_log.isWarnEnabled()) {
@@ -65,13 +72,13 @@ public class TunnelApplicationContext extends XmlWebApplicationContext {
 					}
 				}
 				else {
-					_log.error(e, e);
+					_log.error(exception, exception);
 				}
 			}
 		}
 	}
 
-	private static Log _log = LogFactoryUtil.getLog(
+	private static final Log _log = LogFactoryUtil.getLog(
 		TunnelApplicationContext.class);
 
 }

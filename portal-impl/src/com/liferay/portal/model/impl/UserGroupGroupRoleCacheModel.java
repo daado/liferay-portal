@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,9 +14,11 @@
 
 package com.liferay.portal.model.impl;
 
-import com.liferay.portal.kernel.util.StringBundler;
-import com.liferay.portal.model.CacheModel;
-import com.liferay.portal.model.UserGroupGroupRole;
+import com.liferay.petra.lang.HashUtil;
+import com.liferay.petra.string.StringBundler;
+import com.liferay.portal.kernel.model.CacheModel;
+import com.liferay.portal.kernel.model.MVCCModel;
+import com.liferay.portal.kernel.model.UserGroupGroupRole;
 
 import java.io.Externalizable;
 import java.io.IOException;
@@ -27,16 +29,64 @@ import java.io.ObjectOutput;
  * The cache model class for representing UserGroupGroupRole in entity cache.
  *
  * @author Brian Wing Shun Chan
- * @see UserGroupGroupRole
  * @generated
  */
-public class UserGroupGroupRoleCacheModel implements CacheModel<UserGroupGroupRole>,
-	Externalizable {
+public class UserGroupGroupRoleCacheModel
+	implements CacheModel<UserGroupGroupRole>, Externalizable, MVCCModel {
+
+	@Override
+	public boolean equals(Object object) {
+		if (this == object) {
+			return true;
+		}
+
+		if (!(object instanceof UserGroupGroupRoleCacheModel)) {
+			return false;
+		}
+
+		UserGroupGroupRoleCacheModel userGroupGroupRoleCacheModel =
+			(UserGroupGroupRoleCacheModel)object;
+
+		if ((userGroupGroupRoleId ==
+				userGroupGroupRoleCacheModel.userGroupGroupRoleId) &&
+			(mvccVersion == userGroupGroupRoleCacheModel.mvccVersion)) {
+
+			return true;
+		}
+
+		return false;
+	}
+
+	@Override
+	public int hashCode() {
+		int hashCode = HashUtil.hash(0, userGroupGroupRoleId);
+
+		return HashUtil.hash(hashCode, mvccVersion);
+	}
+
+	@Override
+	public long getMvccVersion() {
+		return mvccVersion;
+	}
+
+	@Override
+	public void setMvccVersion(long mvccVersion) {
+		this.mvccVersion = mvccVersion;
+	}
+
 	@Override
 	public String toString() {
-		StringBundler sb = new StringBundler(7);
+		StringBundler sb = new StringBundler(15);
 
-		sb.append("{userGroupId=");
+		sb.append("{mvccVersion=");
+		sb.append(mvccVersion);
+		sb.append(", ctCollectionId=");
+		sb.append(ctCollectionId);
+		sb.append(", userGroupGroupRoleId=");
+		sb.append(userGroupGroupRoleId);
+		sb.append(", companyId=");
+		sb.append(companyId);
+		sb.append(", userGroupId=");
 		sb.append(userGroupId);
 		sb.append(", groupId=");
 		sb.append(groupId);
@@ -49,8 +99,13 @@ public class UserGroupGroupRoleCacheModel implements CacheModel<UserGroupGroupRo
 
 	@Override
 	public UserGroupGroupRole toEntityModel() {
-		UserGroupGroupRoleImpl userGroupGroupRoleImpl = new UserGroupGroupRoleImpl();
+		UserGroupGroupRoleImpl userGroupGroupRoleImpl =
+			new UserGroupGroupRoleImpl();
 
+		userGroupGroupRoleImpl.setMvccVersion(mvccVersion);
+		userGroupGroupRoleImpl.setCtCollectionId(ctCollectionId);
+		userGroupGroupRoleImpl.setUserGroupGroupRoleId(userGroupGroupRoleId);
+		userGroupGroupRoleImpl.setCompanyId(companyId);
 		userGroupGroupRoleImpl.setUserGroupId(userGroupId);
 		userGroupGroupRoleImpl.setGroupId(groupId);
 		userGroupGroupRoleImpl.setRoleId(roleId);
@@ -62,20 +117,44 @@ public class UserGroupGroupRoleCacheModel implements CacheModel<UserGroupGroupRo
 
 	@Override
 	public void readExternal(ObjectInput objectInput) throws IOException {
+		mvccVersion = objectInput.readLong();
+
+		ctCollectionId = objectInput.readLong();
+
+		userGroupGroupRoleId = objectInput.readLong();
+
+		companyId = objectInput.readLong();
+
 		userGroupId = objectInput.readLong();
+
 		groupId = objectInput.readLong();
+
 		roleId = objectInput.readLong();
 	}
 
 	@Override
-	public void writeExternal(ObjectOutput objectOutput)
-		throws IOException {
+	public void writeExternal(ObjectOutput objectOutput) throws IOException {
+		objectOutput.writeLong(mvccVersion);
+
+		objectOutput.writeLong(ctCollectionId);
+
+		objectOutput.writeLong(userGroupGroupRoleId);
+
+		objectOutput.writeLong(companyId);
+
 		objectOutput.writeLong(userGroupId);
+
 		objectOutput.writeLong(groupId);
+
 		objectOutput.writeLong(roleId);
 	}
 
+	public long mvccVersion;
+	public long ctCollectionId;
+	public long userGroupGroupRoleId;
+	public long companyId;
 	public long userGroupId;
 	public long groupId;
 	public long roleId;
+
 }

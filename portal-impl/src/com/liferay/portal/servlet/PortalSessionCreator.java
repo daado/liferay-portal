@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -24,15 +24,14 @@ import com.liferay.portal.kernel.util.PropsKeys;
 import com.liferay.portal.util.PropsValues;
 
 import javax.servlet.http.HttpSession;
-import javax.servlet.http.HttpSessionEvent;
 
 /**
  * @author Michael Young
  */
 public class PortalSessionCreator extends BasePortalLifecycle {
 
-	public PortalSessionCreator(HttpSessionEvent httpSessionEvent) {
-		_httpSessionEvent = httpSessionEvent;
+	public PortalSessionCreator(HttpSession httpSession) {
+		_httpSession = httpSession;
 
 		registerPortalLifecycle(METHOD_INIT);
 	}
@@ -47,14 +46,12 @@ public class PortalSessionCreator extends BasePortalLifecycle {
 			return;
 		}
 
-		HttpSession session = _httpSessionEvent.getSession();
-
 		try {
-			PortalSessionContext.put(session.getId(), session);
+			PortalSessionContext.put(_httpSession.getId(), _httpSession);
 		}
-		catch (IllegalStateException ise) {
+		catch (IllegalStateException illegalStateException) {
 			if (_log.isWarnEnabled()) {
-				_log.warn(ise, ise);
+				_log.warn(illegalStateException, illegalStateException);
 			}
 		}
 
@@ -63,15 +60,16 @@ public class PortalSessionCreator extends BasePortalLifecycle {
 		try {
 			EventsProcessorUtil.process(
 				PropsKeys.SERVLET_SESSION_CREATE_EVENTS,
-				PropsValues.SERVLET_SESSION_CREATE_EVENTS, session);
+				PropsValues.SERVLET_SESSION_CREATE_EVENTS, _httpSession);
 		}
-		catch (ActionException ae) {
-			_log.error(ae, ae);
+		catch (ActionException actionException) {
+			_log.error(actionException, actionException);
 		}
 	}
 
-	private static Log _log = LogFactoryUtil.getLog(PortalSessionCreator.class);
+	private static final Log _log = LogFactoryUtil.getLog(
+		PortalSessionCreator.class);
 
-	private HttpSessionEvent _httpSessionEvent;
+	private final HttpSession _httpSession;
 
 }

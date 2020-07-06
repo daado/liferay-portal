@@ -1,6 +1,6 @@
 <%--
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -21,25 +21,29 @@ String alternativeLayoutFriendlyURL = (String)SessionMessages.get(request, "alte
 %>
 
 <c:if test="<%= Validator.isNotNull(alternativeLayoutFriendlyURL) %>">
-	<button class="close" type="button">&times;</button>
+	<button aria-label="<%= LanguageUtil.get(request, "close") %>" class="close" type="button">&times;</button>
 
-	<liferay-util:buffer var="redirectedLink">
+	<liferay-util:buffer
+		var="redirectedLink"
+	>
 		<aui:a href="<%= PortalUtil.getCurrentCompleteURL(request) %>">
-			<%= PortalUtil.getCurrentCompleteURL(request) %>
+			<%= HtmlUtil.escape(PortalUtil.getCurrentCompleteURL(request)) %>
 		</aui:a>
 	</liferay-util:buffer>
 
 	<p class="redirected-to-message">
-		<liferay-ui:message arguments="<%= redirectedLink %>" key="you-were-redirected-to-x" />
+		<liferay-ui:message arguments="<%= redirectedLink %>" key="you-were-redirected-to-x" translateArguments="<%= false %>" />
 	</p>
 
-	<liferay-util:buffer var="originalLink">
+	<liferay-util:buffer
+		var="originalLink"
+	>
 		<aui:a href="<%= alternativeLayoutFriendlyURL %>">
 			<liferay-ui:message key="link" />
 		</aui:a>
 	</liferay-util:buffer>
 
 	<p class="original-url">
-		<liferay-ui:message arguments="<%= originalLink %>" key="click-the-following-link-if-you-want-to-dismiss-this-redirect-and-access-the-original-url-x" />
+		<liferay-ui:message arguments="<%= originalLink %>" key="click-the-following-link-if-you-want-to-dismiss-this-redirect-and-access-the-original-url-x" translateArguments="<%= false %>" />
 	</p>
 </c:if>

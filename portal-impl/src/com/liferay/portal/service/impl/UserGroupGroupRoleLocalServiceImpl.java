@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,15 +14,11 @@
 
 package com.liferay.portal.service.impl;
 
-import com.liferay.portal.NoSuchUserGroupGroupRoleException;
 import com.liferay.portal.kernel.exception.PortalException;
-import com.liferay.portal.kernel.exception.SystemException;
-import com.liferay.portal.model.Role;
-import com.liferay.portal.model.UserGroup;
-import com.liferay.portal.model.UserGroupGroupRole;
-import com.liferay.portal.security.permission.PermissionCacheUtil;
+import com.liferay.portal.kernel.model.Role;
+import com.liferay.portal.kernel.model.UserGroup;
+import com.liferay.portal.kernel.model.UserGroupGroupRole;
 import com.liferay.portal.service.base.UserGroupGroupRoleLocalServiceBaseImpl;
-import com.liferay.portal.service.persistence.UserGroupGroupRolePK;
 
 import java.util.List;
 
@@ -34,204 +30,177 @@ public class UserGroupGroupRoleLocalServiceImpl
 
 	@Override
 	public void addUserGroupGroupRoles(
-			long userGroupId, long groupId, long[] roleIds)
-		throws SystemException {
+		long userGroupId, long groupId, long[] roleIds) {
 
 		for (long roleId : roleIds) {
-			UserGroupGroupRolePK pk = new UserGroupGroupRolePK(
-				userGroupId, groupId, roleId);
-
 			UserGroupGroupRole userGroupGroupRole =
-				userGroupGroupRolePersistence.fetchByPrimaryKey(pk);
+				userGroupGroupRolePersistence.fetchByU_G_R(
+					userGroupId, groupId, roleId);
 
 			if (userGroupGroupRole == null) {
-				userGroupGroupRole = userGroupGroupRolePersistence.create(pk);
+				userGroupGroupRole = userGroupGroupRolePersistence.create(
+					counterLocalService.increment(
+						UserGroupGroupRole.class.getName()));
+
+				userGroupGroupRole.setUserGroupId(userGroupId);
+				userGroupGroupRole.setGroupId(groupId);
+				userGroupGroupRole.setRoleId(roleId);
 
 				userGroupGroupRolePersistence.update(userGroupGroupRole);
 			}
 		}
-
-		PermissionCacheUtil.clearCache();
 	}
 
 	@Override
 	public void addUserGroupGroupRoles(
-			long[] userGroupIds, long groupId, long roleId)
-		throws SystemException {
+		long[] userGroupIds, long groupId, long roleId) {
 
 		for (long userGroupId : userGroupIds) {
-			UserGroupGroupRolePK pk = new UserGroupGroupRolePK(
-				userGroupId, groupId, roleId);
-
 			UserGroupGroupRole userGroupGroupRole =
-				userGroupGroupRolePersistence.fetchByPrimaryKey(pk);
+				userGroupGroupRolePersistence.fetchByU_G_R(
+					userGroupId, groupId, roleId);
 
 			if (userGroupGroupRole == null) {
-				userGroupGroupRole = userGroupGroupRolePersistence.create(pk);
+				userGroupGroupRole = userGroupGroupRolePersistence.create(
+					counterLocalService.increment(
+						UserGroupGroupRole.class.getName()));
+
+				userGroupGroupRole.setUserGroupId(userGroupId);
+				userGroupGroupRole.setGroupId(groupId);
+				userGroupGroupRole.setRoleId(roleId);
 
 				userGroupGroupRolePersistence.update(userGroupGroupRole);
 			}
 		}
-
-		PermissionCacheUtil.clearCache();
 	}
 
 	@Override
-	public UserGroupGroupRole deleteUserGroupGroupRole(
-			UserGroupGroupRole userGroupGroupRole)
-		throws SystemException {
+	public void deleteUserGroupGroupRoles(long groupId, int roleType) {
+		List<UserGroupGroupRole> userGroupGroupRoles =
+			userGroupGroupRoleFinder.findByGroupRoleType(groupId, roleType);
 
-		userGroupGroupRolePersistence.remove(userGroupGroupRole);
-
-		PermissionCacheUtil.clearCache();
-
-		return userGroupGroupRole;
+		for (UserGroupGroupRole userGroupGroupRole : userGroupGroupRoles) {
+			userGroupGroupRolePersistence.removeByG_R(
+				groupId, userGroupGroupRole.getRoleId());
+		}
 	}
 
 	@Override
 	public void deleteUserGroupGroupRoles(
-			long userGroupId, long groupId, long[] roleIds)
-		throws SystemException {
+		long userGroupId, long groupId, long[] roleIds) {
 
 		for (long roleId : roleIds) {
-			UserGroupGroupRolePK pk = new UserGroupGroupRolePK(
-				userGroupId, groupId, roleId);
+			UserGroupGroupRole userGroupGroupRole =
+				userGroupGroupRolePersistence.fetchByU_G_R(
+					userGroupId, groupId, roleId);
 
-			try {
-				userGroupGroupRolePersistence.remove(pk);
-			}
-			catch (NoSuchUserGroupGroupRoleException nsuggre) {
+			if (userGroupGroupRole != null) {
+				userGroupGroupRolePersistence.remove(userGroupGroupRole);
 			}
 		}
-
-		PermissionCacheUtil.clearCache();
 	}
 
 	@Override
-	public void deleteUserGroupGroupRoles(long userGroupId, long[] groupIds)
-		throws SystemException {
-
+	public void deleteUserGroupGroupRoles(long userGroupId, long[] groupIds) {
 		for (long groupId : groupIds) {
 			userGroupGroupRolePersistence.removeByU_G(userGroupId, groupId);
 		}
-
-		PermissionCacheUtil.clearCache();
 	}
 
 	@Override
-	public void deleteUserGroupGroupRoles(long[] userGroupIds, long groupId)
-		throws SystemException {
-
+	public void deleteUserGroupGroupRoles(long[] userGroupIds, long groupId) {
 		for (long userGroupId : userGroupIds) {
 			userGroupGroupRolePersistence.removeByU_G(userGroupId, groupId);
 		}
-
-		PermissionCacheUtil.clearCache();
 	}
 
 	@Override
 	public void deleteUserGroupGroupRoles(
-			long[] userGroupIds, long groupId, long roleId)
-		throws SystemException {
+		long[] userGroupIds, long groupId, long roleId) {
 
 		for (long userGroupId : userGroupIds) {
-			UserGroupGroupRolePK pk = new UserGroupGroupRolePK(
-				userGroupId, groupId, roleId);
+			UserGroupGroupRole userGroupGroupRole =
+				userGroupGroupRolePersistence.fetchByU_G_R(
+					userGroupId, groupId, roleId);
 
-			try {
-				userGroupGroupRolePersistence.remove(pk);
-			}
-			catch (NoSuchUserGroupGroupRoleException nsuggre) {
+			if (userGroupGroupRole != null) {
+				userGroupGroupRolePersistence.remove(userGroupGroupRole);
 			}
 		}
-
-		PermissionCacheUtil.clearCache();
 	}
 
 	@Override
-	public void deleteUserGroupGroupRolesByGroupId(long groupId)
-		throws SystemException {
-
+	public void deleteUserGroupGroupRolesByGroupId(long groupId) {
 		userGroupGroupRolePersistence.removeByGroupId(groupId);
-
-		PermissionCacheUtil.clearCache();
 	}
 
 	@Override
-	public void deleteUserGroupGroupRolesByRoleId(long roleId)
-		throws SystemException {
-
+	public void deleteUserGroupGroupRolesByRoleId(long roleId) {
 		userGroupGroupRolePersistence.removeByRoleId(roleId);
-
-		PermissionCacheUtil.clearCache();
 	}
 
 	@Override
-	public void deleteUserGroupGroupRolesByUserGroupId(long userGroupId)
-		throws SystemException {
-
+	public void deleteUserGroupGroupRolesByUserGroupId(long userGroupId) {
 		userGroupGroupRolePersistence.removeByUserGroupId(userGroupId);
-
-		PermissionCacheUtil.clearCache();
 	}
 
 	@Override
-	public List<UserGroupGroupRole> getUserGroupGroupRoles(long userGroupId)
-		throws SystemException {
-
+	public List<UserGroupGroupRole> getUserGroupGroupRoles(long userGroupId) {
 		return userGroupGroupRolePersistence.findByUserGroupId(userGroupId);
 	}
 
 	@Override
 	public List<UserGroupGroupRole> getUserGroupGroupRoles(
-			long userGroupId, long groupId)
-		throws SystemException {
+		long userGroupId, long groupId) {
 
 		return userGroupGroupRolePersistence.findByU_G(userGroupId, groupId);
 	}
 
 	@Override
 	public List<UserGroupGroupRole> getUserGroupGroupRolesByGroupAndRole(
-			long groupId, long roleId)
-		throws SystemException {
+		long groupId, long roleId) {
 
 		return userGroupGroupRolePersistence.findByG_R(groupId, roleId);
 	}
 
 	@Override
-	public boolean hasUserGroupGroupRole(
-			long userGroupId, long groupId, long roleId)
-		throws SystemException {
+	public List<UserGroupGroupRole> getUserGroupGroupRolesByUser(long userId) {
+		return userGroupGroupRoleFinder.findByUserGroupsUsers(userId);
+	}
 
-		UserGroupGroupRolePK pk = new UserGroupGroupRolePK(
+	@Override
+	public List<UserGroupGroupRole> getUserGroupGroupRolesByUser(
+		long userId, long groupId) {
+
+		return userGroupGroupRoleFinder.findByUserGroupsUsers(userId, groupId);
+	}
+
+	@Override
+	public boolean hasUserGroupGroupRole(
+		long userGroupId, long groupId, long roleId) {
+
+		int count = userGroupGroupRolePersistence.countByU_G_R(
 			userGroupId, groupId, roleId);
 
-		UserGroupGroupRole userGroupGroupRole =
-			userGroupGroupRolePersistence.fetchByPrimaryKey(pk);
-
-		if (userGroupGroupRole != null) {
+		if (count > 0) {
 			return true;
 		}
-		else {
-			return false;
-		}
+
+		return false;
 	}
 
 	@Override
 	public boolean hasUserGroupGroupRole(
 			long userGroupId, long groupId, String roleName)
-		throws PortalException, SystemException {
+		throws PortalException {
 
 		UserGroup userGroup = userGroupPersistence.findByPrimaryKey(
 			userGroupId);
 
-		long companyId = userGroup.getCompanyId();
+		Role role = rolePersistence.findByC_N(
+			userGroup.getCompanyId(), roleName);
 
-		Role role = rolePersistence.findByC_N(companyId, roleName);
-
-		long roleId = role.getRoleId();
-
-		return hasUserGroupGroupRole(userGroupId, groupId, roleId);
+		return hasUserGroupGroupRole(userGroupId, groupId, role.getRoleId());
 	}
 
 }

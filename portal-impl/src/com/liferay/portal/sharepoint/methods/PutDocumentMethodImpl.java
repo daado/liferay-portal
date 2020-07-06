@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,12 +14,11 @@
 
 package com.liferay.portal.sharepoint.methods;
 
-import com.liferay.portal.kernel.util.StringPool;
+import com.liferay.petra.string.StringPool;
 import com.liferay.portal.sharepoint.Property;
 import com.liferay.portal.sharepoint.ResponseElement;
 import com.liferay.portal.sharepoint.SharepointRequest;
 import com.liferay.portal.sharepoint.SharepointStorage;
-import com.liferay.portal.sharepoint.Tree;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -48,7 +47,7 @@ public class PutDocumentMethodImpl extends BaseMethodImpl {
 			SharepointRequest sharepointRequest)
 		throws Exception {
 
-		List<ResponseElement> elements = new ArrayList<ResponseElement>();
+		List<ResponseElement> elements = new ArrayList<>();
 
 		elements.add(new Property("message", StringPool.BLANK));
 
@@ -56,9 +55,8 @@ public class PutDocumentMethodImpl extends BaseMethodImpl {
 
 		storage.putDocument(sharepointRequest);
 
-		Tree documentTree = storage.getDocumentTree(sharepointRequest);
-
-		Property documentProperty = new Property("document", documentTree);
+		Property documentProperty = new Property(
+			"document", storage.getDocumentTree(sharepointRequest));
 
 		elements.add(documentProperty);
 

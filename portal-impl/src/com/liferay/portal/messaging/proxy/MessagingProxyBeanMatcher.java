@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,8 +14,9 @@
 
 package com.liferay.portal.messaging.proxy;
 
-import com.liferay.portal.kernel.util.CharPool;
-import com.liferay.portal.kernel.util.ClassResolverUtil;
+import com.liferay.petra.lang.ClassResolverUtil;
+import com.liferay.petra.string.CharPool;
+import com.liferay.portal.kernel.util.PortalClassLoaderUtil;
 import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.spring.aop.BeanMatcher;
 
@@ -37,9 +38,11 @@ public class MessagingProxyBeanMatcher implements BeanMatcher {
 		return false;
 	}
 
-	public void setBeanClass(String beanClassName) {
-		_beanClass = ClassResolverUtil.resolveByPortalClassLoader(
-			beanClassName);
+	public void setBeanClass(String beanClassName)
+		throws ClassNotFoundException {
+
+		_beanClass = ClassResolverUtil.resolve(
+			beanClassName, PortalClassLoaderUtil.getClassLoader());
 	}
 
 	public void setBeanNamePattern(String beanNamePattern) {

@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,11 +14,11 @@
 
 package com.liferay.portal.jsonwebservice;
 
+import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.json.JSONDeserializer;
 import com.liferay.portal.kernel.json.JSONFactoryUtil;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
-import com.liferay.portal.kernel.util.StringPool;
 import com.liferay.portal.kernel.util.Validator;
 
 import java.util.HashMap;
@@ -35,10 +35,11 @@ import jodd.servlet.ServletUtil;
 public class JSONRPCRequest {
 
 	public static JSONRPCRequest detectJSONRPCRequest(
-		HttpServletRequest request) {
+		HttpServletRequest httpServletRequest) {
 
 		try {
-			String requestBody = ServletUtil.readRequestBody(request);
+			String requestBody = ServletUtil.readRequestBody(
+				httpServletRequest);
 
 			if (Validator.isNull(requestBody) ||
 				!requestBody.startsWith(StringPool.OPEN_CURLY_BRACE) ||
@@ -58,7 +59,12 @@ public class JSONRPCRequest {
 
 			JSONRPCRequest jsonrpcRequest = new JSONRPCRequest();
 
-			jsonrpcRequest._id = (Integer)requestBodyMap.get("id");
+			Number id = (Number)requestBodyMap.get("id");
+
+			if (id != null) {
+				jsonrpcRequest._id = Integer.valueOf(id.intValue());
+			}
+
 			jsonrpcRequest._jsonrpc = (String)requestBodyMap.get("jsonrpc");
 			jsonrpcRequest._method = (String)requestBodyMap.get("method");
 			jsonrpcRequest._parameters = (Map<String, ?>)requestBodyMap.get(
@@ -70,9 +76,9 @@ public class JSONRPCRequest {
 
 			return jsonrpcRequest;
 		}
-		catch (Exception e) {
+		catch (Exception exception) {
 			if (_log.isDebugEnabled()) {
-				_log.debug("Unable to parse JSON RPC request", e);
+				_log.debug("Unable to parse JSON RPC request", exception);
 			}
 
 			return null;
@@ -97,9 +103,8 @@ public class JSONRPCRequest {
 		if (value != null) {
 			return String.valueOf(value);
 		}
-		else {
-			return null;
-		}
+
+		return null;
 	}
 
 	public Set<String> getParameterNames() {
@@ -122,7 +127,7 @@ public class JSONRPCRequest {
 		_parameters = parameters;
 	}
 
-	private static Log _log = LogFactoryUtil.getLog(JSONRPCRequest.class);
+	private static final Log _log = LogFactoryUtil.getLog(JSONRPCRequest.class);
 
 	private Integer _id;
 	private String _jsonrpc;

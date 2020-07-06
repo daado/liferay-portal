@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,10 +14,10 @@
 
 package com.liferay.portal.workflow;
 
+import com.liferay.portal.kernel.model.Group;
+import com.liferay.portal.kernel.model.Portlet;
+import com.liferay.portal.kernel.security.permission.PermissionChecker;
 import com.liferay.portal.kernel.workflow.WorkflowTaskManagerUtil;
-import com.liferay.portal.model.Group;
-import com.liferay.portal.model.Portlet;
-import com.liferay.portal.security.permission.PermissionChecker;
 
 /**
  * @author Miguel Pastor
@@ -30,21 +30,24 @@ public class MyWorkflowTasksControlPanelEntry
 			PermissionChecker permissionChecker, Group group, Portlet portlet)
 		throws Exception {
 
-		if (WorkflowTaskManagerUtil.getWorkflowTaskCountByUser(
-				permissionChecker.getCompanyId(), permissionChecker.getUserId(),
-				null) > 0) {
+		int count = WorkflowTaskManagerUtil.getWorkflowTaskCountByUser(
+			permissionChecker.getCompanyId(), permissionChecker.getUserId(),
+			null);
 
+		if (count > 0) {
 			return true;
 		}
 
-		if (WorkflowTaskManagerUtil.getWorkflowTaskCountByUserRoles(
-				permissionChecker.getCompanyId(), permissionChecker.getUserId(),
-				null) > 0) {
+		count = WorkflowTaskManagerUtil.getWorkflowTaskCountByUserRoles(
+			permissionChecker.getCompanyId(), permissionChecker.getUserId(),
+			null);
 
+		if (count > 0) {
 			return true;
 		}
 
-		return false;
+		return super.hasPermissionImplicitlyGranted(
+			permissionChecker, group, portlet);
 	}
 
 }

@@ -1,0 +1,8 @@
+[subrepo]
+	autopull = false
+	cmdver = liferay
+	commit = 69801fd7321461cffd2153cfc56dce6cf97664b1
+	mergebuttonmergecommits = false
+	mode = push
+	parent = f066cbdc216d301053ff3352865fa94f59c98ab6
+	remote = git@github.com:liferay/liferay-etl-mulesoft.git

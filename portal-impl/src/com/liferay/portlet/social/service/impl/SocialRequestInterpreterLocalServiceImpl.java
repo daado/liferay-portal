@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,16 +14,34 @@
 
 package com.liferay.portlet.social.service.impl;
 
-import com.liferay.portal.theme.ThemeDisplay;
-import com.liferay.portal.util.PortalUtil;
-import com.liferay.portlet.social.model.SocialRequest;
-import com.liferay.portlet.social.model.SocialRequestFeedEntry;
-import com.liferay.portlet.social.model.SocialRequestInterpreter;
-import com.liferay.portlet.social.model.impl.SocialRequestInterpreterImpl;
+import com.liferay.petra.string.StringPool;
+import com.liferay.portal.kernel.json.JSONException;
+import com.liferay.portal.kernel.json.JSONFactoryUtil;
+import com.liferay.portal.kernel.json.JSONObject;
+import com.liferay.portal.kernel.log.Log;
+import com.liferay.portal.kernel.log.LogFactoryUtil;
+import com.liferay.portal.kernel.theme.ThemeDisplay;
+import com.liferay.portal.kernel.util.HashMapBuilder;
+import com.liferay.portal.kernel.util.PortalUtil;
+import com.liferay.portal.kernel.util.Validator;
 import com.liferay.portlet.social.service.base.SocialRequestInterpreterLocalServiceBaseImpl;
+import com.liferay.registry.Filter;
+import com.liferay.registry.Registry;
+import com.liferay.registry.RegistryUtil;
+import com.liferay.registry.ServiceReference;
+import com.liferay.registry.ServiceRegistration;
+import com.liferay.registry.ServiceTracker;
+import com.liferay.registry.ServiceTrackerCustomizer;
+import com.liferay.registry.collections.ServiceRegistrationMap;
+import com.liferay.registry.collections.ServiceRegistrationMapImpl;
+import com.liferay.social.kernel.model.SocialRequest;
+import com.liferay.social.kernel.model.SocialRequestFeedEntry;
+import com.liferay.social.kernel.model.SocialRequestInterpreter;
+import com.liferay.social.kernel.model.impl.SocialRequestInterpreterImpl;
 
-import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
  * The social request interpreter local service. Social request interpreters are
@@ -56,7 +74,39 @@ public class SocialRequestInterpreterLocalServiceImpl
 	public void addRequestInterpreter(
 		SocialRequestInterpreter requestInterpreter) {
 
-		_requestInterpreters.add(requestInterpreter);
+		Registry registry = RegistryUtil.getRegistry();
+
+		Map<String, Object> properties = HashMapBuilder.<String, Object>put(
+			"javax.portlet.name",
+			() -> {
+				SocialRequestInterpreterImpl socialRequestInterpreterImpl =
+					(SocialRequestInterpreterImpl)requestInterpreter;
+
+				return socialRequestInterpreterImpl.getPortletId();
+			}
+		).build();
+
+		ServiceRegistration<SocialRequestInterpreter> serviceRegistration =
+			registry.registerService(
+				SocialRequestInterpreter.class, requestInterpreter, properties);
+
+		_serviceRegistrations.put(requestInterpreter, serviceRegistration);
+	}
+
+	@Override
+	public void afterPropertiesSet() {
+		super.afterPropertiesSet();
+
+		Registry registry = RegistryUtil.getRegistry();
+
+		Filter filter = registry.getFilter(
+			"(&(javax.portlet.name=*)(objectClass=" +
+				SocialRequestInterpreter.class.getName() + "))");
+
+		_serviceTracker = registry.trackServices(
+			filter, new SocialRequestInterpreterServiceTrackerCustomizer());
+
+		_serviceTracker.open();
 	}
 
 	/**
@@ -69,8 +119,11 @@ public class SocialRequestInterpreterLocalServiceImpl
 	public void deleteRequestInterpreter(
 		SocialRequestInterpreter requestInterpreter) {
 
-		if (requestInterpreter != null) {
-			_requestInterpreters.remove(requestInterpreter);
+		ServiceRegistration<SocialRequestInterpreter> serviceRegistration =
+			_serviceRegistrations.remove(requestInterpreter);
+
+		if (serviceRegistration != null) {
+			serviceRegistration.unregister();
 		}
 	}
 
@@ -96,17 +149,20 @@ public class SocialRequestInterpreterLocalServiceImpl
 
 		String className = PortalUtil.getClassName(request.getClassNameId());
 
-		for (int i = 0; i < _requestInterpreters.size(); i++) {
-			SocialRequestInterpreterImpl requestInterpreter =
-				(SocialRequestInterpreterImpl)_requestInterpreters.get(i);
+		for (SocialRequestInterpreter requestInterpreter :
+				_requestInterpreters) {
 
-			if (requestInterpreter.hasClassName(className)) {
+			SocialRequestInterpreterImpl socialRequestInterpreterImpl =
+				(SocialRequestInterpreterImpl)requestInterpreter;
+
+			if (matches(socialRequestInterpreterImpl, className, request)) {
 				SocialRequestFeedEntry requestFeedEntry =
-					requestInterpreter.interpret(request, themeDisplay);
+					socialRequestInterpreterImpl.interpret(
+						request, themeDisplay);
 
 				if (requestFeedEntry != null) {
 					requestFeedEntry.setPortletId(
-						requestInterpreter.getPortletId());
+						socialRequestInterpreterImpl.getPortletId());
 
 					return requestFeedEntry;
 				}
@@ -136,13 +192,16 @@ public class SocialRequestInterpreterLocalServiceImpl
 
 		String className = PortalUtil.getClassName(request.getClassNameId());
 
-		for (int i = 0; i < _requestInterpreters.size(); i++) {
-			SocialRequestInterpreterImpl requestInterpreter =
-				(SocialRequestInterpreterImpl)_requestInterpreters.get(i);
+		for (SocialRequestInterpreter requestInterpreter :
+				_requestInterpreters) {
 
-			if (requestInterpreter.hasClassName(className)) {
-				boolean value = requestInterpreter.processConfirmation(
-					request, themeDisplay);
+			SocialRequestInterpreterImpl socialRequestInterpreterImpl =
+				(SocialRequestInterpreterImpl)requestInterpreter;
+
+			if (matches(socialRequestInterpreterImpl, className, request)) {
+				boolean value =
+					socialRequestInterpreterImpl.processConfirmation(
+						request, themeDisplay);
 
 				if (value) {
 					return;
@@ -172,12 +231,14 @@ public class SocialRequestInterpreterLocalServiceImpl
 
 		String className = PortalUtil.getClassName(request.getClassNameId());
 
-		for (int i = 0; i < _requestInterpreters.size(); i++) {
-			SocialRequestInterpreterImpl requestInterpreter =
-				(SocialRequestInterpreterImpl)_requestInterpreters.get(i);
+		for (SocialRequestInterpreter requestInterpreter :
+				_requestInterpreters) {
 
-			if (requestInterpreter.hasClassName(className)) {
-				boolean value = requestInterpreter.processRejection(
+			SocialRequestInterpreterImpl socialRequestInterpreterImpl =
+				(SocialRequestInterpreterImpl)requestInterpreter;
+
+			if (matches(socialRequestInterpreterImpl, className, request)) {
+				boolean value = socialRequestInterpreterImpl.processRejection(
 					request, themeDisplay);
 
 				if (value) {
@@ -187,7 +248,96 @@ public class SocialRequestInterpreterLocalServiceImpl
 		}
 	}
 
-	private List<SocialRequestInterpreter> _requestInterpreters =
-		new ArrayList<SocialRequestInterpreter>();
+	protected String getSocialRequestPortletId(SocialRequest request) {
+		try {
+			JSONObject extraDataJSONObject = JSONFactoryUtil.createJSONObject(
+				request.getExtraData());
+
+			return extraDataJSONObject.getString("portletId");
+		}
+		catch (JSONException jsonException) {
+			_log.error(
+				"Unable to create JSON object from " + request.getExtraData(),
+				jsonException);
+
+			return StringPool.BLANK;
+		}
+	}
+
+	protected boolean matches(
+		SocialRequestInterpreterImpl socialRequestInterpreterImpl,
+		String className, SocialRequest request) {
+
+		if (!socialRequestInterpreterImpl.hasClassName(className)) {
+			return false;
+		}
+
+		String requestPortletId = getSocialRequestPortletId(request);
+
+		if (Validator.isNull(requestPortletId) ||
+			requestPortletId.equals(
+				socialRequestInterpreterImpl.getPortletId())) {
+
+			return true;
+		}
+
+		return false;
+	}
+
+	private static final Log _log = LogFactoryUtil.getLog(
+		SocialRequestInterpreterLocalServiceImpl.class);
+
+	private final List<SocialRequestInterpreter> _requestInterpreters =
+		new CopyOnWriteArrayList<>();
+	private final ServiceRegistrationMap<SocialRequestInterpreter>
+		_serviceRegistrations = new ServiceRegistrationMapImpl<>();
+	private ServiceTracker<SocialRequestInterpreter, SocialRequestInterpreter>
+		_serviceTracker;
+
+	private class SocialRequestInterpreterServiceTrackerCustomizer
+		implements ServiceTrackerCustomizer
+			<SocialRequestInterpreter, SocialRequestInterpreter> {
+
+		@Override
+		public SocialRequestInterpreter addingService(
+			ServiceReference<SocialRequestInterpreter> serviceReference) {
+
+			Registry registry = RegistryUtil.getRegistry();
+
+			SocialRequestInterpreter requestInterpreter = registry.getService(
+				serviceReference);
+
+			if (!(requestInterpreter instanceof SocialRequestInterpreterImpl)) {
+				String portletId = (String)serviceReference.getProperty(
+					"javax.portlet.name");
+
+				requestInterpreter = new SocialRequestInterpreterImpl(
+					portletId, requestInterpreter);
+			}
+
+			_requestInterpreters.add(requestInterpreter);
+
+			return requestInterpreter;
+		}
+
+		@Override
+		public void modifiedService(
+			ServiceReference<SocialRequestInterpreter> serviceReference,
+			SocialRequestInterpreter requestInterpreter) {
+		}
+
+		@Override
+		public void removedService(
+			ServiceReference<SocialRequestInterpreter> serviceReference,
+			SocialRequestInterpreter requestInterpreter) {
+
+			Registry registry = RegistryUtil.getRegistry();
+
+			registry.ungetService(serviceReference);
+
+			_requestInterpreters.remove(requestInterpreter);
+		}
+
+	}
 
 }

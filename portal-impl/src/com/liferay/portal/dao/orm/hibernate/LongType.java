@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -42,8 +42,8 @@ public class LongType implements CompositeUserType, Serializable {
 	}
 
 	@Override
-	public Object deepCopy(Object obj) {
-		return obj;
+	public Object deepCopy(Object object) {
+		return object;
 	}
 
 	@Override
@@ -59,9 +59,8 @@ public class LongType implements CompositeUserType, Serializable {
 		else if ((x == null) || (y == null)) {
 			return false;
 		}
-		else {
-			return x.equals(y);
-		}
+
+		return x.equals(y);
 	}
 
 	@Override
@@ -100,28 +99,27 @@ public class LongType implements CompositeUserType, Serializable {
 		try {
 			value = StandardBasicTypes.LONG.nullSafeGet(rs, names[0], session);
 		}
-		catch (SQLException sqle1) {
+		catch (SQLException sqlException1) {
 
 			// Some JDBC drivers do not know how to convert a VARCHAR column
 			// with a blank entry into a BIGINT
 
 			try {
-				value = new Long(
+				value = Long.valueOf(
 					GetterUtil.getLong(
 						StandardBasicTypes.STRING.nullSafeGet(
 							rs, names[0], session)));
 			}
-			catch (SQLException sqle2) {
-				throw sqle1;
+			catch (SQLException sqlException2) {
+				throw sqlException1;
 			}
 		}
 
 		if (value == null) {
 			return DEFAULT_VALUE;
 		}
-		else {
-			return value;
-		}
+
+		return value;
 	}
 
 	@Override

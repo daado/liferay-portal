@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -17,11 +17,11 @@ package com.liferay.portal.events;
 import com.liferay.portal.kernel.events.SessionAction;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
+import com.liferay.portal.kernel.model.User;
 import com.liferay.portal.kernel.notifications.ChannelException;
 import com.liferay.portal.kernel.notifications.ChannelHubManagerUtil;
+import com.liferay.portal.kernel.service.UserLocalServiceUtil;
 import com.liferay.portal.kernel.util.WebKeys;
-import com.liferay.portal.model.User;
-import com.liferay.portal.service.UserLocalServiceUtil;
 
 import javax.servlet.http.HttpSession;
 
@@ -39,7 +39,7 @@ public class ChannelSessionDestroyAction extends SessionAction {
 		try {
 			user = (User)session.getAttribute(WebKeys.USER);
 		}
-		catch (IllegalStateException ise) {
+		catch (IllegalStateException illegalStateException) {
 			return;
 		}
 
@@ -64,21 +64,21 @@ public class ChannelSessionDestroyAction extends SessionAction {
 				ChannelHubManagerUtil.destroyChannel(
 					user.getCompanyId(), user.getUserId());
 			}
-			catch (ChannelException ce) {
+			catch (ChannelException channelException) {
 				if (_log.isDebugEnabled()) {
 					_log.debug(
 						"User channel " + user.getUserId() +
 							" is already unregistered",
-						ce);
+						channelException);
 				}
 			}
 		}
-		catch (Exception e) {
-			_log.error(e, e);
+		catch (Exception exception) {
+			_log.error(exception, exception);
 		}
 	}
 
-	private static Log _log = LogFactoryUtil.getLog(
+	private static final Log _log = LogFactoryUtil.getLog(
 		ChannelSessionDestroyAction.class);
 
 }

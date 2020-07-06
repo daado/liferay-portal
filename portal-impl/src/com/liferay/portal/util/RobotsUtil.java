@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,77 +14,107 @@
 
 package com.liferay.portal.util;
 
+import com.liferay.petra.content.ContentUtil;
+import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.exception.PortalException;
-import com.liferay.portal.kernel.exception.SystemException;
+import com.liferay.portal.kernel.log.Log;
+import com.liferay.portal.kernel.log.LogFactoryUtil;
+import com.liferay.portal.kernel.model.LayoutSet;
 import com.liferay.portal.kernel.util.GetterUtil;
-import com.liferay.portal.kernel.util.StringPool;
+import com.liferay.portal.kernel.util.PortalUtil;
 import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.util.Validator;
-import com.liferay.portal.model.Company;
-import com.liferay.portal.model.Group;
-import com.liferay.portal.model.LayoutSet;
-import com.liferay.portal.service.CompanyLocalServiceUtil;
-import com.liferay.portal.service.GroupLocalServiceUtil;
-import com.liferay.util.ContentUtil;
+
+import java.util.TreeMap;
 
 /**
  * @author David Truong
+ * @author Jesse Rao
  */
 public class RobotsUtil {
 
+	/**
+	 * @deprecated As of Athanasius (7.3.x), with no direct replacement
+	 */
+	@Deprecated
 	public static String getDefaultRobots() {
-		return getDefaultRobots(null);
+		int portalServerPort = PortalUtil.getPortalServerPort(false);
+
+		return getDefaultRobots(null, false, portalServerPort);
 	}
 
-	public static String getDefaultRobots(String virtualHost) {
-		if (Validator.isNotNull(virtualHost)) {
-			String content = ContentUtil.get(
+	/**
+	 * @deprecated As of Athanasius (7.3.x), with no direct replacement
+	 */
+	@Deprecated
+	public static String getDefaultRobots(
+		String virtualHostname, boolean secure, int port) {
+
+		if (Validator.isNotNull(virtualHostname)) {
+			return ContentUtil.get(
+				RobotsUtil.class.getClassLoader(),
 				PropsValues.ROBOTS_TXT_WITH_SITEMAP);
-
-			content = StringUtil.replace(content, "[$HOST$]", virtualHost);
-
-			return content;
 		}
 
-		return ContentUtil.get(PropsValues.ROBOTS_TXT_WITHOUT_SITEMAP);
+		return ContentUtil.get(
+			RobotsUtil.class.getClassLoader(),
+			PropsValues.ROBOTS_TXT_WITHOUT_SITEMAP);
 	}
 
-	public static String getRobots(LayoutSet layoutSet)
-		throws PortalException, SystemException {
+	public static String getRobots(LayoutSet layoutSet, boolean secure)
+		throws PortalException {
 
 		if (layoutSet == null) {
-			return getDefaultRobots(null);
+			return ContentUtil.get(
+				RobotsUtil.class.getClassLoader(),
+				PropsValues.ROBOTS_TXT_WITHOUT_SITEMAP);
 		}
+
+		int portalServerPort = PortalUtil.getPortalServerPort(secure);
+
+		TreeMap<String, String> virtualHostnames =
+			PortalUtil.getVirtualHostnames(layoutSet);
 
 		String virtualHostname = StringPool.BLANK;
 
-		try {
-			virtualHostname = layoutSet.getVirtualHostname();
-		}
-		catch (Exception e) {
+		if (!virtualHostnames.isEmpty()) {
+			virtualHostname = virtualHostnames.firstKey();
 		}
 
-		if (Validator.isNull(virtualHostname) &&
-			Validator.isNotNull(PropsValues.VIRTUAL_HOSTS_DEFAULT_SITE_NAME) ) {
-
-			Group group = GroupLocalServiceUtil.getGroup(
-				layoutSet.getCompanyId(),
-				PropsValues.VIRTUAL_HOSTS_DEFAULT_SITE_NAME);
-
-			if (layoutSet.getGroupId() == group.getGroupId()) {
-				Company company = CompanyLocalServiceUtil.getCompany(
-					layoutSet.getCompanyId());
-
-				virtualHostname = company.getVirtualHostname();
-			}
-		}
-
-		Group group = layoutSet.getGroup();
-
-		return GetterUtil.get(
-			group.getTypeSettingsProperty(
+		String robotsTxt = GetterUtil.getString(
+			layoutSet.getSettingsProperty(
 				layoutSet.isPrivateLayout() + "-robots.txt"),
-				getDefaultRobots(virtualHostname));
+			ContentUtil.get(
+				RobotsUtil.class.getClassLoader(),
+				PropsValues.ROBOTS_TXT_WITH_SITEMAP));
+
+		return _replaceWildcards(
+			robotsTxt, virtualHostname, secure, portalServerPort);
 	}
+
+	private static String _replaceWildcards(
+		String robotsTxt, String virtualHostname, boolean secure, int port) {
+
+		if (Validator.isNotNull(virtualHostname)) {
+			robotsTxt = StringUtil.replace(
+				robotsTxt, "[$HOST$]", virtualHostname);
+		}
+		else if (_log.isWarnEnabled()) {
+			_log.warn(
+				"Placeholder [$HOST$] could not be replaced with the actual " +
+					"host");
+		}
+
+		robotsTxt = StringUtil.replace(
+			robotsTxt, "[$PORT$]", String.valueOf(port));
+
+		if (secure) {
+			return StringUtil.replace(robotsTxt, "[$PROTOCOL$]", "https");
+		}
+
+		return StringUtil.replace(robotsTxt, "[$PROTOCOL$]", "http");
+	}
+
+	private static final Log _log = LogFactoryUtil.getLog(RobotsUtil.class);
 
 }

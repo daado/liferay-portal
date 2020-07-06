@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,10 +14,7 @@
 
 package com.liferay.counter.model.impl;
 
-import com.liferay.counter.model.Counter;
-import com.liferay.counter.service.CounterLocalServiceUtil;
-
-import com.liferay.portal.kernel.exception.SystemException;
+import com.liferay.counter.kernel.model.Counter;
 
 /**
  * The extended model base implementation for the Counter service. Represents a row in the &quot;Counter&quot; database table, with each column mapped to a property of this class.
@@ -28,23 +25,16 @@ import com.liferay.portal.kernel.exception.SystemException;
  *
  * @author Brian Wing Shun Chan
  * @see CounterImpl
- * @see com.liferay.counter.model.Counter
+ * @see Counter
  * @generated
  */
-public abstract class CounterBaseImpl extends CounterModelImpl
-	implements Counter {
+public abstract class CounterBaseImpl
+	extends CounterModelImpl implements Counter {
+
 	/*
 	 * NOTE FOR DEVELOPERS:
 	 *
-	 * Never modify or reference this class directly. All methods that expect a counter model instance should use the {@link Counter} interface instead.
+	 * Never modify or reference this class directly. All methods that expect a counter model instance should use the <code>Counter</code> interface instead.
 	 */
-	@Override
-	public void persist() throws SystemException {
-		if (this.isNew()) {
-			CounterLocalServiceUtil.addCounter(this);
-		}
-		else {
-			CounterLocalServiceUtil.updateCounter(this);
-		}
-	}
+
 }

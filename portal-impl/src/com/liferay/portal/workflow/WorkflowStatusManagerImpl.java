@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,7 +14,6 @@
 
 package com.liferay.portal.workflow;
 
-import com.liferay.portal.kernel.security.pacl.DoPrivileged;
 import com.liferay.portal.kernel.workflow.WorkflowException;
 import com.liferay.portal.kernel.workflow.WorkflowHandlerRegistryUtil;
 import com.liferay.portal.kernel.workflow.WorkflowStatusManager;
@@ -26,7 +25,6 @@ import java.util.Map;
 /**
  * @author Bruno Farache
  */
-@DoPrivileged
 public class WorkflowStatusManagerImpl implements WorkflowStatusManager {
 
 	@Override
@@ -37,8 +35,8 @@ public class WorkflowStatusManagerImpl implements WorkflowStatusManager {
 		try {
 			WorkflowHandlerRegistryUtil.updateStatus(status, workflowContext);
 		}
-		catch (Exception e) {
-			throw new WorkflowException(e);
+		catch (Exception exception) {
+			throw new WorkflowException(exception);
 		}
 	}
 

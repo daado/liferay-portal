@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -67,11 +67,11 @@ public class PollerCometDelayedTask {
 				cometRequest.getCompanyId(), cometRequest.getUserId(),
 				notificationEvents);
 		}
-		catch (UnknownChannelException uce) {
+		catch (UnknownChannelException unknownChannelException) {
 			if (_log.isDebugEnabled()) {
 				_log.debug(
 					"Unable to complete processing because user session ended",
-					uce);
+					unknownChannelException);
 			}
 		}
 		finally {
@@ -79,10 +79,10 @@ public class PollerCometDelayedTask {
 		}
 	}
 
-	private static Log _log = LogFactoryUtil.getLog(
+	private static final Log _log = LogFactoryUtil.getLog(
 		PollerCometDelayedTask.class);
 
-	private CometSession _cometSession;
-	private JSONObject _pollerResponseHeaderJSONObject;
+	private final CometSession _cometSession;
+	private final JSONObject _pollerResponseHeaderJSONObject;
 
 }

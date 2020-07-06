@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,9 +14,12 @@
 
 package com.liferay.taglib.aui;
 
+import com.liferay.petra.string.StringPool;
+import com.liferay.portal.kernel.dao.search.DisplayTerms;
+import com.liferay.portal.kernel.dao.search.SearchContainer;
 import com.liferay.portal.kernel.util.JavaConstants;
+import com.liferay.portal.kernel.util.PortalUtil;
 import com.liferay.portal.kernel.util.StringBundler;
-import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.util.Validator;
 import com.liferay.taglib.aui.base.BaseNavBarSearchTag;
 
@@ -24,6 +27,7 @@ import javax.portlet.PortletResponse;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.jsp.JspException;
+import javax.servlet.jsp.JspWriter;
 
 /**
  * @author Eduardo Lundgren
@@ -41,11 +45,17 @@ public class NavBarSearchTag extends BaseNavBarSearchTag {
 		if (navBarTag != null) {
 			StringBundler sb = navBarTag.getResponsiveButtonsSB();
 
-			sb.append("<a class=\"btn btn-navbar\" id=\"");
+			sb.append("<a class=\"btn navbar-btn navbar-toggle");
+
+			if (_hasSearchResults()) {
+				sb.append(" hide");
+			}
+
+			sb.append("\" id=\"");
 			sb.append(_getNamespacedId());
 			sb.append("NavbarBtn\" data-navId=\"");
 			sb.append(_getNamespacedId());
-			sb.append("\">");
+			sb.append("\" tabindex=\"0\">");
 			sb.append("<i class=\"icon-search\"></i></a>");
 		}
 
@@ -60,10 +70,54 @@ public class NavBarSearchTag extends BaseNavBarSearchTag {
 	}
 
 	@Override
-	protected void setAttributes(HttpServletRequest request) {
-		super.setAttributes(request);
+	protected String getEndPage() {
+		if (Validator.isNotNull(getMarkupView())) {
+			return "/html/taglib/aui/nav_bar_search/" + getMarkupView() +
+				"/end.jsp";
+		}
 
-		setNamespacedAttribute(request, "id", _getNamespacedId());
+		return "/html/taglib/aui/nav_bar_search/end.jsp";
+	}
+
+	protected String getMarkupView() {
+		String markupView = StringPool.BLANK;
+
+		NavBarTag navBarTag = (NavBarTag)findAncestorWithClass(
+			this, NavBarTag.class);
+
+		if (navBarTag != null) {
+			markupView = navBarTag.getMarkupView();
+		}
+
+		return markupView;
+	}
+
+	@Override
+	protected String getStartPage() {
+		if (Validator.isNotNull(getMarkupView())) {
+			return "/html/taglib/aui/nav_bar_search/" + getMarkupView() +
+				"/start.jsp";
+		}
+
+		return "/html/taglib/aui/nav_bar_search/start.jsp";
+	}
+
+	@Override
+	protected int processEndTag() throws Exception {
+		JspWriter jspWriter = pageContext.getOut();
+
+		jspWriter.write("</div></div>");
+
+		return EVAL_PAGE;
+	}
+
+	@Override
+	protected void setAttributes(HttpServletRequest httpServletRequest) {
+		super.setAttributes(httpServletRequest);
+
+		setNamespacedAttribute(httpServletRequest, "id", _getNamespacedId());
+		setNamespacedAttribute(
+			httpServletRequest, "searchResults", _hasSearchResults());
 	}
 
 	private String _getNamespacedId() {
@@ -73,21 +127,44 @@ public class NavBarSearchTag extends BaseNavBarSearchTag {
 
 		_namespacedId = getId();
 
-		if (Validator.isNull(_namespacedId)) {
-			_namespacedId = StringUtil.randomId();
-		}
-
-		HttpServletRequest request =
+		HttpServletRequest httpServletRequest =
 			(HttpServletRequest)pageContext.getRequest();
 
-		PortletResponse portletResponse = (PortletResponse)request.getAttribute(
-			JavaConstants.JAVAX_PORTLET_RESPONSE);
+		if (Validator.isNull(_namespacedId)) {
+			_namespacedId = PortalUtil.getUniqueElementId(
+				httpServletRequest, StringPool.BLANK,
+				AUIUtil.normalizeId("navBar"));
+		}
+
+		PortletResponse portletResponse =
+			(PortletResponse)httpServletRequest.getAttribute(
+				JavaConstants.JAVAX_PORTLET_RESPONSE);
 
 		if (portletResponse != null) {
 			_namespacedId = portletResponse.getNamespace() + _namespacedId;
 		}
 
 		return _namespacedId;
+	}
+
+	private boolean _hasSearchResults() {
+		SearchContainer<?> searchContainer = getSearchContainer();
+
+		if (searchContainer == null) {
+			return false;
+		}
+
+		DisplayTerms displayTerms = searchContainer.getDisplayTerms();
+
+		String keywords = displayTerms.getKeywords();
+
+		if (displayTerms.isAdvancedSearch() ||
+			!keywords.equals(StringPool.BLANK)) {
+
+			return true;
+		}
+
+		return false;
 	}
 
 	private String _namespacedId;

@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,7 +14,7 @@
 
 package com.liferay.portal.model.impl;
 
-import com.liferay.portal.model.Region;
+import com.liferay.portal.kernel.model.Region;
 
 /**
  * The extended model base implementation for the Region service. Represents a row in the &quot;Region&quot; database table, with each column mapped to a property of this class.
@@ -25,13 +25,15 @@ import com.liferay.portal.model.Region;
  *
  * @author Brian Wing Shun Chan
  * @see RegionImpl
- * @see com.liferay.portal.model.Region
+ * @see Region
  * @generated
  */
 public abstract class RegionBaseImpl extends RegionModelImpl implements Region {
+
 	/*
 	 * NOTE FOR DEVELOPERS:
 	 *
-	 * Never modify or reference this class directly. All methods that expect a region model instance should use the {@link Region} interface instead.
+	 * Never modify or reference this class directly. All methods that expect a region model instance should use the <code>Region</code> interface instead.
 	 */
+
 }

@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -15,7 +15,7 @@
 package com.liferay.portal.events;
 
 import com.liferay.portal.kernel.events.Action;
-import com.liferay.portal.util.WebKeys;
+import com.liferay.portal.kernel.util.WebKeys;
 
 import java.util.Map;
 
@@ -29,7 +29,9 @@ import javax.servlet.http.HttpSession;
 public class ClearRenderParametersAction extends Action {
 
 	@Override
-	public void run(HttpServletRequest request, HttpServletResponse response) {
+	public void run(
+		HttpServletRequest httpServletRequest,
+		HttpServletResponse httpServletResponse) {
 
 		// Some users are confused by the behavior stated in the JSR 168 spec
 		// that render parameters are saved across requests. Set this class to
@@ -38,7 +40,7 @@ public class ClearRenderParametersAction extends Action {
 		// in portal.properties to disable the remembering of window states
 		// across requests.
 
-		HttpSession session = request.getSession();
+		HttpSession session = httpServletRequest.getSession();
 
 		Map<Long, Map<String, Map<String, String[]>>> renderParametersPool =
 			(Map<Long, Map<String, Map<String, String[]>>>)session.getAttribute(

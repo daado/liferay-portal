@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -15,12 +15,11 @@
 package com.liferay.portlet.social.service.impl;
 
 import com.liferay.portal.kernel.exception.PortalException;
-import com.liferay.portal.kernel.exception.SystemException;
+import com.liferay.portal.kernel.model.User;
 import com.liferay.portal.kernel.transaction.Propagation;
 import com.liferay.portal.kernel.transaction.Transactional;
-import com.liferay.portal.model.User;
-import com.liferay.portlet.social.model.SocialActivityLimit;
 import com.liferay.portlet.social.service.base.SocialActivityLimitLocalServiceBaseImpl;
+import com.liferay.social.kernel.model.SocialActivityLimit;
 
 /**
  * @author Zsolt Berentey
@@ -33,7 +32,7 @@ public class SocialActivityLimitLocalServiceImpl
 	public SocialActivityLimit addActivityLimit(
 			long userId, long groupId, long classNameId, long classPK,
 			int activityType, String activityCounterName, int limitPeriod)
-		throws PortalException, SystemException {
+		throws PortalException {
 
 		SocialActivityLimit activityLimit =
 			socialActivityLimitPersistence.fetchByG_U_C_C_A_A(
@@ -59,16 +58,13 @@ public class SocialActivityLimitLocalServiceImpl
 		activityLimit.setActivityCounterName(activityCounterName);
 		activityLimit.setCount(limitPeriod, 0);
 
-		socialActivityLimitPersistence.update(activityLimit);
-
-		return activityLimit;
+		return socialActivityLimitPersistence.update(activityLimit);
 	}
 
 	@Override
 	public SocialActivityLimit fetchActivityLimit(
-			long groupId, long userId, long classNameId, long classPK,
-			int activityType, String activityCounterName)
-		throws SystemException {
+		long groupId, long userId, long classNameId, long classPK,
+		int activityType, String activityCounterName) {
 
 		return socialActivityLimitPersistence.fetchByG_U_C_C_A_A(
 			groupId, userId, classNameId, classPK, activityType,

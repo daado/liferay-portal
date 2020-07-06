@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,10 +14,8 @@
 
 package com.liferay.portlet.expando.model.impl;
 
-import com.liferay.portal.kernel.exception.SystemException;
-
-import com.liferay.portlet.expando.model.ExpandoRow;
-import com.liferay.portlet.expando.service.ExpandoRowLocalServiceUtil;
+import com.liferay.expando.kernel.model.ExpandoRow;
+import com.liferay.expando.kernel.service.ExpandoRowLocalServiceUtil;
 
 /**
  * The extended model base implementation for the ExpandoRow service. Represents a row in the &quot;ExpandoRow&quot; database table, with each column mapped to a property of this class.
@@ -28,18 +26,19 @@ import com.liferay.portlet.expando.service.ExpandoRowLocalServiceUtil;
  *
  * @author Brian Wing Shun Chan
  * @see ExpandoRowImpl
- * @see com.liferay.portlet.expando.model.ExpandoRow
+ * @see ExpandoRow
  * @generated
  */
-public abstract class ExpandoRowBaseImpl extends ExpandoRowModelImpl
-	implements ExpandoRow {
+public abstract class ExpandoRowBaseImpl
+	extends ExpandoRowModelImpl implements ExpandoRow {
+
 	/*
 	 * NOTE FOR DEVELOPERS:
 	 *
-	 * Never modify or reference this class directly. All methods that expect a expando row model instance should use the {@link ExpandoRow} interface instead.
+	 * Never modify or reference this class directly. All methods that expect a expando row model instance should use the <code>ExpandoRow</code> interface instead.
 	 */
 	@Override
-	public void persist() throws SystemException {
+	public void persist() {
 		if (this.isNew()) {
 			ExpandoRowLocalServiceUtil.addExpandoRow(this);
 		}
@@ -47,4 +46,5 @@ public abstract class ExpandoRowBaseImpl extends ExpandoRowModelImpl
 			ExpandoRowLocalServiceUtil.updateExpandoRow(this);
 		}
 	}
+
 }

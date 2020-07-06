@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,20 +14,18 @@
 
 package com.liferay.portlet.social.service.impl;
 
+import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.dao.orm.QueryUtil;
 import com.liferay.portal.kernel.exception.PortalException;
-import com.liferay.portal.kernel.exception.SystemException;
-import com.liferay.portal.kernel.util.StringPool;
-import com.liferay.portal.security.auth.PrincipalException;
-import com.liferay.portal.security.permission.ActionKeys;
-import com.liferay.portal.security.permission.PermissionChecker;
-import com.liferay.portal.service.ServiceContext;
-import com.liferay.portal.util.PortalUtil;
+import com.liferay.portal.kernel.security.auth.PrincipalException;
+import com.liferay.portal.kernel.security.permission.ActionKeys;
+import com.liferay.portal.kernel.security.permission.PermissionChecker;
+import com.liferay.portal.kernel.service.ServiceContext;
 import com.liferay.portal.util.PropsValues;
-import com.liferay.portlet.social.model.SocialActivity;
-import com.liferay.portlet.social.model.SocialActivityInterpreter;
-import com.liferay.portlet.social.model.impl.SocialActivityInterpreterImpl;
 import com.liferay.portlet.social.service.base.SocialActivityServiceBaseImpl;
+import com.liferay.social.kernel.model.SocialActivity;
+import com.liferay.social.kernel.model.SocialActivityInterpreter;
+import com.liferay.social.kernel.model.impl.SocialActivityInterpreterImpl;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -49,8 +47,7 @@ public class SocialActivityServiceImpl extends SocialActivityServiceBaseImpl {
 	 * start</code> instances. <code>start</code> and <code>end</code> are not
 	 * primary keys, they are indexes in the result set. Thus, <code>0</code>
 	 * refers to the first result in the set. Setting both <code>start</code>
-	 * and <code>end</code> to {@link
-	 * com.liferay.portal.kernel.dao.orm.QueryUtil#ALL_POS} will return the full
+	 * and <code>end</code> to {@link QueryUtil#ALL_POS} will return the full
 	 * result set.
 	 * </p>
 	 *
@@ -58,13 +55,11 @@ public class SocialActivityServiceImpl extends SocialActivityServiceBaseImpl {
 	 * @param  start the lower bound of the range of results
 	 * @param  end the upper bound of the range of results (not inclusive)
 	 * @return the range of matching activities
-	 * @throws PortalException if a permission checker was not initialized
-	 * @throws SystemException if a system exception occurred
 	 */
 	@Override
 	public List<SocialActivity> getActivities(
 			long classNameId, int start, int end)
-		throws PortalException, SystemException {
+		throws PortalException {
 
 		List<SocialActivity> activities =
 			socialActivityLocalService.getActivities(
@@ -84,8 +79,7 @@ public class SocialActivityServiceImpl extends SocialActivityServiceBaseImpl {
 	 * start</code> instances. <code>start</code> and <code>end</code> are not
 	 * primary keys, they are indexes in the result set. Thus, <code>0</code>
 	 * refers to the first result in the set. Setting both <code>start</code>
-	 * and <code>end</code> to {@link
-	 * com.liferay.portal.kernel.dao.orm.QueryUtil#ALL_POS} will return the full
+	 * and <code>end</code> to {@link QueryUtil#ALL_POS} will return the full
 	 * result set.
 	 * </p>
 	 *
@@ -95,14 +89,12 @@ public class SocialActivityServiceImpl extends SocialActivityServiceBaseImpl {
 	 * @param  start the lower bound of the range of results
 	 * @param  end the upper bound of the range of results (not inclusive)
 	 * @return the range of matching activities
-	 * @throws PortalException if a permission checker was not initialized
-	 * @throws SystemException if a system exception occurred
 	 */
 	@Override
 	public List<SocialActivity> getActivities(
 			long mirrorActivityId, long classNameId, long classPK, int start,
 			int end)
-		throws PortalException, SystemException {
+		throws PortalException {
 
 		List<SocialActivity> activities =
 			socialActivityLocalService.getActivities(
@@ -122,8 +114,7 @@ public class SocialActivityServiceImpl extends SocialActivityServiceBaseImpl {
 	 * start</code> instances. <code>start</code> and <code>end</code> are not
 	 * primary keys, they are indexes in the result set. Thus, <code>0</code>
 	 * refers to the first result in the set. Setting both <code>start</code>
-	 * and <code>end</code> to {@link
-	 * com.liferay.portal.kernel.dao.orm.QueryUtil#ALL_POS} will return the full
+	 * and <code>end</code> to {@link QueryUtil#ALL_POS} will return the full
 	 * result set.
 	 * </p>
 	 *
@@ -133,20 +124,17 @@ public class SocialActivityServiceImpl extends SocialActivityServiceBaseImpl {
 	 * @param  start the lower bound of the range of results
 	 * @param  end the upper bound of the range of results (not inclusive)
 	 * @return the range of matching activities
-	 * @throws PortalException if a permission checker was not initialized
-	 * @throws SystemException if a system exception occurred
 	 */
 	@Override
 	public List<SocialActivity> getActivities(
 			long mirrorActivityId, String className, long classPK, int start,
 			int end)
-		throws PortalException, SystemException {
-
-		long classNameId = PortalUtil.getClassNameId(className);
+		throws PortalException {
 
 		List<SocialActivity> activities =
 			socialActivityLocalService.getActivities(
-				mirrorActivityId, classNameId, classPK, 0,
+				mirrorActivityId,
+				classNameLocalService.getClassNameId(className), classPK, 0,
 				end + PropsValues.SOCIAL_ACTIVITY_FILTER_SEARCH_LIMIT);
 
 		return filterActivities(activities, start, end);
@@ -161,8 +149,7 @@ public class SocialActivityServiceImpl extends SocialActivityServiceBaseImpl {
 	 * start</code> instances. <code>start</code> and <code>end</code> are not
 	 * primary keys, they are indexes in the result set. Thus, <code>0</code>
 	 * refers to the first result in the set. Setting both <code>start</code>
-	 * and <code>end</code> to {@link
-	 * com.liferay.portal.kernel.dao.orm.QueryUtil#ALL_POS} will return the full
+	 * and <code>end</code> to {@link QueryUtil#ALL_POS} will return the full
 	 * result set.
 	 * </p>
 	 *
@@ -170,19 +157,15 @@ public class SocialActivityServiceImpl extends SocialActivityServiceBaseImpl {
 	 * @param  start the lower bound of the range of results
 	 * @param  end the upper bound of the range of results (not inclusive)
 	 * @return the range of matching activities
-	 * @throws PortalException if a permission checker was not initialized
-	 * @throws SystemException if a system exception occurred
 	 */
 	@Override
 	public List<SocialActivity> getActivities(
 			String className, int start, int end)
-		throws PortalException, SystemException {
-
-		long classNameId = PortalUtil.getClassNameId(className);
+		throws PortalException {
 
 		List<SocialActivity> activities =
 			socialActivityLocalService.getActivities(
-				classNameId, 0,
+				classNameLocalService.getClassNameId(className), 0,
 				end + PropsValues.SOCIAL_ACTIVITY_FILTER_SEARCH_LIMIT);
 
 		return filterActivities(activities, start, end);
@@ -194,10 +177,9 @@ public class SocialActivityServiceImpl extends SocialActivityServiceBaseImpl {
 	 *
 	 * @param  classNameId the target asset's class name ID
 	 * @return the number of matching activities
-	 * @throws SystemException if a system exception occurred
 	 */
 	@Override
-	public int getActivitiesCount(long classNameId) throws SystemException {
+	public int getActivitiesCount(long classNameId) {
 		return socialActivityLocalService.getActivitiesCount(classNameId);
 	}
 
@@ -210,12 +192,10 @@ public class SocialActivityServiceImpl extends SocialActivityServiceBaseImpl {
 	 * @param  classNameId the target asset's class name ID
 	 * @param  classPK the primary key of the target asset
 	 * @return the number of matching activities
-	 * @throws SystemException if a system exception occurred
 	 */
 	@Override
 	public int getActivitiesCount(
-			long mirrorActivityId, long classNameId, long classPK)
-		throws SystemException {
+		long mirrorActivityId, long classNameId, long classPK) {
 
 		return socialActivityLocalService.getActivitiesCount(
 			mirrorActivityId, classNameId, classPK);
@@ -230,16 +210,14 @@ public class SocialActivityServiceImpl extends SocialActivityServiceBaseImpl {
 	 * @param  className the target asset's class name
 	 * @param  classPK the primary key of the target asset
 	 * @return the number of matching activities
-	 * @throws SystemException if a system exception occurred
 	 */
 	@Override
 	public int getActivitiesCount(
-			long mirrorActivityId, String className, long classPK)
-		throws SystemException {
+		long mirrorActivityId, String className, long classPK) {
 
-		long classNameId = PortalUtil.getClassNameId(className);
-
-		return getActivitiesCount(mirrorActivityId, classNameId, classPK);
+		return getActivitiesCount(
+			mirrorActivityId, classNameLocalService.getClassNameId(className),
+			classPK);
 	}
 
 	/**
@@ -247,13 +225,11 @@ public class SocialActivityServiceImpl extends SocialActivityServiceBaseImpl {
 	 *
 	 * @param  className the target asset's class name
 	 * @return the number of matching activities
-	 * @throws SystemException if a system exception occurred
 	 */
 	@Override
-	public int getActivitiesCount(String className) throws SystemException {
-		long classNameId = PortalUtil.getClassNameId(className);
-
-		return getActivitiesCount(classNameId);
+	public int getActivitiesCount(String className) {
+		return getActivitiesCount(
+			classNameLocalService.getClassNameId(className));
 	}
 
 	/**
@@ -261,13 +237,9 @@ public class SocialActivityServiceImpl extends SocialActivityServiceBaseImpl {
 	 *
 	 * @param  activityId the primary key of the activity
 	 * @return Returns the activity
-	 * @throws PortalException if the activity could not be found
-	 * @throws SystemException if a system exception occurred
 	 */
 	@Override
-	public SocialActivity getActivity(long activityId)
-		throws PortalException, SystemException {
-
+	public SocialActivity getActivity(long activityId) throws PortalException {
 		SocialActivity activity = socialActivityLocalService.getActivity(
 			activityId);
 
@@ -276,7 +248,8 @@ public class SocialActivityServiceImpl extends SocialActivityServiceBaseImpl {
 				StringPool.BLANK);
 
 		if (!hasPermission(activity, activityInterpreters)) {
-			throw new PrincipalException();
+			throw new PrincipalException.MustHavePermission(
+				0, SocialActivity.class.getName(), activityId);
 		}
 
 		return activity;
@@ -285,7 +258,7 @@ public class SocialActivityServiceImpl extends SocialActivityServiceBaseImpl {
 	@Override
 	public List<SocialActivity> getActivitySetActivities(
 			long activitySetId, int start, int end)
-		throws PortalException, SystemException {
+		throws PortalException {
 
 		List<SocialActivity> activities =
 			socialActivityLocalService.getActivitySetActivities(
@@ -306,8 +279,7 @@ public class SocialActivityServiceImpl extends SocialActivityServiceBaseImpl {
 	 * start</code> instances. <code>start</code> and <code>end</code> are not
 	 * primary keys, they are indexes in the result set. Thus, <code>0</code>
 	 * refers to the first result in the set. Setting both <code>start</code>
-	 * and <code>end</code> to {@link
-	 * com.liferay.portal.kernel.dao.orm.QueryUtil#ALL_POS} will return the full
+	 * and <code>end</code> to {@link QueryUtil#ALL_POS} will return the full
 	 * result set.
 	 * </p>
 	 *
@@ -315,13 +287,11 @@ public class SocialActivityServiceImpl extends SocialActivityServiceBaseImpl {
 	 * @param  start the lower bound of the range of results
 	 * @param  end the upper bound of the range of results (not inclusive)
 	 * @return the range of matching activities
-	 * @throws PortalException if a permission checker was not initialized
-	 * @throws SystemException if a system exception occurred
 	 */
 	@Override
 	public List<SocialActivity> getGroupActivities(
 			long groupId, int start, int end)
-		throws PortalException, SystemException {
+		throws PortalException {
 
 		List<SocialActivity> activities =
 			socialActivityLocalService.getGroupActivities(
@@ -340,10 +310,9 @@ public class SocialActivityServiceImpl extends SocialActivityServiceBaseImpl {
 	 *
 	 * @param  groupId the primary key of the group
 	 * @return the number of matching activities
-	 * @throws SystemException if a system exception occurred
 	 */
 	@Override
-	public int getGroupActivitiesCount(long groupId) throws SystemException {
+	public int getGroupActivitiesCount(long groupId) {
 		return socialActivityLocalService.getGroupActivitiesCount(groupId);
 	}
 
@@ -360,8 +329,7 @@ public class SocialActivityServiceImpl extends SocialActivityServiceBaseImpl {
 	 * start</code> instances. <code>start</code> and <code>end</code> are not
 	 * primary keys, they are indexes in the result set. Thus, <code>0</code>
 	 * refers to the first result in the set. Setting both <code>start</code>
-	 * and <code>end</code> to {@link
-	 * com.liferay.portal.kernel.dao.orm.QueryUtil#ALL_POS} will return the full
+	 * and <code>end</code> to {@link QueryUtil#ALL_POS} will return the full
 	 * result set.
 	 * </p>
 	 *
@@ -369,13 +337,11 @@ public class SocialActivityServiceImpl extends SocialActivityServiceBaseImpl {
 	 * @param  start the lower bound of the range of results
 	 * @param  end the upper bound of the range of results (not inclusive)
 	 * @return the range of matching activities
-	 * @throws PortalException if a permission checker was not initialized
-	 * @throws SystemException if a system exception occurred
 	 */
 	@Override
 	public List<SocialActivity> getGroupUsersActivities(
 			long groupId, int start, int end)
-		throws PortalException, SystemException {
+		throws PortalException {
 
 		List<SocialActivity> activities =
 			socialActivityLocalService.getGroupUsersActivities(
@@ -395,12 +361,9 @@ public class SocialActivityServiceImpl extends SocialActivityServiceBaseImpl {
 	 *
 	 * @param  groupId the primary key of the group
 	 * @return the number of matching activities
-	 * @throws SystemException if a system exception occurred
 	 */
 	@Override
-	public int getGroupUsersActivitiesCount(long groupId)
-		throws SystemException {
-
+	public int getGroupUsersActivitiesCount(long groupId) {
 		return socialActivityLocalService.getGroupUsersActivitiesCount(groupId);
 	}
 
@@ -409,12 +372,10 @@ public class SocialActivityServiceImpl extends SocialActivityServiceBaseImpl {
 	 *
 	 * @param  mirrorActivityId the primary key of the mirror activity
 	 * @return Returns the mirror activity
-	 * @throws PortalException if the mirror activity could not be found
-	 * @throws SystemException if a system exception occurred
 	 */
 	@Override
 	public SocialActivity getMirrorActivity(long mirrorActivityId)
-		throws PortalException, SystemException {
+		throws PortalException {
 
 		SocialActivity activity = socialActivityLocalService.getMirrorActivity(
 			mirrorActivityId);
@@ -424,7 +385,8 @@ public class SocialActivityServiceImpl extends SocialActivityServiceBaseImpl {
 				StringPool.BLANK);
 
 		if (!hasPermission(activity, activityInterpreters)) {
-			throw new PrincipalException();
+			throw new PrincipalException.MustHavePermission(
+				0, SocialActivity.class.getName(), mirrorActivityId);
 		}
 
 		return activity;
@@ -439,8 +401,7 @@ public class SocialActivityServiceImpl extends SocialActivityServiceBaseImpl {
 	 * start</code> instances. <code>start</code> and <code>end</code> are not
 	 * primary keys, they are indexes in the result set. Thus, <code>0</code>
 	 * refers to the first result in the set. Setting both <code>start</code>
-	 * and <code>end</code> to {@link
-	 * com.liferay.portal.kernel.dao.orm.QueryUtil#ALL_POS} will return the full
+	 * and <code>end</code> to {@link QueryUtil#ALL_POS} will return the full
 	 * result set.
 	 * </p>
 	 *
@@ -448,13 +409,11 @@ public class SocialActivityServiceImpl extends SocialActivityServiceBaseImpl {
 	 * @param  start the lower bound of the range of results
 	 * @param  end the upper bound of the range of results (not inclusive)
 	 * @return the range of matching activities
-	 * @throws PortalException if a permission checker was not initialized
-	 * @throws SystemException if a system exception occurred
 	 */
 	@Override
 	public List<SocialActivity> getOrganizationActivities(
 			long organizationId, int start, int end)
-		throws PortalException, SystemException {
+		throws PortalException {
 
 		List<SocialActivity> activities =
 			socialActivityLocalService.getOrganizationActivities(
@@ -470,12 +429,9 @@ public class SocialActivityServiceImpl extends SocialActivityServiceBaseImpl {
 	 *
 	 * @param  organizationId the primary key of the organization
 	 * @return the number of matching activities
-	 * @throws SystemException if a system exception occurred
 	 */
 	@Override
-	public int getOrganizationActivitiesCount(long organizationId)
-		throws SystemException {
-
+	public int getOrganizationActivitiesCount(long organizationId) {
 		return socialActivityLocalService.getOrganizationActivitiesCount(
 			organizationId);
 	}
@@ -489,8 +445,7 @@ public class SocialActivityServiceImpl extends SocialActivityServiceBaseImpl {
 	 * start</code> instances. <code>start</code> and <code>end</code> are not
 	 * primary keys, they are indexes in the result set. Thus, <code>0</code>
 	 * refers to the first result in the set. Setting both <code>start</code>
-	 * and <code>end</code> to {@link
-	 * com.liferay.portal.kernel.dao.orm.QueryUtil#ALL_POS} will return the full
+	 * and <code>end</code> to {@link QueryUtil#ALL_POS} will return the full
 	 * result set.
 	 * </p>
 	 *
@@ -498,13 +453,11 @@ public class SocialActivityServiceImpl extends SocialActivityServiceBaseImpl {
 	 * @param  start the lower bound of the range of results
 	 * @param  end the upper bound of the range of results (not inclusive)
 	 * @return the range of matching activities
-	 * @throws PortalException if a permission checker was not initialized
-	 * @throws SystemException if a system exception occurred
 	 */
 	@Override
 	public List<SocialActivity> getOrganizationUsersActivities(
 			long organizationId, int start, int end)
-		throws PortalException, SystemException {
+		throws PortalException {
 
 		List<SocialActivity> activities =
 			socialActivityLocalService.getOrganizationUsersActivities(
@@ -520,12 +473,9 @@ public class SocialActivityServiceImpl extends SocialActivityServiceBaseImpl {
 	 *
 	 * @param  organizationId the primary key of the organization
 	 * @return the number of matching activities
-	 * @throws SystemException if a system exception occurred
 	 */
 	@Override
-	public int getOrganizationUsersActivitiesCount(long organizationId)
-		throws SystemException {
-
+	public int getOrganizationUsersActivitiesCount(long organizationId) {
 		return socialActivityLocalService.getOrganizationUsersActivitiesCount(
 			organizationId);
 	}
@@ -537,10 +487,9 @@ public class SocialActivityServiceImpl extends SocialActivityServiceBaseImpl {
 	 * <p>
 	 * Useful when paginating results. Returns a maximum of <code>end -
 	 * start</code> instances. <code>start</code> and <code>end</code> are not
-	 * primary keys, they are indexes in the result set. Thus, <>0</code> refers
-	 * to the first result in the set. Setting both <code>start</code> and
-	 * <code>end</code> to {@link
-	 * com.liferay.portal.kernel.dao.orm.QueryUtil#ALL_POS} will return the full
+	 * primary keys, they are indexes in the result set. Thus, <code>0</code>
+	 * refers to the first result in the set. Setting both <code>start</code>
+	 * and <code>end</code> to {@link QueryUtil#ALL_POS} will return the full
 	 * result set.
 	 * </p>
 	 *
@@ -548,13 +497,11 @@ public class SocialActivityServiceImpl extends SocialActivityServiceBaseImpl {
 	 * @param  start the lower bound of the range of results
 	 * @param  end the upper bound of the range of results (not inclusive)
 	 * @return the range of matching activities
-	 * @throws PortalException if a permission checker was not initialized
-	 * @throws SystemException if a system exception occurred
 	 */
 	@Override
 	public List<SocialActivity> getRelationActivities(
 			long userId, int start, int end)
-		throws PortalException, SystemException {
+		throws PortalException {
 
 		List<SocialActivity> activities =
 			socialActivityLocalService.getRelationActivities(
@@ -574,8 +521,7 @@ public class SocialActivityServiceImpl extends SocialActivityServiceBaseImpl {
 	 * start</code> instances. <code>start</code> and <code>end</code> are not
 	 * primary keys, they are indexes in the result set. Thus, <code>0</code>
 	 * refers to the first result in the set. Setting both <code>start</code>
-	 * and <code>end</code> to {@link
-	 * com.liferay.portal.kernel.dao.orm.QueryUtil#ALL_POS} will return the full
+	 * and <code>end</code> to {@link QueryUtil#ALL_POS} will return the full
 	 * result set.
 	 * </p>
 	 *
@@ -584,13 +530,11 @@ public class SocialActivityServiceImpl extends SocialActivityServiceBaseImpl {
 	 * @param  start the lower bound of the range of results
 	 * @param  end the upper bound of the range of results (not inclusive)
 	 * @return the range of matching activities
-	 * @throws PortalException if a permission checker was not initialized
-	 * @throws SystemException if a system exception occurred
 	 */
 	@Override
 	public List<SocialActivity> getRelationActivities(
 			long userId, int type, int start, int end)
-		throws PortalException, SystemException {
+		throws PortalException {
 
 		List<SocialActivity> activities =
 			socialActivityLocalService.getRelationActivities(
@@ -606,10 +550,9 @@ public class SocialActivityServiceImpl extends SocialActivityServiceBaseImpl {
 	 *
 	 * @param  userId the primary key of the user
 	 * @return the number of matching activities
-	 * @throws SystemException if a system exception occurred
 	 */
 	@Override
-	public int getRelationActivitiesCount(long userId) throws SystemException {
+	public int getRelationActivitiesCount(long userId) {
 		return socialActivityLocalService.getRelationActivitiesCount(userId);
 	}
 
@@ -621,12 +564,9 @@ public class SocialActivityServiceImpl extends SocialActivityServiceBaseImpl {
 	 * @param  userId the primary key of the user
 	 * @param  type the relationship type
 	 * @return the number of matching activities
-	 * @throws SystemException if a system exception occurred
 	 */
 	@Override
-	public int getRelationActivitiesCount(long userId, int type)
-		throws SystemException {
-
+	public int getRelationActivitiesCount(long userId, int type) {
 		return socialActivityLocalService.getRelationActivitiesCount(
 			userId, type);
 	}
@@ -639,8 +579,7 @@ public class SocialActivityServiceImpl extends SocialActivityServiceBaseImpl {
 	 * start</code> instances. <code>start</code> and <code>end</code> are not
 	 * primary keys, they are indexes in the result set. Thus, <code>0</code>
 	 * refers to the first result in the set. Setting both <code>start</code>
-	 * and <code>end</code> to {@link
-	 * com.liferay.portal.kernel.dao.orm.QueryUtil#ALL_POS} will return the full
+	 * and <code>end</code> to {@link QueryUtil#ALL_POS} will return the full
 	 * result set.
 	 * </p>
 	 *
@@ -648,13 +587,11 @@ public class SocialActivityServiceImpl extends SocialActivityServiceBaseImpl {
 	 * @param  start the lower bound of the range of results
 	 * @param  end the upper bound of the range of results (not inclusive)
 	 * @return the range of matching activities
-	 * @throws PortalException if a permission checker was not initialized
-	 * @throws SystemException if a system exception occurred
 	 */
 	@Override
 	public List<SocialActivity> getUserActivities(
 			long userId, int start, int end)
-		throws PortalException, SystemException {
+		throws PortalException {
 
 		List<SocialActivity> activities =
 			socialActivityLocalService.getUserActivities(
@@ -669,10 +606,9 @@ public class SocialActivityServiceImpl extends SocialActivityServiceBaseImpl {
 	 *
 	 * @param  userId the primary key of the user
 	 * @return the number of matching activities
-	 * @throws SystemException if a system exception occurred
 	 */
 	@Override
-	public int getUserActivitiesCount(long userId) throws SystemException {
+	public int getUserActivitiesCount(long userId) {
 		return socialActivityLocalService.getUserActivitiesCount(userId);
 	}
 
@@ -685,8 +621,7 @@ public class SocialActivityServiceImpl extends SocialActivityServiceBaseImpl {
 	 * start</code> instances. <code>start</code> and <code>end</code> are not
 	 * primary keys, they are indexes in the result set. Thus, <code>0</code>
 	 * refers to the first result in the set. Setting both <code>start</code>
-	 * and <code>end</code> to {@link
-	 * com.liferay.portal.kernel.dao.orm.QueryUtil#ALL_POS} will return the full
+	 * and <code>end</code> to {@link QueryUtil#ALL_POS} will return the full
 	 * result set.
 	 * </p>
 	 *
@@ -694,13 +629,11 @@ public class SocialActivityServiceImpl extends SocialActivityServiceBaseImpl {
 	 * @param  start the lower bound of the range of results
 	 * @param  end the upper bound of the range of results (not inclusive)
 	 * @return the range of matching activities
-	 * @throws PortalException if a permission checker was not initialized
-	 * @throws SystemException if a system exception occurred
 	 */
 	@Override
 	public List<SocialActivity> getUserGroupsActivities(
 			long userId, int start, int end)
-		throws PortalException, SystemException {
+		throws PortalException {
 
 		List<SocialActivity> activities =
 			socialActivityLocalService.getUserGroupsActivities(
@@ -716,12 +649,9 @@ public class SocialActivityServiceImpl extends SocialActivityServiceBaseImpl {
 	 *
 	 * @param  userId the primary key of the user
 	 * @return the number of matching activities
-	 * @throws SystemException if a system exception occurred
 	 */
 	@Override
-	public int getUserGroupsActivitiesCount(long userId)
-		throws SystemException {
-
+	public int getUserGroupsActivitiesCount(long userId) {
 		return socialActivityLocalService.getUserGroupsActivitiesCount(userId);
 	}
 
@@ -734,8 +664,7 @@ public class SocialActivityServiceImpl extends SocialActivityServiceBaseImpl {
 	 * start</code> instances. <code>start</code> and <code>end</code> are not
 	 * primary keys, they are indexes in the result set. Thus, <code>0</code>
 	 * refers to the first result in the set. Setting both <code>start</code>
-	 * and <code>end</code> to {@link
-	 * com.liferay.portal.kernel.dao.orm.QueryUtil#ALL_POS} will return the full
+	 * and <code>end</code> to {@link QueryUtil#ALL_POS} will return the full
 	 * result set.
 	 * </p>
 	 *
@@ -743,13 +672,11 @@ public class SocialActivityServiceImpl extends SocialActivityServiceBaseImpl {
 	 * @param  start the lower bound of the range of results
 	 * @param  end the upper bound of the range of results (not inclusive)
 	 * @return the range of matching activities
-	 * @throws PortalException if a permission checker was not initialized
-	 * @throws SystemException if a system exception occurred
 	 */
 	@Override
 	public List<SocialActivity> getUserGroupsAndOrganizationsActivities(
 			long userId, int start, int end)
-		throws PortalException, SystemException {
+		throws PortalException {
 
 		List<SocialActivity> activities =
 			socialActivityLocalService.getUserGroupsAndOrganizationsActivities(
@@ -765,12 +692,9 @@ public class SocialActivityServiceImpl extends SocialActivityServiceBaseImpl {
 	 *
 	 * @param  userId the primary key of the user
 	 * @return the number of matching activities
-	 * @throws SystemException if a system exception occurred
 	 */
 	@Override
-	public int getUserGroupsAndOrganizationsActivitiesCount(long userId)
-		throws SystemException {
-
+	public int getUserGroupsAndOrganizationsActivitiesCount(long userId) {
 		return socialActivityLocalService.
 			getUserGroupsAndOrganizationsActivitiesCount(userId);
 	}
@@ -784,8 +708,7 @@ public class SocialActivityServiceImpl extends SocialActivityServiceBaseImpl {
 	 * start</code> instances. <code>start</code> and <code>end</code> are not
 	 * primary keys, they are indexes in the result set. Thus, <code>0</code>
 	 * refers to the first result in the set. Setting both <code>start</code>
-	 * and <code>end</code> to {@link
-	 * com.liferay.portal.kernel.dao.orm.QueryUtil#ALL_POS} will return the full
+	 * and <code>end</code> to {@link QueryUtil#ALL_POS} will return the full
 	 * result set.
 	 * </p>
 	 *
@@ -793,13 +716,11 @@ public class SocialActivityServiceImpl extends SocialActivityServiceBaseImpl {
 	 * @param  start the lower bound of the range of results
 	 * @param  end the upper bound of the range of results (not inclusive)
 	 * @return the range of matching activities
-	 * @throws PortalException if a permission checker was not initialized
-	 * @throws SystemException if a system exception occurred
 	 */
 	@Override
 	public List<SocialActivity> getUserOrganizationsActivities(
 			long userId, int start, int end)
-		throws PortalException, SystemException {
+		throws PortalException {
 
 		List<SocialActivity> activities =
 			socialActivityLocalService.getUserOrganizationsActivities(
@@ -815,12 +736,9 @@ public class SocialActivityServiceImpl extends SocialActivityServiceBaseImpl {
 	 *
 	 * @param  userId the primary key of the user
 	 * @return the number of matching activities
-	 * @throws SystemException if a system exception occurred
 	 */
 	@Override
-	public int getUserOrganizationsActivitiesCount(long userId)
-		throws SystemException {
-
+	public int getUserOrganizationsActivitiesCount(long userId) {
 		return socialActivityLocalService.getUserOrganizationsActivitiesCount(
 			userId);
 	}
@@ -829,8 +747,7 @@ public class SocialActivityServiceImpl extends SocialActivityServiceBaseImpl {
 			List<SocialActivity> activities, int start, int end)
 		throws PortalException {
 
-		List<SocialActivity> filteredActivities =
-			new ArrayList<SocialActivity>();
+		List<SocialActivity> filteredActivities = new ArrayList<>();
 
 		List<SocialActivityInterpreter> activityInterpreters =
 			socialActivityInterpreterLocalService.getActivityInterpreters(
@@ -871,20 +788,24 @@ public class SocialActivityServiceImpl extends SocialActivityServiceBaseImpl {
 		PermissionChecker permissionChecker = getPermissionChecker();
 		ServiceContext serviceContext = new ServiceContext();
 
-		for (int i = 0; i < activityInterpreters.size(); i++) {
-			SocialActivityInterpreterImpl activityInterpreterImpl =
-				(SocialActivityInterpreterImpl)activityInterpreters.get(i);
+		for (SocialActivityInterpreter activityInterpreter :
+				activityInterpreters) {
 
-			if (activityInterpreterImpl.hasClassName(activity.getClassName())) {
+			SocialActivityInterpreterImpl socialActivityInterpreterImpl =
+				(SocialActivityInterpreterImpl)activityInterpreter;
+
+			if (socialActivityInterpreterImpl.hasClassName(
+					activity.getClassName())) {
+
 				try {
-					if (activityInterpreterImpl.hasPermission(
+					if (socialActivityInterpreterImpl.hasPermission(
 							permissionChecker, activity, ActionKeys.VIEW,
 							serviceContext)) {
 
 						return true;
 					}
 				}
-				catch (Exception e) {
+				catch (Exception exception) {
 				}
 			}
 		}

@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -32,8 +32,6 @@ public class HeadMethodImpl implements Method {
 	public int process(WebDAVRequest webDAVRequest) throws WebDAVException {
 		try {
 			WebDAVStorage storage = webDAVRequest.getWebDAVStorage();
-			HttpServletResponse response =
-				webDAVRequest.getHttpServletResponse();
 
 			Resource resource = storage.getResource(webDAVRequest);
 
@@ -42,13 +40,16 @@ public class HeadMethodImpl implements Method {
 			}
 
 			if (!resource.isCollection()) {
-				response.setContentLength((int)resource.getSize());
+				HttpServletResponse httpServletResponse =
+					webDAVRequest.getHttpServletResponse();
+
+				httpServletResponse.setContentLength((int)resource.getSize());
 			}
 
 			return HttpServletResponse.SC_OK;
 		}
-		catch (Exception e) {
-			throw new WebDAVException(e);
+		catch (Exception exception) {
+			throw new WebDAVException(exception);
 		}
 	}
 

@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -19,8 +19,8 @@ import com.liferay.portal.kernel.events.ActionException;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
 import com.liferay.portal.kernel.util.Http;
+import com.liferay.portal.kernel.util.PortalUtil;
 import com.liferay.portal.kernel.util.StringUtil;
-import com.liferay.portal.util.PortalUtil;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -37,39 +37,42 @@ import javax.servlet.http.HttpServletResponse;
 public class SecureRequestAction extends Action {
 
 	@Override
-	public void run(HttpServletRequest request, HttpServletResponse response)
+	public void run(
+			HttpServletRequest httpServletRequest,
+			HttpServletResponse httpServletResponse)
 		throws ActionException {
 
 		try {
-			if (request.isSecure()) {
+			if (httpServletRequest.isSecure()) {
 				return;
 			}
 
-			if (!isRequiresSecure(request)) {
+			if (!isRequiresSecure(httpServletRequest)) {
 				return;
 			}
 
-			if (response.isCommitted()) {
+			if (httpServletResponse.isCommitted()) {
 				return;
 			}
 
-			String redirect = getRedirect(request);
+			String redirect = getRedirect(httpServletRequest);
 
 			if (_log.isDebugEnabled()) {
 				_log.debug("Redirect " + redirect);
 			}
 
 			if (redirect != null) {
-				response.sendRedirect(redirect);
+				httpServletResponse.sendRedirect(redirect);
 			}
 		}
-		catch (Exception e) {
-			throw new ActionException(e);
+		catch (Exception exception) {
+			throw new ActionException(exception);
 		}
 	}
 
-	protected String getRedirect(HttpServletRequest request) {
-		String unsecureCompleteURL = PortalUtil.getCurrentCompleteURL(request);
+	protected String getRedirect(HttpServletRequest httpServletRequest) {
+		String unsecureCompleteURL = PortalUtil.getCurrentCompleteURL(
+			httpServletRequest);
 
 		if (_log.isDebugEnabled()) {
 			_log.debug("Unsecure URL " + unsecureCompleteURL);
@@ -85,17 +88,17 @@ public class SecureRequestAction extends Action {
 		if (unsecureCompleteURL.equals(secureCompleteURL)) {
 			return null;
 		}
-		else {
-			return secureCompleteURL;
-		}
+
+		return secureCompleteURL;
 	}
 
-	protected boolean isRequiresSecure(HttpServletRequest request) {
+	protected boolean isRequiresSecure(HttpServletRequest httpServletRequest) {
 		return _REQUIRES_SECURE;
 	}
 
 	private static final boolean _REQUIRES_SECURE = true;
 
-	private static Log _log = LogFactoryUtil.getLog(SecureRequestAction.class);
+	private static final Log _log = LogFactoryUtil.getLog(
+		SecureRequestAction.class);
 
 }

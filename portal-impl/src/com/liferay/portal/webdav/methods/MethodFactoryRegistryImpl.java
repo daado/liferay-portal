@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,6 +14,7 @@
 
 package com.liferay.portal.webdav.methods;
 
+import com.liferay.petra.string.StringBundler;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
 import com.liferay.portal.kernel.util.ListUtil;
@@ -57,8 +58,9 @@ public class MethodFactoryRegistryImpl implements MethodFactoryRegistry {
 
 		if (_log.isWarnEnabled() && (previousMethodFactory != null)) {
 			_log.warn(
-				"Replacing " + previousMethodFactory + " for class name " +
-					clazz.getName() + " with " + methodFactory);
+				StringBundler.concat(
+					"Replacing ", previousMethodFactory, " for class name ",
+					clazz.getName(), " with ", methodFactory));
 		}
 	}
 
@@ -73,11 +75,11 @@ public class MethodFactoryRegistryImpl implements MethodFactoryRegistry {
 		_methodFactories.remove(clazz.getName());
 	}
 
-	private static Log _log = LogFactoryUtil.getLog(
+	private static final Log _log = LogFactoryUtil.getLog(
 		MethodFactoryRegistryImpl.class);
 
 	private MethodFactory _defaultMethodFactory;
-	private Map<String, MethodFactory> _methodFactories =
-		new ConcurrentHashMap<String, MethodFactory>();
+	private final Map<String, MethodFactory> _methodFactories =
+		new ConcurrentHashMap<>();
 
 }

@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,42 +14,37 @@
 
 package com.liferay.portal.service.permission;
 
+import com.liferay.portal.kernel.exception.PortalException;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
-import com.liferay.portal.model.Contact;
-import com.liferay.portal.model.Group;
-import com.liferay.portal.model.Organization;
-import com.liferay.portal.model.ResourceConstants;
-import com.liferay.portal.model.RoleConstants;
-import com.liferay.portal.model.User;
-import com.liferay.portal.security.auth.PrincipalException;
-import com.liferay.portal.security.permission.ActionKeys;
-import com.liferay.portal.security.permission.PermissionChecker;
-import com.liferay.portal.service.OrganizationLocalServiceUtil;
-import com.liferay.portal.service.UserGroupRoleLocalServiceUtil;
-import com.liferay.portal.service.UserLocalServiceUtil;
-import com.liferay.portal.util.PortalUtil;
+import com.liferay.portal.kernel.model.Contact;
+import com.liferay.portal.kernel.model.Organization;
+import com.liferay.portal.kernel.model.ResourceConstants;
+import com.liferay.portal.kernel.model.User;
+import com.liferay.portal.kernel.model.role.RoleConstants;
+import com.liferay.portal.kernel.security.auth.PrincipalException;
+import com.liferay.portal.kernel.security.permission.ActionKeys;
+import com.liferay.portal.kernel.security.permission.BaseModelPermissionChecker;
+import com.liferay.portal.kernel.security.permission.PermissionChecker;
+import com.liferay.portal.kernel.service.OrganizationLocalServiceUtil;
+import com.liferay.portal.kernel.service.UserGroupRoleLocalServiceUtil;
+import com.liferay.portal.kernel.service.UserLocalServiceUtil;
+import com.liferay.portal.kernel.service.permission.OrganizationPermissionUtil;
+import com.liferay.portal.kernel.service.permission.UserPermission;
+import com.liferay.portal.kernel.spring.osgi.OSGiBeanProperties;
+import com.liferay.portal.kernel.util.PortalUtil;
+
+import java.util.List;
 
 /**
  * @author Charles May
  * @author Jorge Ferrer
  */
-public class UserPermissionImpl implements UserPermission {
-
-	/**
-	 * @deprecated As of 6.2.0, replaced by {@link #check(PermissionChecker,
-	 *             long, long[], String)}
-	 */
-	@Override
-	public void check(
-			PermissionChecker permissionChecker, long userId,
-			long organizationId, long locationId, String actionId)
-		throws PrincipalException {
-
-		check(
-			permissionChecker, userId, new long[] {organizationId, locationId},
-			actionId);
-	}
+@OSGiBeanProperties(
+	property = "model.class.name=com.liferay.portal.kernel.model.User"
+)
+public class UserPermissionImpl
+	implements BaseModelPermissionChecker, UserPermission {
 
 	@Override
 	public void check(
@@ -58,7 +53,8 @@ public class UserPermissionImpl implements UserPermission {
 		throws PrincipalException {
 
 		if (!contains(permissionChecker, userId, organizationIds, actionId)) {
-			throw new PrincipalException();
+			throw new PrincipalException.MustHavePermission(
+				permissionChecker, User.class.getName(), userId, actionId);
 		}
 	}
 
@@ -68,22 +64,29 @@ public class UserPermissionImpl implements UserPermission {
 		throws PrincipalException {
 
 		if (!contains(permissionChecker, userId, actionId)) {
-			throw new PrincipalException();
+			throw new PrincipalException.MustHavePermission(
+				permissionChecker, User.class.getName(), userId, actionId);
 		}
 	}
 
-	/**
-	 * @deprecated As of 6.2.0, replaced by {@link #contains(PermissionChecker,
-	 *             long, long[], String)}
-	 */
 	@Override
-	public boolean contains(
-		PermissionChecker permissionChecker, long userId, long organizationId,
-		long locationId, String actionId) {
+	public void checkBaseModel(
+			PermissionChecker permissionChecker, long groupId, long primaryKey,
+			String actionId)
+		throws PortalException {
 
-		return contains(
-			permissionChecker, userId, new long[] {organizationId, locationId},
-			actionId);
+		List<Organization> organizations =
+			OrganizationLocalServiceUtil.getUserOrganizations(primaryKey);
+
+		long[] organizationsIds = new long[organizations.size()];
+
+		for (int i = 0; i < organizations.size(); i++) {
+			Organization organization = organizations.get(i);
+
+			organizationsIds[i] = organization.getOrganizationId();
+		}
+
+		check(permissionChecker, primaryKey, organizationsIds, actionId);
 	}
 
 	@Override
@@ -91,21 +94,18 @@ public class UserPermissionImpl implements UserPermission {
 		PermissionChecker permissionChecker, long userId,
 		long[] organizationIds, String actionId) {
 
-		if ((actionId.equals(ActionKeys.DELETE) ||
-			 actionId.equals(ActionKeys.IMPERSONATE) ||
-			 actionId.equals(ActionKeys.PERMISSIONS) ||
-			 actionId.equals(ActionKeys.UPDATE)) &&
-			PortalUtil.isOmniadmin(userId) &&
-			!permissionChecker.isOmniadmin()) {
-
-			return false;
-		}
-
 		try {
 			User user = null;
 
 			if (userId != ResourceConstants.PRIMKEY_DNE) {
 				user = UserLocalServiceUtil.getUserById(userId);
+
+				if (!actionId.equals(ActionKeys.VIEW) &&
+					!permissionChecker.isOmniadmin() &&
+					PortalUtil.isOmniadmin(user)) {
+
+					return false;
+				}
 
 				Contact contact = user.getContact();
 
@@ -116,12 +116,20 @@ public class UserPermissionImpl implements UserPermission {
 
 					return true;
 				}
+
+				if (permissionChecker.hasPermission(
+						null, User.class.getName(), userId, actionId)) {
+
+					return true;
+				}
 			}
+			else {
+				if (permissionChecker.hasPermission(
+						null, User.class.getName(), User.class.getName(),
+						actionId)) {
 
-			if (permissionChecker.hasPermission(
-					0, User.class.getName(), userId, actionId)) {
-
-				return true;
+					return true;
+				}
 			}
 
 			if (user == null) {
@@ -133,48 +141,54 @@ public class UserPermissionImpl implements UserPermission {
 			}
 
 			for (long organizationId : organizationIds) {
-				if (OrganizationPermissionUtil.contains(
-						permissionChecker, organizationId,
+				Organization organization =
+					OrganizationLocalServiceUtil.getOrganization(
+						organizationId);
+
+				if (!OrganizationPermissionUtil.contains(
+						permissionChecker, organization,
 						ActionKeys.MANAGE_USERS)) {
 
-					if (permissionChecker.getUserId() == user.getUserId()) {
-						return true;
-					}
+					continue;
+				}
 
-					Organization organization =
-						OrganizationLocalServiceUtil.getOrganization(
-							organizationId);
+				if (permissionChecker.getUserId() == user.getUserId()) {
+					return true;
+				}
 
-					Group organizationGroup = organization.getGroup();
+				// Organization administrators and those with "Manage
+				// Users" permission can only manage normal users
 
-					// Organization administrators can only manage normal users.
-					// Owners can only manage normal users and administrators.
-
-					if (UserGroupRoleLocalServiceUtil.hasUserGroupRole(
-							user.getUserId(), organizationGroup.getGroupId(),
-							RoleConstants.ORGANIZATION_OWNER, true)) {
-
-						continue;
-					}
-					else if (UserGroupRoleLocalServiceUtil.hasUserGroupRole(
-								user.getUserId(),
-								organizationGroup.getGroupId(),
-								RoleConstants.ORGANIZATION_ADMINISTRATOR,
-								true) &&
-							 !UserGroupRoleLocalServiceUtil.hasUserGroupRole(
-								permissionChecker.getUserId(),
-								organizationGroup.getGroupId(),
-								RoleConstants.ORGANIZATION_OWNER, true)) {
-
-						continue;
-					}
+				if (!UserGroupRoleLocalServiceUtil.hasUserGroupRole(
+						user.getUserId(), organization.getGroupId(),
+						RoleConstants.ORGANIZATION_ADMINISTRATOR, true) &&
+					!UserGroupRoleLocalServiceUtil.hasUserGroupRole(
+						user.getUserId(), organization.getGroupId(),
+						RoleConstants.ORGANIZATION_OWNER, true)) {
 
 					return true;
 				}
+
+				Organization curOrganization = organization;
+
+				while (curOrganization != null) {
+
+					// Organization owners can manage all users
+
+					if (UserGroupRoleLocalServiceUtil.hasUserGroupRole(
+							permissionChecker.getUserId(),
+							curOrganization.getGroupId(),
+							RoleConstants.ORGANIZATION_OWNER, true)) {
+
+						return true;
+					}
+
+					curOrganization = curOrganization.getParentOrganization();
+				}
 			}
 		}
-		catch (Exception e) {
-			_log.error(e, e);
+		catch (Exception exception) {
+			_log.error(exception, exception);
 		}
 
 		return false;
@@ -187,6 +201,7 @@ public class UserPermissionImpl implements UserPermission {
 		return contains(permissionChecker, userId, null, actionId);
 	}
 
-	private static Log _log = LogFactoryUtil.getLog(UserPermissionImpl.class);
+	private static final Log _log = LogFactoryUtil.getLog(
+		UserPermissionImpl.class);
 
 }

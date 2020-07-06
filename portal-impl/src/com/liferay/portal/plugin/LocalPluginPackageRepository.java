@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2000-2013 Liferay, Inc. All rights reserved.
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
@@ -14,16 +14,15 @@
 
 package com.liferay.portal.plugin;
 
+import com.liferay.petra.string.StringBundler;
+import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.exception.PortalException;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
 import com.liferay.portal.kernel.plugin.PluginPackage;
 import com.liferay.portal.kernel.plugin.PluginPackageNameAndContextComparator;
 import com.liferay.portal.kernel.plugin.Version;
-import com.liferay.portal.kernel.search.Indexer;
-import com.liferay.portal.kernel.search.IndexerRegistryUtil;
 import com.liferay.portal.kernel.util.ListUtil;
-import com.liferay.portal.kernel.util.StringPool;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -66,8 +65,11 @@ public class LocalPluginPackageRepository {
 		PluginPackage latestPluginPackage = null;
 
 		for (PluginPackage pluginPackage : _pluginPackages.values()) {
-			if (pluginPackage.getGroupId().equals(groupId) &&
-				pluginPackage.getArtifactId().equals(artifactId) &&
+			String pluginPackageGroupId = pluginPackage.getGroupId();
+			String pluginPackageArtifactId = pluginPackage.getArtifactId();
+
+			if (pluginPackageGroupId.equals(groupId) &&
+				pluginPackageArtifactId.equals(artifactId) &&
 				((latestPluginPackage == null) ||
 				 pluginPackage.isLaterVersionThan(latestPluginPackage))) {
 
@@ -83,17 +85,20 @@ public class LocalPluginPackageRepository {
 	}
 
 	public List<PluginPackage> getPluginPackages() {
-		return new ArrayList<PluginPackage>(_pluginPackages.values());
+		return new ArrayList<>(_pluginPackages.values());
 	}
 
 	public List<PluginPackage> getPluginPackages(
 		String groupId, String artifactId) {
 
-		List<PluginPackage> pluginPackages = new ArrayList<PluginPackage>();
+		List<PluginPackage> pluginPackages = new ArrayList<>();
 
 		for (PluginPackage pluginPackage : _pluginPackages.values()) {
-			if (pluginPackage.getGroupId().equals(groupId) &&
-				pluginPackage.getArtifactId().equals(artifactId)) {
+			String pluginPackageGroupId = pluginPackage.getGroupId();
+			String pluginPackageArtifactId = pluginPackage.getArtifactId();
+
+			if (pluginPackageGroupId.equals(groupId) &&
+				pluginPackageArtifactId.equals(artifactId)) {
 
 				pluginPackages.add(pluginPackage);
 			}
@@ -103,7 +108,7 @@ public class LocalPluginPackageRepository {
 	}
 
 	public List<PluginPackage> getSortedPluginPackages() {
-		List<PluginPackage> pluginPackages = new ArrayList<PluginPackage>();
+		List<PluginPackage> pluginPackages = new ArrayList<>();
 
 		pluginPackages.addAll(_pluginPackages.values());
 
@@ -134,10 +139,9 @@ public class LocalPluginPackageRepository {
 		PluginPackage pluginPackage = getPluginPackage(deploymentContext);
 
 		if (pluginPackage == null) {
-			String moduleId =
-				deploymentContext + StringPool.SLASH + deploymentContext +
-					StringPool.SLASH + Version.UNKNOWN + StringPool.SLASH +
-						"war";
+			String moduleId = StringBundler.concat(
+				deploymentContext, StringPool.SLASH, deploymentContext,
+				StringPool.SLASH, Version.UNKNOWN, StringPool.SLASH, "war");
 
 			pluginPackage = new PluginPackageImpl(moduleId);
 
@@ -152,10 +156,6 @@ public class LocalPluginPackageRepository {
 		throws PortalException {
 
 		_pluginPackages.remove(pluginPackage.getContext());
-
-		Indexer indexer = IndexerRegistryUtil.getIndexer(PluginPackage.class);
-
-		indexer.delete(pluginPackage);
 	}
 
 	public void removePluginPackage(String context) {
@@ -167,12 +167,10 @@ public class LocalPluginPackageRepository {
 		_pendingPackages.remove(context);
 	}
 
-	private static Log _log = LogFactoryUtil.getLog(
+	private static final Log _log = LogFactoryUtil.getLog(
 		LocalPluginPackageRepository.class);
 
-	private Map<String, PluginPackage> _pendingPackages =
-		new HashMap<String, PluginPackage>();
-	private Map<String, PluginPackage> _pluginPackages =
-		new HashMap<String, PluginPackage>();
+	private final Map<String, PluginPackage> _pendingPackages = new HashMap<>();
+	private final Map<String, PluginPackage> _pluginPackages = new HashMap<>();
 
 }
